@@ -311,47 +311,23 @@ export default function ProgramDetailScreen() {
   // Generate weekly workout plan based on program type and recovery status
   const generateWorkoutPlan = (): Workout[] => {
     // If we have an AI-generated plan, use that
-    if (aiPlan && aiPlan.phases && Array.isArray(aiPlan.phases) && aiPlan.phases.length > 0) {
-      try {
-        // Find the current phase based on the current week
-        let currentPhase = aiPlan.phases[0];
-        let weekCounter = 0;
-        
-        for (const phase of aiPlan.phases) {
-          if (!phase || !phase.duration) continue;
-          
-          const durationMatch = phase.duration.match(/\d+/);
-          const phaseDuration = durationMatch ? parseInt(durationMatch[0], 10) : 4;
-          
-          if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
-            currentPhase = phase;
-            break;
-          }
-          weekCounter += phaseDuration;
+    if (aiPlan && aiPlan.phases && aiPlan.phases.length > 0) {
+      // Find the current phase based on the current week
+      let currentPhase = aiPlan.phases[0];
+      let weekCounter = 0;
+      
+      for (const phase of aiPlan.phases) {
+        const phaseDuration = parseInt(phase.duration.split(' ')[0], 10);
+        if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
+          currentPhase = phase;
+          break;
         }
-        
-        // Use the weekly structure from the current phase
-        if (currentPhase && currentPhase.weeklyStructure && Array.isArray(currentPhase.weeklyStructure)) {
-          return currentPhase.weeklyStructure
-            .filter((workout: any) => workout && typeof workout === 'object')
-            .map((workout: any) => {
-              try {
-                return enhanceWorkoutWithDetails(workout);
-              } catch (error) {
-                console.error('Error enhancing workout:', error);
-                return {
-                  day: workout.day || 'Monday',
-                  title: workout.title || 'Training Session',
-                  description: workout.description || 'Training session',
-                  intensity: workout.intensity || 'Medium',
-                  type: workout.type || 'other',
-                  adjustedForRecovery: null
-                };
-              }
-            });
-        }
-      } catch (error) {
-        console.error('Error processing AI plan:', error);
+        weekCounter += phaseDuration;
+      }
+      
+      // Use the weekly structure from the current phase
+      if (currentPhase.weeklyStructure && Array.isArray(currentPhase.weeklyStructure)) {
+        return currentPhase.weeklyStructure.map((workout: any) => enhanceWorkoutWithDetails(workout));
       }
     }
     
@@ -773,43 +749,18 @@ export default function ProgramDetailScreen() {
   
   // Enhance workout with detailed information
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
-    if (!workout || typeof workout !== 'object') {
-      return {
-        day: 'Monday',
-        title: 'Training Session',
-        description: 'Training session',
-        intensity: 'Medium',
-        type: 'other',
-        adjustedForRecovery: null
-      };
-    }
-    
-    const safeWorkout = {
-      day: workout.day || 'Monday',
-      title: workout.title || 'Training Session',
-      description: workout.description || 'Training session',
-      intensity: workout.intensity || 'Medium',
-      type: workout.type || 'other',
-      adjustedForRecovery: workout.adjustedForRecovery || null
+    const enhanced: Workout = {
+      ...workout,
+      duration: generateDuration(workout.type, workout.intensity),
+      equipment: generateEquipment(workout.title, workout.type),
+      exercises: generateExercises(workout.title, workout.type, workout.description),
+      tips: generateTips(workout.type, workout.intensity),
+      modifications: generateModifications(workout.type, workout.intensity),
+      targetHeartRate: generateTargetHeartRate(workout.type, workout.intensity),
+      caloriesBurned: generateCaloriesBurned(workout.type, workout.intensity)
     };
     
-    try {
-      const enhanced: Workout = {
-        ...safeWorkout,
-        duration: generateDuration(safeWorkout.type, safeWorkout.intensity),
-        equipment: generateEquipment(safeWorkout.title, safeWorkout.type),
-        exercises: generateExercises(safeWorkout.title, safeWorkout.type, safeWorkout.description),
-        tips: generateTips(safeWorkout.type, safeWorkout.intensity),
-        modifications: generateModifications(safeWorkout.type, safeWorkout.intensity),
-        targetHeartRate: generateTargetHeartRate(safeWorkout.type, safeWorkout.intensity),
-        caloriesBurned: generateCaloriesBurned(safeWorkout.type, safeWorkout.intensity)
-      };
-      
-      return enhanced;
-    } catch (error) {
-      console.error('Error enhancing workout details:', error);
-      return safeWorkout;
-    }
+    return enhanced;
   };
   
   // Generate duration based on workout type and intensity
@@ -1396,60 +1347,46 @@ export default function ProgramDetailScreen() {
 
   // Render a single workout card
   const renderWorkoutCard = (workout: Workout) => {
-    if (!workout || typeof workout !== 'object') {
-      return null;
-    }
-    
-    const safeWorkout = {
-      day: workout.day || 'Day',
-      title: workout.title || 'Training Session',
-      description: workout.description || 'Training session',
-      intensity: workout.intensity || 'Medium',
-      type: workout.type || 'other',
-      duration: workout.duration || '30-45 minutes',
-      adjustedForRecovery: workout.adjustedForRecovery || null
-    };
-    
-    const isCompleted = completedWorkouts.includes(`${safeWorkout.day}-${safeWorkout.title}`);
+    const isCompleted = completedWorkouts.includes(`${workout.day}-${workout.title}`);
     
     return (
       <TouchableOpacity 
         style={styles.workoutCard} 
-        key={`${safeWorkout.day}-${safeWorkout.title}-${Date.now()}`}
-        onPress={() => handleWorkoutCardClick(safeWorkout as Workout)}
+        key={`${workout.day}-${workout.title}`}
+        onPress={() => handleWorkoutCardClick(workout)}
         activeOpacity={0.7}
       >
         <View style={styles.workoutHeader}>
           <View style={styles.workoutTitleContainer}>
-            {getWorkoutIcon(safeWorkout.title, safeWorkout.type)}
+            {getWorkoutIcon(workout.title, workout.type)}
             <Text style={styles.workoutTitle} numberOfLines={1} ellipsizeMode="tail">
-              {safeWorkout.title}
+              {workout.title}
             </Text>
           </View>
           <View style={[
             styles.intensityBadge,
-            { backgroundColor: getIntensityColor(safeWorkout.intensity) }
+            { backgroundColor: getIntensityColor(workout.intensity) }
           ]}>
-            <Text style={styles.intensityText}>{safeWorkout.intensity}</Text>
+            <Text style={styles.intensityText}>{workout.intensity}</Text>
           </View>
         </View>
         
         <Text style={styles.workoutDescription} numberOfLines={3} ellipsizeMode="tail">
-          {safeWorkout.description}
+          {workout.description}
         </Text>
         
-        {safeWorkout.duration && (
+        {workout.duration && (
           <View style={styles.workoutMetaInfo}>
             <Clock size={14} color={colors.textSecondary} />
-            <Text style={styles.workoutMetaText}>{safeWorkout.duration}</Text>
+            <Text style={styles.workoutMetaText}>{workout.duration}</Text>
           </View>
         )}
         
-        {safeWorkout.adjustedForRecovery && (
+        {workout.adjustedForRecovery && (
           <View style={styles.adjustmentContainer}>
             <Text style={styles.adjustmentTitle}>Recovery Adjustment:</Text>
             <Text style={styles.adjustmentText} numberOfLines={2} ellipsizeMode="tail">
-              {safeWorkout.adjustedForRecovery}
+              {workout.adjustedForRecovery}
             </Text>
           </View>
         )}
@@ -1462,7 +1399,7 @@ export default function ProgramDetailScreen() {
             ]}
             onPress={(e) => {
               e.stopPropagation();
-              isCompleted ? null : handleStartWorkout(safeWorkout as Workout);
+              isCompleted ? null : handleStartWorkout(workout);
             }}
             disabled={isCompleted}
           >
@@ -1483,7 +1420,7 @@ export default function ProgramDetailScreen() {
             style={styles.editWorkoutButton}
             onPress={(e) => {
               e.stopPropagation();
-              handleEditWorkout(safeWorkout as Workout);
+              handleEditWorkout(workout);
             }}
           >
             <Edit3 size={18} color={colors.text} />
@@ -1672,53 +1609,43 @@ export default function ProgramDetailScreen() {
                 
                 {weeklyPlanExpanded && (
                   <View style={styles.sectionContent}>
-                    {workoutPlan && workoutPlan.length > 0 ? workoutPlan.map((workout: Workout, index: number) => {
-                      if (!workout || typeof workout !== 'object') {
-                        return null;
-                      }
-                      
-                      return (
-                        <View key={`workout-${index}-${workout.day || 'unknown'}`} style={styles.weeklyWorkout}>
-                          <View style={styles.dayContainer}>
-                            <Text style={styles.dayText}>{workout.day || 'Day'}</Text>
-                            <View style={[
-                              styles.intensityDot,
-                              { backgroundColor: getIntensityColor(workout.intensity || 'Medium') }
-                            ]} />
-                          </View>
-                          
-                          <View style={styles.workoutDetails}>
-                            <View style={styles.workoutTitleRow}>
-                              <View style={styles.workoutTypeContainer}>
-                                {getWorkoutIcon(workout.title || 'Workout', workout.type || 'other')}
-                                <Text style={styles.weeklyWorkoutTitle} numberOfLines={1} ellipsizeMode="tail">
-                                  {workout.title || 'Training Session'}
-                                </Text>
-                              </View>
-                              {workout.day === todayDay && (
-                                <View style={styles.todayBadge}>
-                                  <Text style={styles.todayBadgeText}>TODAY</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.weeklyWorkoutDescription} numberOfLines={2} ellipsizeMode="tail">
-                              {workout.description || 'Training session'}
-                            </Text>
-                          </View>
-                          
-                          <TouchableOpacity 
-                            style={styles.editIconButton}
-                            onPress={() => handleEditWorkout(workout)}
-                          >
-                            <Edit3 size={16} color={colors.textSecondary} />
-                          </TouchableOpacity>
+                    {workoutPlan.map((workout: Workout, index: number) => (
+                      <View key={index} style={styles.weeklyWorkout}>
+                        <View style={styles.dayContainer}>
+                          <Text style={styles.dayText}>{workout.day}</Text>
+                          <View style={[
+                            styles.intensityDot,
+                            { backgroundColor: getIntensityColor(workout.intensity) }
+                          ]} />
                         </View>
-                      );
-                    }).filter(Boolean) : (
-                      <View style={styles.noWorkoutsContainer}>
-                        <Text style={styles.noWorkoutsText}>No workouts available for this week</Text>
+                        
+                        <View style={styles.workoutDetails}>
+                          <View style={styles.workoutTitleRow}>
+                            <View style={styles.workoutTypeContainer}>
+                              {getWorkoutIcon(workout.title, workout.type)}
+                              <Text style={styles.weeklyWorkoutTitle} numberOfLines={1} ellipsizeMode="tail">
+                                {workout.title}
+                              </Text>
+                            </View>
+                            {workout.day === todayDay && (
+                              <View style={styles.todayBadge}>
+                                <Text style={styles.todayBadgeText}>TODAY</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.weeklyWorkoutDescription} numberOfLines={2} ellipsizeMode="tail">
+                            {workout.description}
+                          </Text>
+                        </View>
+                        
+                        <TouchableOpacity 
+                          style={styles.editIconButton}
+                          onPress={() => handleEditWorkout(workout)}
+                        >
+                          <Edit3 size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
                       </View>
-                    )}
+                    ))}
                   </View>
                 )}
               </View>
@@ -3323,16 +3250,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-  },
-  noWorkoutsContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noWorkoutsText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   workoutInfo: {
     marginBottom: 24,
