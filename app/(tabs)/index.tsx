@@ -89,7 +89,7 @@ export default function DashboardScreen() {
   }, []);
   
   const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-    if (appState.match(/inactive|background/) && nextAppState === 'active') {
+    if (typeof appState === 'string' && appState.match(/inactive|background/) && nextAppState === 'active') {
       console.log('App has come to the foreground, checking for scheduled syncs');
       await checkAndPerformScheduledSync();
     }
