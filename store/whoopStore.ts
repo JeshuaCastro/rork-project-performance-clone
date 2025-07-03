@@ -965,21 +965,58 @@ Return JSON with:
           
           try {
             const planText = result.completion?.trim() || '';
-            const jsonStart = planText.indexOf('{');
-            const jsonEnd = planText.lastIndexOf('}') + 1;
+            console.log('AI Plan Response:', planText.substring(0, 500) + '...');
             
-            if (jsonStart >= 0 && jsonEnd > jsonStart) {
-              const jsonStr = planText.substring(jsonStart, jsonEnd);
-              const planJson = JSON.parse(jsonStr);
+            let planJson: any = null;
+            
+            // Try direct JSON parsing first
+            try {
+              planJson = JSON.parse(planText);
+            } catch (directParseError) {
+              console.log('Direct parsing failed, trying to extract JSON');
+              
+              // Try to extract JSON from the response
+              const jsonStart = planText.indexOf('{');
+              const jsonEnd = planText.lastIndexOf('}') + 1;
+              
+              if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                const jsonStr = planText.substring(jsonStart, jsonEnd);
+                try {
+                  planJson = JSON.parse(jsonStr);
+                } catch (extractParseError) {
+                  console.error('Failed to parse extracted JSON:', extractParseError);
+                }
+              }
+            }
+            
+            if (planJson && typeof planJson === 'object') {
+              // Ensure the plan has the required structure
+              if (!planJson.phases || !Array.isArray(planJson.phases)) {
+                planJson.phases = [{
+                  name: "Training Phase",
+                  duration: "12 weeks",
+                  focus: "Progressive training",
+                  weeklyStructure: []
+                }];
+              }
+              
+              // Ensure each phase has proper structure
+              planJson.phases = planJson.phases.map((phase: any) => ({
+                name: phase.name || "Training Phase",
+                duration: phase.duration || "4 weeks",
+                focus: phase.focus || "Progressive training",
+                weeklyStructure: Array.isArray(phase.weeklyStructure) ? phase.weeklyStructure : []
+              }));
               
               // Extract nutrition plan if available
-              if (planJson.nutritionPlan) {
+              if (planJson.nutritionPlan && typeof planJson.nutritionPlan === 'object') {
                 const nutritionPlan: NutritionPlan = {
-                  calories: planJson.nutritionPlan.calories || 0,
-                  protein: planJson.nutritionPlan.protein || 0,
-                  carbs: planJson.nutritionPlan.carbs || 0,
-                  fat: planJson.nutritionPlan.fat || 0,
-                  recommendations: planJson.nutritionPlan.recommendations || []
+                  calories: Number(planJson.nutritionPlan.calories) || 0,
+                  protein: Number(planJson.nutritionPlan.protein) || 0,
+                  carbs: Number(planJson.nutritionPlan.carbs) || 0,
+                  fat: Number(planJson.nutritionPlan.fat) || 0,
+                  recommendations: Array.isArray(planJson.nutritionPlan.recommendations) ? 
+                    planJson.nutritionPlan.recommendations : []
                 };
                 
                 planJson.nutritionPlan = nutritionPlan;
@@ -1019,13 +1056,65 @@ Return JSON with:
               return planJson;
             }
             
+            // Fallback: create a basic plan structure
+            console.log('Creating fallback plan structure');
+            const fallbackPlan = {
+              programOverview: `Personalized ${programType} program created for your goals`,
+              phases: [{
+                name: "Foundation Phase",
+                duration: "4 weeks",
+                focus: "Building base fitness",
+                weeklyStructure: generateBasicWeeklyStructure(programType, userConfig.trainingDaysPerWeek)
+              }],
+              nutritionPlan: macroTargets ? {
+                calories: macroTargets.calories,
+                protein: macroTargets.protein,
+                carbs: macroTargets.carbs,
+                fat: macroTargets.fat,
+                recommendations: generateNutritionRecommendations(programType, userProfile.fitnessGoal)
+              } : null,
+              recoveryStrategies: "Focus on adequate sleep, hydration, and stress management",
+              progressionPlan: "Progressive overload with weekly adjustments",
+              riskMitigation: "Proper warm-up, cool-down, and recovery protocols",
+              goalRequirements: goalRequirements,
+              userMetrics: {
+                age: userProfile.age,
+                weight: userProfile.weight,
+                height: userProfile.height,
+                activityLevel: userProfile.activityLevel,
+                fitnessGoal: userProfile.fitnessGoal
+              }
+            };
+            
             set({ isLoading: false });
-            return { rawPlan: planText };
+            return fallbackPlan;
             
           } catch (parseError) {
             console.error('Error parsing AI response:', parseError);
+            
+            // Create a safe fallback plan
+            const safeFallbackPlan = {
+              programOverview: `Personalized ${programType} program`,
+              phases: [{
+                name: "Training Phase",
+                duration: "8 weeks",
+                focus: "Progressive training",
+                weeklyStructure: generateBasicWeeklyStructure(programType, userConfig.trainingDaysPerWeek || 4)
+              }],
+              nutritionPlan: macroTargets ? {
+                calories: macroTargets.calories,
+                protein: macroTargets.protein,
+                carbs: macroTargets.carbs,
+                fat: macroTargets.fat,
+                recommendations: generateNutritionRecommendations(programType, userProfile.fitnessGoal)
+              } : null,
+              recoveryStrategies: "Focus on adequate sleep and recovery",
+              progressionPlan: "Progressive training approach",
+              riskMitigation: "Safe training protocols"
+            };
+            
             set({ isLoading: false });
-            return null;
+            return safeFallbackPlan;
           }
         } catch (error) {
           console.error('Error generating personalized training plan:', error);
@@ -2315,6 +2404,52 @@ function generateDuration(type: string, intensity: string): string {
     return '20-45 minutes';
   }
   return '30-45 minutes';
+}
+
+// Helper function to generate basic weekly structure for fallback plans
+function generateBasicWeeklyStructure(programType: string, trainingDaysPerWeek: number): any[] {
+  const basicStructures: Record<string, any[]> = {
+    'marathon': [
+      { day: 'Monday', title: 'Recovery Run', description: 'Easy 30-45 minute run', intensity: 'Low', type: 'cardio' },
+      { day: 'Tuesday', title: 'Speed Work', description: 'Interval training', intensity: 'High', type: 'cardio' },
+      { day: 'Wednesday', title: 'Easy Run', description: 'Comfortable pace run', intensity: 'Low', type: 'cardio' },
+      { day: 'Thursday', title: 'Tempo Run', description: 'Threshold pace training', intensity: 'Medium', type: 'cardio' },
+      { day: 'Friday', title: 'Rest', description: 'Rest or light activity', intensity: 'Very Low', type: 'recovery' },
+      { day: 'Saturday', title: 'Long Run', description: 'Extended distance run', intensity: 'Medium', type: 'cardio' },
+      { day: 'Sunday', title: 'Cross Training', description: 'Alternative activity', intensity: 'Low', type: 'recovery' }
+    ],
+    'powerlifting': [
+      { day: 'Monday', title: 'Squat Focus', description: 'Squat and leg training', intensity: 'High', type: 'strength' },
+      { day: 'Tuesday', title: 'Bench Press', description: 'Chest and triceps', intensity: 'High', type: 'strength' },
+      { day: 'Wednesday', title: 'Rest', description: 'Recovery day', intensity: 'Very Low', type: 'recovery' },
+      { day: 'Thursday', title: 'Deadlift Focus', description: 'Deadlift and back training', intensity: 'High', type: 'strength' },
+      { day: 'Friday', title: 'Accessory Work', description: 'Supporting exercises', intensity: 'Medium', type: 'strength' },
+      { day: 'Saturday', title: 'Light Training', description: 'Technique work', intensity: 'Low', type: 'strength' },
+      { day: 'Sunday', title: 'Rest', description: 'Complete rest', intensity: 'None', type: 'recovery' }
+    ],
+    'weight_loss': [
+      { day: 'Monday', title: 'Full Body Strength', description: 'Compound movements', intensity: 'Medium', type: 'strength' },
+      { day: 'Tuesday', title: 'HIIT Cardio', description: 'High intensity intervals', intensity: 'High', type: 'cardio' },
+      { day: 'Wednesday', title: 'Active Recovery', description: 'Light movement', intensity: 'Low', type: 'recovery' },
+      { day: 'Thursday', title: 'Upper Body', description: 'Upper body strength', intensity: 'Medium', type: 'strength' },
+      { day: 'Friday', title: 'Steady Cardio', description: 'Moderate cardio', intensity: 'Medium', type: 'cardio' },
+      { day: 'Saturday', title: 'Lower Body', description: 'Lower body strength', intensity: 'Medium', type: 'strength' },
+      { day: 'Sunday', title: 'Rest', description: 'Complete rest', intensity: 'None', type: 'recovery' }
+    ]
+  };
+  
+  const structure = basicStructures[programType] || basicStructures['weight_loss'];
+  
+  // Filter based on training days per week
+  if (trainingDaysPerWeek <= 3) {
+    return structure.filter(workout => ['Monday', 'Wednesday', 'Friday'].includes(workout.day));
+  } else if (trainingDaysPerWeek <= 4) {
+    return structure.filter(workout => ['Monday', 'Tuesday', 'Thursday', 'Saturday'].includes(workout.day));
+  } else if (trainingDaysPerWeek <= 5) {
+    return structure.filter(workout => workout.type !== 'recovery' || workout.day === 'Sunday');
+  }
+  
+  return structure;
 }
 
 // Helper function to generate a basic workout for today if no AI plan exists

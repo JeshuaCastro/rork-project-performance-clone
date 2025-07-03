@@ -475,6 +475,35 @@ export default function ProgramsScreen() {
       
       setAiPlanResult(aiPlan);
       
+      // Validate the AI plan structure
+      let validatedAiPlan = aiPlan;
+      if (!aiPlan || typeof aiPlan !== 'object') {
+        console.warn('Invalid AI plan received, creating fallback');
+        validatedAiPlan = {
+          programOverview: `Personalized ${selectedProgram.name} program`,
+          phases: [{
+            name: "Training Phase",
+            duration: "8 weeks",
+            focus: "Progressive training",
+            weeklyStructure: []
+          }],
+          nutritionPlan: null,
+          recoveryStrategies: "Focus on adequate sleep and recovery",
+          progressionPlan: "Progressive training approach",
+          riskMitigation: "Safe training protocols"
+        };
+      }
+      
+      // Ensure phases array exists and is valid
+      if (!validatedAiPlan.phases || !Array.isArray(validatedAiPlan.phases)) {
+        validatedAiPlan.phases = [{
+          name: "Training Phase",
+          duration: "8 weeks",
+          focus: "Progressive training",
+          weeklyStructure: []
+        }];
+      }
+      
       // Create the program with AI-generated plan
       const newProgram: Omit<TrainingProgram, 'id' | 'startDate' | 'active'> = {
         name: selectedProgram.name,
@@ -485,8 +514,8 @@ export default function ProgramsScreen() {
         experienceLevel: programConfig.experienceLevel as 'beginner' | 'intermediate' | 'advanced',
         strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
         nutritionPreferences: nutritionPreferences,
-        nutritionPlan: aiPlan.nutritionPlan,
-        aiPlan: aiPlan
+        nutritionPlan: validatedAiPlan.nutritionPlan || null,
+        aiPlan: validatedAiPlan
       };
       
       addProgram(newProgram);
