@@ -282,7 +282,7 @@ const getFitnessAssessment = (userProfile: UserProfile, data: WhoopData): string
 
 // Helper function to analyze program effectiveness and progress
 const analyzeProgramEffectiveness = (program: TrainingProgram, currentWeek: number, goalRequirements: any): { progressStatus: string; effectiveness: string } => {
-  const totalWeeks = program.aiPlan?.phases ? 
+  const totalWeeks = program.aiPlan?.phases && Array.isArray(program.aiPlan.phases) ? 
     program.aiPlan.phases.reduce((total: number, phase: any) => {
       const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
       return total + duration;
@@ -330,7 +330,8 @@ const analyzeProgramEffectiveness = (program: TrainingProgram, currentWeek: numb
 // Create empty data structure for initial state
 const emptyWhoopData: WhoopData = {
   recovery: [],
-  strain: []
+  strain: [],
+  sleep: []
 };
 
 // Default AI analysis for when no data is available
@@ -989,9 +990,9 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN & RECOVERY ANALYSIS:
 - Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
 - HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
-- Recent Strain Pattern: ${data.strain.slice(0, 7).map(s => s.score).join(', ')}
-- Recovery Capacity: ${data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length) || 'Unknown'}% avg
+- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Recent Strain Pattern: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
+- Recovery Capacity: ${data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
 
 TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
@@ -1086,13 +1087,13 @@ Return comprehensive JSON with goal-focused structure:
               const planJson = JSON.parse(jsonStr);
               
               // Extract nutrition plan if available
-              if (planJson.nutritionPlan) {
+              if (planJson.nutritionPlan && typeof planJson.nutritionPlan === 'object') {
                 const nutritionPlan: NutritionPlan = {
                   calories: planJson.nutritionPlan.calories || 0,
                   protein: planJson.nutritionPlan.protein || 0,
                   carbs: planJson.nutritionPlan.carbs || 0,
                   fat: planJson.nutritionPlan.fat || 0,
-                  recommendations: planJson.nutritionPlan.recommendations || []
+                  recommendations: Array.isArray(planJson.nutritionPlan.recommendations) ? planJson.nutritionPlan.recommendations : []
                 };
                 
                 planJson.nutritionPlan = nutritionPlan;
@@ -1883,8 +1884,8 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN ANALYSIS & RECOVERY OPTIMIZATION:
 - Current Recovery Score: ${latestRecovery?.score || 'Unknown'}%
 - HRV Status: ${latestRecovery?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
-- Recent Strain Trend: ${data.strain.slice(0, 7).map(s => s.score).join(', ')}
+- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Recent Strain Trend: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 
 CRITICAL STRAIN MANAGEMENT REQUIREMENTS:
 1. STRAIN THRESHOLD ANALYSIS: Evaluate if user's request will exceed optimal strain levels
