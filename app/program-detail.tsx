@@ -97,7 +97,9 @@ export default function ProgramDetailScreen() {
     calculateMacroTargets,
     updateProgram,
     requestProgramUpdate,
-    getProgramFeedback
+    getProgramFeedback,
+    programIntroductionsShown,
+    markProgramIntroductionShown
   } = useWhoopStore();
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -207,8 +209,8 @@ export default function ProgramDetailScreen() {
             const weekNumber = Math.floor(diffDays / 7) + 1;
             setCurrentWeek(Math.max(1, weekNumber)); // Ensure week is at least 1
             
-            // Show introduction modal if this is a new program (within first 3 days)
-            if (diffDays <= 3 && foundProgram.aiPlan) {
+            // Show introduction modal if this is a new program (within first 3 days) and hasn't been shown before
+            if (diffDays <= 3 && foundProgram.aiPlan && !programIntroductionsShown.includes(foundProgram.id)) {
               setShowIntroductionModal(true);
             }
           } catch (error) {
@@ -1505,14 +1507,27 @@ export default function ProgramDetailScreen() {
                 </View>
               </View>
               
-              {/* Personalization Button */}
-              <TouchableOpacity 
-                style={styles.personalizeButton}
-                onPress={() => setShowPersonalizeModal(true)}
-              >
-                <Edit3 size={20} color={colors.text} />
-                <Text style={styles.personalizeButtonText}>Personalize Your Program</Text>
-              </TouchableOpacity>
+              {/* Action Buttons Row */}
+              <View style={styles.actionButtonsRow}>
+                <TouchableOpacity 
+                  style={styles.personalizeButton}
+                  onPress={() => setShowPersonalizeModal(true)}
+                >
+                  <Edit3 size={20} color={colors.text} />
+                  <Text style={styles.personalizeButtonText}>Personalize Program</Text>
+                </TouchableOpacity>
+                
+                {/* Program Overview Button - only show if AI plan exists */}
+                {aiPlan && (
+                  <TouchableOpacity 
+                    style={styles.overviewButton}
+                    onPress={() => setShowIntroductionModal(true)}
+                  >
+                    <Eye size={20} color={colors.text} />
+                    <Text style={styles.overviewButtonText}>Program Overview</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               
               {/* Goal Countdown */}
               {daysUntilGoal !== null && (
@@ -2517,7 +2532,13 @@ export default function ProgramDetailScreen() {
           visible={showIntroductionModal}
           transparent={true}
           animationType="slide"
-          onRequestClose={() => setShowIntroductionModal(false)}
+          onRequestClose={() => {
+            setShowIntroductionModal(false);
+            // Mark introduction as shown when modal is closed
+            if (program) {
+              markProgramIntroductionShown(program.id);
+            }
+          }}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -2525,7 +2546,13 @@ export default function ProgramDetailScreen() {
                 <Text style={styles.modalTitle}>Welcome to Your Program!</Text>
                 <TouchableOpacity 
                   style={styles.closeButton}
-                  onPress={() => setShowIntroductionModal(false)}
+                  onPress={() => {
+                    setShowIntroductionModal(false);
+                    // Mark introduction as shown when X button is clicked
+                    if (program) {
+                      markProgramIntroductionShown(program.id);
+                    }
+                  }}
                 >
                   <X size={24} color={colors.text} />
                 </TouchableOpacity>
@@ -2641,7 +2668,10 @@ export default function ProgramDetailScreen() {
                         style={styles.startJourneyButton}
                         onPress={() => {
                           setShowIntroductionModal(false);
-                          // Scroll to today's workout section
+                          // Mark introduction as shown when user clicks "Start Your Journey"
+                          if (program) {
+                            markProgramIntroductionShown(program.id);
+                          }
                         }}
                       >
                         <Play size={20} color={colors.text} />
@@ -2738,6 +2768,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 4,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 8,
+  },
   personalizeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2745,12 +2780,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 16,
     paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    flex: 1,
   },
   personalizeButtonText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  overviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flex: 1,
+  },
+  overviewButtonText: {
+    color: colors.text,
+    fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
