@@ -57,6 +57,8 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useWhoopStore } from '@/store/whoopStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback } from '@/types/whoop';
 import NutritionTracker from '@/components/NutritionTracker';
+import StrengthWorkoutCard from '@/components/StrengthWorkoutCard';
+import CardioWorkoutCard from '@/components/CardioWorkoutCard';
 
 // Define workout type
 interface Workout {
@@ -1558,10 +1560,36 @@ export default function ProgramDetailScreen() {
       });
   };
 
-  // Render a single workout card
+  // Render a single workout card with specialized components
   const renderWorkoutCard = (workout: Workout) => {
     const isCompleted = completedWorkouts.includes(`${workout.day}-${workout.title}`);
     
+    // Use specialized cards based on workout type
+    if (workout.type === 'strength') {
+      return (
+        <StrengthWorkoutCard
+          key={`${workout.day}-${workout.title}`}
+          workout={workout as any}
+          isCompleted={isCompleted}
+          onPress={() => handleWorkoutCardClick(workout)}
+          onStart={() => handleStartWorkout(workout)}
+          onEdit={() => handleEditWorkout(workout)}
+        />
+      );
+    } else if (workout.type === 'cardio') {
+      return (
+        <CardioWorkoutCard
+          key={`${workout.day}-${workout.title}`}
+          workout={workout as any}
+          isCompleted={isCompleted}
+          onPress={() => handleWorkoutCardClick(workout)}
+          onStart={() => handleStartWorkout(workout)}
+          onEdit={() => handleEditWorkout(workout)}
+        />
+      );
+    }
+    
+    // Fallback to original card for recovery and other types
     return (
       <TouchableOpacity 
         style={styles.workoutCard} 
@@ -1600,16 +1628,6 @@ export default function ProgramDetailScreen() {
             <Text style={styles.adjustmentTitle}>Recovery Adjustment:</Text>
             <Text style={styles.adjustmentText} numberOfLines={2} ellipsizeMode="tail">
               {workout.adjustedForRecovery}
-            </Text>
-          </View>
-        )}
-        
-        {/* Goal contribution info */}
-        {(workout as any).goalContribution && (
-          <View style={styles.goalContributionContainer}>
-            <Text style={styles.goalContributionTitle}>Goal Impact:</Text>
-            <Text style={styles.goalContributionText} numberOfLines={2} ellipsizeMode="tail">
-              {(workout as any).goalContribution}
             </Text>
           </View>
         )}
