@@ -2653,8 +2653,15 @@ export default function ProgramDetailScreen() {
                   <Brain size={24} color={colors.primary} />
                   <Text style={styles.personalizeInfoTitle}>AI-Powered Goal-Focused Personalization</Text>
                   <Text style={styles.personalizeInfoText}>
-                    Tell us how you'd like to personalize your program. Our AI coach will adapt your program while keeping your goal "{program?.targetMetric || 'fitness improvement'}" as the top priority.
+                    Tell us how you'd like to personalize your program. Our AI coach will adapt your program while keeping your goal "{program?.targetMetric || 'fitness improvement'}" as the top priority and optimizing your strain-recovery balance.
                   </Text>
+                  
+                  <View style={styles.strainWarningContainer}>
+                    <AlertCircle size={16} color={colors.warning} />
+                    <Text style={styles.strainWarningText}>
+                      If your request increases training strain, we'll analyze your recovery capacity and provide specific optimization strategies for sleep, nutrition, and recovery protocols.
+                    </Text>
+                  </View>
                   
                   {program?.targetMetric && program?.goalDate && (
                     <View style={styles.goalReminderContainer}>
@@ -2669,7 +2676,7 @@ export default function ProgramDetailScreen() {
                 <Text style={styles.personalizeLabel}>Your Request</Text>
                 <TextInput
                   style={styles.personalizeInput}
-                  placeholder="e.g., I need more recovery days, I want to focus more on upper body strength, I would like to increase my running mileage..."
+                  placeholder="e.g., I want to add more strength training, increase my running volume, focus on speed work, add extra recovery days..."
                   placeholderTextColor={colors.textSecondary}
                   value={personalizationRequest}
                   onChangeText={setPersonalizationRequest}
@@ -2708,6 +2715,18 @@ export default function ProgramDetailScreen() {
                     <View style={styles.bulletPoint} />
                     <Text style={styles.exampleText}>
                       "I want to add exercises that will directly improve my performance for my target."
+                    </Text>
+                  </View>
+                  <View style={styles.exampleItem}>
+                    <View style={styles.bulletPoint} />
+                    <Text style={styles.exampleText}>
+                      "I want to increase my training volume but need help optimizing my recovery."
+                    </Text>
+                  </View>
+                  <View style={styles.exampleItem}>
+                    <View style={styles.bulletPoint} />
+                    <Text style={styles.exampleText}>
+                      "I'm feeling fatigued - can you adjust my program and tell me how to recover better?"
                     </Text>
                   </View>
                 </View>
@@ -2796,6 +2815,148 @@ export default function ProgramDetailScreen() {
                       </View>
                     )}
                     
+                    {/* Strain Analysis */}
+                    {(programFeedback as any).strainAnalysis && (
+                      <View style={styles.strainAnalysisContainer}>
+                        <Text style={styles.strainAnalysisTitle}>Strain Analysis:</Text>
+                        
+                        {(programFeedback as any).strainAnalysis.currentStrainLoad && (
+                          <View style={styles.strainAnalysisItem}>
+                            <Text style={styles.strainAnalysisLabel}>Current Strain Load:</Text>
+                            <Text style={styles.strainAnalysisText}>
+                              {(programFeedback as any).strainAnalysis.currentStrainLoad}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).strainAnalysis.proposedStrainIncrease && (
+                          <View style={styles.strainAnalysisItem}>
+                            <Text style={styles.strainAnalysisLabel}>Proposed Strain Increase:</Text>
+                            <Text style={styles.strainAnalysisText}>
+                              {(programFeedback as any).strainAnalysis.proposedStrainIncrease}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).strainAnalysis.riskAssessment && (
+                          <View style={styles.strainAnalysisItem}>
+                            <Text style={styles.strainAnalysisLabel}>Risk Assessment:</Text>
+                            <Text style={[
+                              styles.strainAnalysisText,
+                              (programFeedback as any).strainAnalysis.riskAssessment.toLowerCase().includes('high') && styles.highRiskText,
+                              (programFeedback as any).strainAnalysis.riskAssessment.toLowerCase().includes('medium') && styles.mediumRiskText,
+                              (programFeedback as any).strainAnalysis.riskAssessment.toLowerCase().includes('low') && styles.lowRiskText
+                            ]}>
+                              {(programFeedback as any).strainAnalysis.riskAssessment}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Recovery Optimization */}
+                    {(programFeedback as any).recoveryOptimization && (
+                      <View style={styles.recoveryOptimizationContainer}>
+                        <Text style={styles.recoveryOptimizationTitle}>Recovery Optimization Plan:</Text>
+                        
+                        {(programFeedback as any).recoveryOptimization.sleepRequirements && (
+                          <View style={styles.recoverySection}>
+                            <Text style={styles.recoverySectionTitle}>Sleep Requirements:</Text>
+                            {(programFeedback as any).recoveryOptimization.sleepRequirements.hoursNeeded && (
+                              <Text style={styles.recoveryRequirement}>
+                                Target: {(programFeedback as any).recoveryOptimization.sleepRequirements.hoursNeeded}
+                              </Text>
+                            )}
+                            {(programFeedback as any).recoveryOptimization.sleepRequirements.sleepHygiene && 
+                             (programFeedback as any).recoveryOptimization.sleepRequirements.sleepHygiene.map((tip: string, index: number) => (
+                              <View key={index} style={styles.recoveryTip}>
+                                <View style={styles.bulletPoint} />
+                                <Text style={styles.recoveryTipText}>{tip}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).recoveryOptimization.nutritionRequirements && (
+                          <View style={styles.recoverySection}>
+                            <Text style={styles.recoverySectionTitle}>Nutrition Requirements:</Text>
+                            <View style={styles.nutritionTargetsGrid}>
+                              {(programFeedback as any).recoveryOptimization.nutritionRequirements.dailyCalories && (
+                                <View style={styles.nutritionTarget}>
+                                  <Text style={styles.nutritionTargetLabel}>Calories</Text>
+                                  <Text style={styles.nutritionTargetValue}>
+                                    {(programFeedback as any).recoveryOptimization.nutritionRequirements.dailyCalories}
+                                  </Text>
+                                </View>
+                              )}
+                              {(programFeedback as any).recoveryOptimization.nutritionRequirements.proteinTarget && (
+                                <View style={styles.nutritionTarget}>
+                                  <Text style={styles.nutritionTargetLabel}>Protein</Text>
+                                  <Text style={styles.nutritionTargetValue}>
+                                    {(programFeedback as any).recoveryOptimization.nutritionRequirements.proteinTarget}g
+                                  </Text>
+                                </View>
+                              )}
+                              {(programFeedback as any).recoveryOptimization.nutritionRequirements.hydrationTarget && (
+                                <View style={styles.nutritionTarget}>
+                                  <Text style={styles.nutritionTargetLabel}>Water</Text>
+                                  <Text style={styles.nutritionTargetValue}>
+                                    {(programFeedback as any).recoveryOptimization.nutritionRequirements.hydrationTarget}L
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).recoveryOptimization.recoveryProtocols && (
+                          <View style={styles.recoverySection}>
+                            <Text style={styles.recoverySectionTitle}>Recovery Protocols:</Text>
+                            {(programFeedback as any).recoveryOptimization.recoveryProtocols.map((protocol: string, index: number) => (
+                              <View key={index} style={styles.recoveryTip}>
+                                <View style={styles.bulletPoint} />
+                                <Text style={styles.recoveryTipText}>{protocol}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Warning Flags */}
+                    {(programFeedback as any).warningFlags && (
+                      <View style={styles.warningFlagsContainer}>
+                        <Text style={styles.warningFlagsTitle}>⚠️ Important Considerations:</Text>
+                        
+                        {(programFeedback as any).warningFlags.overreachingRisk && (
+                          <View style={styles.warningFlag}>
+                            <Text style={styles.warningFlagLabel}>Overreaching Risk:</Text>
+                            <Text style={styles.warningFlagText}>
+                              {(programFeedback as any).warningFlags.overreachingRisk}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).warningFlags.recoveryDeficit && (
+                          <View style={styles.warningFlag}>
+                            <Text style={styles.warningFlagLabel}>Recovery Status:</Text>
+                            <Text style={styles.warningFlagText}>
+                              {(programFeedback as any).warningFlags.recoveryDeficit}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).warningFlags.injuryRisk && (
+                          <View style={styles.warningFlag}>
+                            <Text style={styles.warningFlagLabel}>Injury Prevention:</Text>
+                            <Text style={styles.warningFlagText}>
+                              {(programFeedback as any).warningFlags.injuryRisk}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
                     {/* Goal Impact Analysis */}
                     {(programFeedback as any).goalImpactAnalysis && (
                       <View style={styles.goalImpactContainer}>
@@ -2824,6 +2985,15 @@ export default function ProgramDetailScreen() {
                             <Text style={styles.goalImpactLabel}>Risk Mitigation:</Text>
                             <Text style={styles.goalImpactText}>
                               {(programFeedback as any).goalImpactAnalysis.riskMitigation}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).goalImpactAnalysis.sustainabilityAssessment && (
+                          <View style={styles.goalImpactItem}>
+                            <Text style={styles.goalImpactLabel}>Sustainability:</Text>
+                            <Text style={styles.goalImpactText}>
+                              {(programFeedback as any).goalImpactAnalysis.sustainabilityAssessment}
                             </Text>
                           </View>
                         )}
@@ -4217,6 +4387,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  strainWarningContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+  },
+  strainWarningText: {
+    fontSize: 13,
+    color: colors.warning,
+    lineHeight: 18,
+    marginLeft: 8,
+    flex: 1,
+  },
   personalizeLabel: {
     fontSize: 16,
     fontWeight: '600',
@@ -4716,6 +4901,140 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   trainingPhaseDescription: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  // Strain Analysis styles
+  strainAnalysisContainer: {
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.warning + '30',
+  },
+  strainAnalysisTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.warning,
+    marginBottom: 12,
+  },
+  strainAnalysisItem: {
+    marginBottom: 12,
+  },
+  strainAnalysisLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  strainAnalysisText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  highRiskText: {
+    color: colors.danger,
+    fontWeight: '600',
+  },
+  mediumRiskText: {
+    color: colors.warning,
+    fontWeight: '600',
+  },
+  lowRiskText: {
+    color: colors.success,
+    fontWeight: '600',
+  },
+  // Recovery Optimization styles
+  recoveryOptimizationContainer: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.success + '30',
+  },
+  recoveryOptimizationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 12,
+  },
+  recoverySection: {
+    marginBottom: 16,
+  },
+  recoverySectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  recoveryRequirement: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  recoveryTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  recoveryTipText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    flex: 1,
+  },
+  nutritionTargetsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  nutritionTarget: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 10,
+    width: '48%',
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  nutritionTargetLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  nutritionTargetValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  // Warning Flags styles
+  warningFlagsContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.danger + '30',
+  },
+  warningFlagsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.danger,
+    marginBottom: 12,
+  },
+  warningFlag: {
+    marginBottom: 12,
+  },
+  warningFlagLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  warningFlagText: {
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,

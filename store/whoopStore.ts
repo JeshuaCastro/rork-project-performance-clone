@@ -969,8 +969,8 @@ export const useWhoopStore = create<WhoopStore>()(
             weightHistory
           );
           
-          // Enhanced system prompt with goal-focused personalization
-          const systemPrompt = `Create highly personalized ${programType} program with laser focus on goal achievement.
+          // Enhanced system prompt with goal-focused personalization and strain optimization
+          const systemPrompt = `Create highly personalized ${programType} program with laser focus on goal achievement and optimal strain-recovery balance.
 
 PRIMARY GOAL ANALYSIS:
 - Target: ${userConfig.targetMetric || 'General fitness improvement'}
@@ -984,6 +984,13 @@ ${JSON.stringify(goalRequirements, null, 2)}
 USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
+
+STRAIN & RECOVERY ANALYSIS:
+- Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
+- HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
+- Sleep Quality: ${data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Recent Strain Pattern: ${data.strain.slice(0, 7).map(s => s.score).join(', ')}
+- Recovery Capacity: ${data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length) || 'Unknown'}% avg
 
 TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
@@ -1805,8 +1812,8 @@ Return JSON:
   "recommendations": ["How this change supports your goal: ${program.targetMetric}"]
 }`;
           } else {
-            // Handle general program updates with enhanced goal-focused logic
-            prompt = `Intelligently adapt ${program.name} program based on user request while maintaining goal focus.
+            // Handle general program updates with enhanced goal-focused logic and strain analysis
+            prompt = `Intelligently adapt ${program.name} program based on user request while maintaining goal focus and optimizing strain/recovery balance.
 
 USER REQUEST: "${safeRequestText}"
 
@@ -1831,6 +1838,19 @@ CURRENT PROGRAM STATUS:
 USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
+
+STRAIN ANALYSIS & RECOVERY OPTIMIZATION:
+- Current Recovery Score: ${latestRecovery?.score || 'Unknown'}%
+- HRV Status: ${latestRecovery?.hrvMs || 'Unknown'}ms
+- Sleep Quality: ${data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Recent Strain Trend: ${data.strain.slice(0, 7).map(s => s.score).join(', ')}
+
+CRITICAL STRAIN MANAGEMENT REQUIREMENTS:
+1. STRAIN THRESHOLD ANALYSIS: Evaluate if user's request will exceed optimal strain levels
+2. RECOVERY CAPACITY: Assess if current recovery supports increased training load
+3. PROGRESSIVE OVERLOAD: Ensure changes maintain sustainable progression
+4. INJURY PREVENTION: Flag high-risk combinations of increased strain + poor recovery
+5. PERFORMANCE OPTIMIZATION: Balance strain with recovery for peak performance
 
 ${(program.type === 'marathon' || program.type === 'half-marathon') && goalRequirements.baseWeeklyMileage ? `
 RUNNING-SPECIFIC REQUIREMENTS:
@@ -1857,20 +1877,32 @@ INTELLIGENT ADAPTATION REQUIREMENTS:
 4. RECOVERY INTEGRATION: Factor in current recovery status (${recoveryContext})
 5. FEASIBILITY CHECK: Ensure changes are realistic given user's profile and timeline
 6. SMART ADJUSTMENTS: If request conflicts with goal, suggest alternatives that satisfy both
+7. STRAIN OPTIMIZATION: Balance training load with recovery capacity
+8. PERFORMANCE SUSTAINABILITY: Prevent overreaching while maximizing progress
 
-ADAPTATION STRATEGY:
-- If request supports goal: Implement fully with optimizations
-- If request conflicts with goal: Modify request to align with goal while addressing user's concern
-- If timeline is tight: Prioritize goal-critical activities
-- If timeline is flexible: Allow more user preference accommodation
+STRAIN-AWARE ADAPTATION STRATEGY:
+- If request increases strain AND recovery is poor (< 50%): Provide recovery optimization plan
+- If request increases strain AND recovery is good (> 70%): Allow controlled progression
+- If request increases strain AND recovery is moderate (50-70%): Implement with monitoring
+- Always provide specific recovery targets (sleep, calories, hydration) when strain increases
+- Include strain monitoring guidelines and adjustment triggers
 
-Return comprehensive JSON with goal-focused adaptations:
+RECOVERY OPTIMIZATION FRAMEWORK:
+When strain increases beyond current capacity, provide:
+1. SLEEP OPTIMIZATION: Exact hours needed, sleep hygiene recommendations
+2. NUTRITION REQUIREMENTS: Precise calorie and macro targets for recovery
+3. HYDRATION PROTOCOL: Daily water intake and electrolyte needs
+4. STRESS MANAGEMENT: Specific techniques to improve HRV and recovery
+5. ACTIVE RECOVERY: Low-intensity activities to enhance circulation
+6. MONITORING METRICS: Key indicators to track recovery adequacy
+
+Return comprehensive JSON with goal-focused adaptations and strain optimization:
 {
   "success": true,
-  "message": "Program intelligently adapted to balance your request with goal achievement",
+  "message": "Program intelligently adapted to balance your request with goal achievement and optimal strain management",
   "changes": [
     "Specific adaptation 1 with goal alignment reasoning",
-    "Specific adaptation 2 with timeline consideration",
+    "Specific adaptation 2 with timeline consideration", 
     "Specific adaptation 3 with user preference integration"
   ],
   "recommendations": [
@@ -1878,10 +1910,43 @@ Return comprehensive JSON with goal-focused adaptations:
     "Timeline impact and mitigation strategies",
     "Additional optimizations for success"
   ],
+  "strainAnalysis": {
+    "currentStrainLoad": "Assessment of current training stress",
+    "proposedStrainIncrease": "How much additional strain the changes will add",
+    "recoveryCapacityMatch": "Whether current recovery can handle the increased strain",
+    "riskAssessment": "Low/Medium/High risk of overreaching or injury",
+    "strainOptimization": "Specific adjustments to optimize strain-recovery balance"
+  },
+  "recoveryOptimization": {
+    "sleepRequirements": {
+      "hoursNeeded": "Exact sleep duration needed for recovery (e.g., 8.5 hours)",
+      "sleepQualityTargets": "Sleep efficiency and deep sleep targets",
+      "sleepHygiene": ["Specific sleep optimization recommendations"]
+    },
+    "nutritionRequirements": {
+      "dailyCalories": "Exact calorie needs for recovery and performance",
+      "proteinTarget": "Protein grams needed for muscle recovery",
+      "carbTarget": "Carb grams needed for glycogen replenishment", 
+      "hydrationTarget": "Daily water intake in liters",
+      "micronutrients": ["Key vitamins/minerals for recovery"],
+      "mealTiming": ["Pre/post workout nutrition timing"]
+    },
+    "recoveryProtocols": [
+      "Specific recovery techniques (massage, stretching, etc.)",
+      "Active recovery activities and duration",
+      "Stress management techniques for HRV improvement"
+    ],
+    "monitoringMetrics": [
+      "Key recovery indicators to track daily",
+      "Warning signs that indicate need for rest",
+      "Target ranges for recovery scores"
+    ]
+  },
   "goalImpactAnalysis": {
     "timelineAdjustment": "How changes affect goal timeline",
-    "progressOptimization": "How changes improve goal progress",
-    "riskMitigation": "Potential risks and how they're addressed"
+    "progressOptimization": "How changes improve goal progress", 
+    "riskMitigation": "Potential risks and how they're addressed",
+    "sustainabilityAssessment": "Long-term viability of the training approach"
   },
   "updatedProgram": {
     "trainingDaysPerWeek": ${program.trainingDaysPerWeek},
@@ -1914,7 +1979,19 @@ Return comprehensive JSON with goal-focused adaptations:
     "goalOptimizations": [
       "Specific optimization 1 for goal achievement",
       "Specific optimization 2 for timeline management"
-    ]
+    ],
+    "strainManagement": {
+      "weeklyStrainTargets": "Optimal strain distribution across the week",
+      "recoveryDays": "Specific days designated for recovery",
+      "strainProgression": "How strain will increase over time",
+      "adaptationTriggers": "Metrics that indicate need for program adjustment"
+    }
+  },
+  "warningFlags": {
+    "overreachingRisk": "Assessment of overtraining risk with current changes",
+    "recoveryDeficit": "Whether current recovery is insufficient for proposed strain",
+    "injuryRisk": "Specific injury risks and prevention strategies",
+    "performanceImpact": "How strain-recovery imbalance might affect goal performance"
   }
 }`;
           }
@@ -1928,7 +2005,7 @@ Return comprehensive JSON with goal-focused adaptations:
               messages: [
                 {
                   role: 'system',
-                  content: "You are an expert AI fitness coach specializing in program personalization. Analyze user requests thoroughly and provide detailed, personalized program adaptations. Always return valid JSON only."
+                  content: "You are an expert AI fitness coach specializing in program personalization with advanced strain analysis and recovery optimization. You understand the critical balance between training stress and recovery capacity. When users request changes that increase training load, you MUST analyze their recovery capacity and provide specific optimization strategies. Your primary goals are: 1) Preserve the user's main fitness goal, 2) Optimize strain-recovery balance, 3) Prevent overreaching/injury, 4) Provide actionable recovery protocols. Always return valid JSON only with comprehensive strain analysis and recovery optimization when applicable."
                 },
                 {
                   role: 'user',
