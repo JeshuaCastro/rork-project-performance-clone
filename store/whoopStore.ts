@@ -998,17 +998,49 @@ FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
 
 STRAIN & RECOVERY ANALYSIS:
-- Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
-- HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
-- Recent Strain Pattern: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
-- Recovery Capacity: ${data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
+- Current Recovery Score: ${data && data.recovery && data.recovery.length > 0 ? data.recovery[0]?.score : 'Unknown'}%
+- HRV Status: ${data && data.recovery && data.recovery.length > 0 ? data.recovery[0]?.hrvMs : 'Unknown'}ms
+- Sleep Quality: ${data && data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
+- Recent Strain Pattern: ${data && data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
+- Recovery Capacity: ${data && data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
 
 TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
 - Training days: ${userConfig.trainingDaysPerWeek}/week
 - Strength training: ${userConfig.strengthTraining?.enabled ? 'Yes' : 'No'}
 - Nutrition goal: ${userConfig.nutritionPreferences?.goal || 'maintain'}
+
+CRITICAL WORKOUT SEPARATION REQUIREMENTS:
+1. ABSOLUTE RULE: Each workout entry must have EXACTLY ONE type: "cardio", "strength", or "recovery"
+2. NEVER COMBINE TYPES: If a day needs both cardio and strength, create TWO separate workout objects
+3. SEPARATE DESCRIPTIONS: Each workout description must only describe its specific type
+4. NO MIXED LANGUAGE: Never use phrases like "run + strength", "cardio followed by weights", etc.
+5. DISTINCT TITLES: Each workout must have a title specific to its single type
+
+EXAMPLES OF CORRECT STRUCTURE:
+✅ CORRECT - Two separate workouts for one day:
+[
+  {
+    "day": "Monday",
+    "title": "Morning Easy Run",
+    "description": "30-minute easy-paced run focusing on aerobic base building",
+    "type": "cardio"
+  },
+  {
+    "day": "Monday", 
+    "title": "Evening Upper Body Strength",
+    "description": "Upper body strength training focusing on chest, shoulders, and arms",
+    "type": "strength"
+  }
+]
+
+❌ WRONG - Combined workout:
+{
+  "day": "Monday",
+  "title": "Run + Strength Training",
+  "description": "Easy run followed by upper body strength work",
+  "type": "cardio"
+}
 
 GOAL-FOCUSED PERSONALIZATION REQUIREMENTS:
 1. GOAL PRIMACY: Every workout must contribute directly to achieving "${userConfig.targetMetric}"
@@ -1017,8 +1049,6 @@ GOAL-FOCUSED PERSONALIZATION REQUIREMENTS:
 4. RECOVERY INTEGRATION: Balance intensity with recovery needs for sustainable progress
 5. RISK MANAGEMENT: Prevent injuries that could derail goal achievement
 6. MEASURABLE PROGRESSION: Include specific metrics to track goal progress
-7. WORKOUT SEPARATION: ALWAYS create separate workout entries for different types (cardio vs strength vs recovery)
-8. NO WORKOUT COMBINING: NEVER combine different workout types into a single workout entry or description
 
 PHASE STRUCTURE REQUIREMENTS:
 - Phase 1: Foundation building (weeks 1-4) - establish base fitness for goal
@@ -1026,14 +1056,7 @@ PHASE STRUCTURE REQUIREMENTS:
 - Phase 3: Intensification (weeks 9-12) - goal-specific training
 - Phase 4: Peak/Taper (final weeks) - optimize for goal performance
 
-CRITICAL WORKOUT STRUCTURE RULES:
-- Each workout entry must have ONLY ONE type: "cardio", "strength", or "recovery"
-- If a day needs both cardio and strength, create TWO separate workout entries for that day
-- NEVER combine "easy run + strength training" into one workout - make separate entries
-- Each workout title and description should be specific to its single type
-- Example: Monday could have "Morning Run" (cardio) AND "Evening Strength" (strength) as separate entries
-
-Return comprehensive JSON with goal-focused structure:
+Return comprehensive JSON with goal-focused structure and STRICT workout separation:
 {
   "programOverview": "Detailed explanation of how this program is specifically designed to achieve ${userConfig.targetMetric} by ${userConfig.goalDate}",
   "goalStrategy": "Overall strategy for achieving the specific goal within the timeline",
@@ -1046,23 +1069,33 @@ Return comprehensive JSON with goal-focused structure:
       "weeklyStructure": [
         {
           "day": "Monday",
-          "title": "Goal-Specific Workout Name",
-          "description": "Detailed description with specific metrics/targets that contribute to goal",
-          "intensity": "Calculated based on goal requirements and timeline",
+          "title": "Morning Easy Run",
+          "description": "30-minute easy-paced run at conversational pace to build aerobic base",
+          "intensity": "Low",
           "type": "cardio",
-          "goalContribution": "How this workout specifically helps achieve ${userConfig.targetMetric}",
-          "progressionMetrics": "Specific metrics to track improvement toward goal",
-          "personalizedNotes": "Why this workout is optimized for user's profile and goal"
+          "goalContribution": "Builds aerobic capacity essential for ${userConfig.targetMetric}",
+          "progressionMetrics": "Distance covered, average heart rate, perceived exertion",
+          "personalizedNotes": "Optimized for current fitness level and recovery status"
+        },
+        {
+          "day": "Monday",
+          "title": "Evening Upper Body Strength",
+          "description": "Upper body strength training with compound movements: bench press, rows, overhead press",
+          "intensity": "Medium",
+          "type": "strength",
+          "goalContribution": "Builds upper body strength to support running posture and efficiency",
+          "progressionMetrics": "Weight lifted, reps completed, form quality",
+          "personalizedNotes": "Scheduled in evening to allow recovery between sessions"
         },
         {
           "day": "Tuesday",
-          "title": "Strength-Specific Workout Name",
-          "description": "Detailed strength training description",
-          "intensity": "Medium",
-          "type": "strength",
-          "goalContribution": "How this strength workout supports the primary goal",
-          "progressionMetrics": "Strength-specific metrics to track",
-          "personalizedNotes": "Strength training rationale"
+          "title": "Tempo Run",
+          "description": "20-minute tempo run at comfortably hard pace with 10-minute warm-up and cool-down",
+          "intensity": "Medium-High",
+          "type": "cardio",
+          "goalContribution": "Improves lactate threshold critical for race pace sustainability",
+          "progressionMetrics": "Pace consistency, heart rate zones, effort sustainability",
+          "personalizedNotes": "Pace adjusted based on current fitness assessment"
         }
       ]
     }
@@ -1118,6 +1151,62 @@ Return comprehensive JSON with goal-focused structure:
               // Ensure planJson is valid
               if (!planJson || typeof planJson !== 'object') {
                 throw new Error('Invalid plan JSON structure');
+              }
+              
+              // Post-process to ensure workout separation
+              if (planJson.phases && Array.isArray(planJson.phases)) {
+                planJson.phases = planJson.phases.map((phase: any) => {
+                  if (phase.weeklyStructure && Array.isArray(phase.weeklyStructure)) {
+                    const separatedWorkouts: any[] = [];
+                    
+                    phase.weeklyStructure.forEach((workout: any) => {
+                      // Check if workout contains combined activities
+                      const title = workout.title?.toLowerCase() || '';
+                      const description = workout.description?.toLowerCase() || '';
+                      
+                      const hasCombinedIndicators = 
+                        title.includes('+') || 
+                        title.includes('and') ||
+                        title.includes('followed by') ||
+                        description.includes('+') ||
+                        description.includes('followed by') ||
+                        description.includes('then') ||
+                        description.includes('and then') ||
+                        (description.includes('run') && description.includes('strength')) ||
+                        (description.includes('cardio') && description.includes('weight')) ||
+                        (description.includes('bike') && description.includes('lift'));
+                      
+                      if (hasCombinedIndicators) {
+                        // Split combined workout into separate entries
+                        if (description.includes('run') || description.includes('cardio') || title.includes('run')) {
+                          // Create cardio workout
+                          separatedWorkouts.push({
+                            ...workout,
+                            title: `${workout.day} Cardio Session`,
+                            description: extractCardioDescription(workout.description) || 'Cardio training session',
+                            type: 'cardio'
+                          });
+                        }
+                        
+                        if (description.includes('strength') || description.includes('weight') || description.includes('lift') || title.includes('strength')) {
+                          // Create strength workout
+                          separatedWorkouts.push({
+                            ...workout,
+                            title: `${workout.day} Strength Training`,
+                            description: extractStrengthDescription(workout.description) || 'Strength training session',
+                            type: 'strength'
+                          });
+                        }
+                      } else {
+                        // Keep workout as is if it's already properly separated
+                        separatedWorkouts.push(workout);
+                      }
+                    });
+                    
+                    phase.weeklyStructure = separatedWorkouts;
+                  }
+                  return phase;
+                });
               }
               
               // Extract nutrition plan if available
