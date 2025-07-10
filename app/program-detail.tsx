@@ -3887,13 +3887,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
-  phaseTitle: {
+  phaseIntroTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.primary,
     marginBottom: 4,
   },
-  phaseFocus: {
+  phaseIntroFocus: {
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,

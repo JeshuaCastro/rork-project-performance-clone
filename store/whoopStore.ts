@@ -2051,6 +2051,16 @@ Return JSON with:
         }
       },
       
+      // Mark program introduction as shown
+      markProgramIntroductionShown: (programId: string) => {
+        const { programIntroductionsShown } = get();
+        if (!programIntroductionsShown.includes(programId)) {
+          set({ 
+            programIntroductionsShown: [...programIntroductionsShown, programId] 
+          });
+        }
+      },
+      
       // Program progress methods
       getProgramProgress: (programId: string) => {
         const { activePrograms } = get();
@@ -2123,6 +2133,7 @@ Return JSON with:
         macroTargets: state.macroTargets,
         foodLog: state.foodLog,
         weightHistory: state.weightHistory,
+        programIntroductionsShown: state.programIntroductionsShown,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
