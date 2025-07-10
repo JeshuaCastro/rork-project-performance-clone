@@ -1017,12 +1017,21 @@ GOAL-FOCUSED PERSONALIZATION REQUIREMENTS:
 4. RECOVERY INTEGRATION: Balance intensity with recovery needs for sustainable progress
 5. RISK MANAGEMENT: Prevent injuries that could derail goal achievement
 6. MEASURABLE PROGRESSION: Include specific metrics to track goal progress
+7. WORKOUT SEPARATION: ALWAYS create separate workout entries for different types (cardio vs strength vs recovery)
+8. NO WORKOUT COMBINING: NEVER combine different workout types into a single workout entry or description
 
 PHASE STRUCTURE REQUIREMENTS:
 - Phase 1: Foundation building (weeks 1-4) - establish base fitness for goal
 - Phase 2: Development (weeks 5-8) - build specific capacities for goal
 - Phase 3: Intensification (weeks 9-12) - goal-specific training
 - Phase 4: Peak/Taper (final weeks) - optimize for goal performance
+
+CRITICAL WORKOUT STRUCTURE RULES:
+- Each workout entry must have ONLY ONE type: "cardio", "strength", or "recovery"
+- If a day needs both cardio and strength, create TWO separate workout entries for that day
+- NEVER combine "easy run + strength training" into one workout - make separate entries
+- Each workout title and description should be specific to its single type
+- Example: Monday could have "Morning Run" (cardio) AND "Evening Strength" (strength) as separate entries
 
 Return comprehensive JSON with goal-focused structure:
 {
@@ -1040,10 +1049,20 @@ Return comprehensive JSON with goal-focused structure:
           "title": "Goal-Specific Workout Name",
           "description": "Detailed description with specific metrics/targets that contribute to goal",
           "intensity": "Calculated based on goal requirements and timeline",
-          "type": "cardio/strength/recovery",
+          "type": "cardio",
           "goalContribution": "How this workout specifically helps achieve ${userConfig.targetMetric}",
           "progressionMetrics": "Specific metrics to track improvement toward goal",
           "personalizedNotes": "Why this workout is optimized for user's profile and goal"
+        },
+        {
+          "day": "Tuesday",
+          "title": "Strength-Specific Workout Name",
+          "description": "Detailed strength training description",
+          "intensity": "Medium",
+          "type": "strength",
+          "goalContribution": "How this strength workout supports the primary goal",
+          "progressionMetrics": "Strength-specific metrics to track",
+          "personalizedNotes": "Strength training rationale"
         }
       ]
     }
@@ -2041,7 +2060,7 @@ Return JSON with implementation and advisory guidance:
               messages: [
                 {
                   role: 'system',
-                  content: "You are an expert AI fitness coach specializing in program enhancement and performance optimization. Your approach is IMPLEMENTATION-FOCUSED with ADVISORY GUIDANCE. Core principles: 1) ALWAYS implement what the user requests - add it to their program, 2) MAINTAIN the core program structure and goal focus, 3) PROVIDE advisory guidance on how to succeed with increased demands, 4) OFFER recovery optimization strategies rather than restrictions, 5) Focus on 'how to make this work' rather than 'why this might be too much'. Your role is to help users achieve their goals while managing any increased training demands through smart recovery and nutrition strategies. Always return valid JSON only."
+                  content: "You are an expert AI fitness coach specializing in program enhancement and performance optimization. Your approach is IMPLEMENTATION-FOCUSED with ADVISORY GUIDANCE. Core principles: 1) ALWAYS implement what the user requests - add it to their program, 2) MAINTAIN the core program structure and goal focus, 3) PROVIDE advisory guidance on how to succeed with increased demands, 4) OFFER recovery optimization strategies rather than restrictions, 5) Focus on 'how to make this work' rather than 'why this might be too much', 6) CRITICAL: Create separate workout entries for different types - NEVER combine cardio and strength into one workout entry. Your role is to help users achieve their goals while managing any increased training demands through smart recovery and nutrition strategies. Always return valid JSON only."
                 },
                 {
                   role: 'user',
