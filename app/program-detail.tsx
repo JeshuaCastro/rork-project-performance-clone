@@ -1524,7 +1524,12 @@ export default function ProgramDetailScreen() {
                     onPress={() => setShowIntroductionModal(true)}
                   >
                     <Eye size={20} color={colors.text} />
-                    <Text style={styles.overviewButtonText}>Program Overview</Text>
+                    <Text style={styles.overviewButtonText}>View Program Overview</Text>
+                    {program.updateHistory && program.updateHistory.length > 0 && (
+                      <View style={styles.updateIndicator}>
+                        <Text style={styles.updateIndicatorText}>Updated</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
@@ -2543,7 +2548,9 @@ export default function ProgramDetailScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Welcome to Your Program!</Text>
+                <Text style={styles.modalTitle}>
+                  {program.updateHistory && program.updateHistory.length > 0 ? 'Your Program Overview' : 'Welcome to Your Program!'}
+                </Text>
                 <TouchableOpacity 
                   style={styles.closeButton}
                   onPress={() => {
@@ -2601,6 +2608,33 @@ export default function ProgramDetailScreen() {
                       </View>
                     )}
 
+                    {/* Current Progress */}
+                    <View style={styles.introSection}>
+                      <View style={styles.introSectionHeader}>
+                        <MapPin size={20} color={colors.primary} />
+                        <Text style={styles.introSectionTitle}>Current Progress</Text>
+                      </View>
+                      <Text style={styles.introText}>
+                        You're currently in Week {currentWeek} of your program.
+                        {aiPlan.phases && aiPlan.phases.length > 0 && (() => {
+                          // Find current phase
+                          let weekCounter = 0;
+                          let currentPhase = aiPlan.phases[0];
+                          
+                          for (const phase of aiPlan.phases) {
+                            const phaseDuration = parseInt(phase.duration.split(' ')[0], 10) || 4;
+                            if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
+                              currentPhase = phase;
+                              break;
+                            }
+                            weekCounter += phaseDuration;
+                          }
+                          
+                          return ` You're in the "${currentPhase.name}" phase, focusing on ${currentPhase.focus.toLowerCase()}.`;
+                        })()}
+                      </Text>
+                    </View>
+
                     {/* Training Schedule */}
                     <View style={styles.introSection}>
                       <View style={styles.introSectionHeader}>
@@ -2611,6 +2645,39 @@ export default function ProgramDetailScreen() {
                         You'll be training {program.trainingDaysPerWeek} days per week. Each workout is designed to progressively build towards your goal while considering your recovery and fitness level.
                       </Text>
                     </View>
+
+                    {/* Recent Program Updates */}
+                    {program.updateHistory && program.updateHistory.length > 0 && (
+                      <View style={styles.introSection}>
+                        <View style={styles.introSectionHeader}>
+                          <RefreshCw size={20} color={colors.primary} />
+                          <Text style={styles.introSectionTitle}>Recent Updates</Text>
+                        </View>
+                        <Text style={styles.introText}>
+                          Your program has been personalized based on your feedback:
+                        </Text>
+                        {program.updateHistory.slice(-3).reverse().map((update: any, index: number) => (
+                          <View key={index} style={styles.updateOverview}>
+                            <Text style={styles.updateDate}>
+                              {new Date(update.date).toLocaleDateString()}
+                            </Text>
+                            <Text style={styles.updateRequest}>
+                              "{update.requestText}"
+                            </Text>
+                            {update.changes && update.changes.length > 0 && (
+                              <View style={styles.updateChanges}>
+                                {update.changes.slice(0, 2).map((change: string, changeIndex: number) => (
+                                  <View key={changeIndex} style={styles.updateChange}>
+                                    <View style={styles.bulletPoint} />
+                                    <Text style={styles.updateChangeText}>{change}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    )}
 
                     {/* Key Success Factors */}
                     {aiPlan.keySuccessFactors && (
@@ -2798,12 +2865,27 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     flex: 1,
+    position: 'relative',
   },
   overviewButtonText: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  updateIndicator: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  updateIndicatorText: {
+    color: colors.text,
+    fontSize: 10,
+    fontWeight: '600',
   },
   countdownContainer: {
     backgroundColor: colors.card,
@@ -3996,5 +4078,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  // Update overview styles
+  updateOverview: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  updateDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  updateRequest: {
+    fontSize: 14,
+    color: colors.text,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  updateChanges: {
+    marginTop: 4,
+  },
+  updateChange: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  updateChangeText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
   },
 });
