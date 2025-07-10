@@ -58,6 +58,54 @@ const getMinimalUserContext = (userProfile: UserProfile): string => {
   return `${userProfile.age}y ${userProfile.gender} ${userProfile.weight}kg ${userProfile.fitnessGoal}`;
 };
 
+// Helper function to extract cardio description from combined workout text
+const extractCardioDescription = (description: string): string => {
+  if (!description) return 'Cardio training session';
+  
+  const lowerDesc = description.toLowerCase();
+  const cardioKeywords = ['run', 'jog', 'bike', 'cycle', 'swim', 'cardio', 'aerobic', 'endurance'];
+  
+  // Split by common separators
+  const parts = description.split(/\+|followed by|then|and then|,/i);
+  
+  for (const part of parts) {
+    const trimmedPart = part.trim();
+    const lowerPart = trimmedPart.toLowerCase();
+    
+    // Check if this part contains cardio keywords
+    if (cardioKeywords.some(keyword => lowerPart.includes(keyword))) {
+      return trimmedPart.charAt(0).toUpperCase() + trimmedPart.slice(1);
+    }
+  }
+  
+  // Fallback: if no specific cardio part found, create generic description
+  return 'Cardio training session';
+};
+
+// Helper function to extract strength description from combined workout text
+const extractStrengthDescription = (description: string): string => {
+  if (!description) return 'Strength training session';
+  
+  const lowerDesc = description.toLowerCase();
+  const strengthKeywords = ['strength', 'weight', 'lift', 'press', 'squat', 'deadlift', 'bench', 'resistance', 'muscle'];
+  
+  // Split by common separators
+  const parts = description.split(/\+|followed by|then|and then|,/i);
+  
+  for (const part of parts) {
+    const trimmedPart = part.trim();
+    const lowerPart = trimmedPart.toLowerCase();
+    
+    // Check if this part contains strength keywords
+    if (strengthKeywords.some(keyword => lowerPart.includes(keyword))) {
+      return trimmedPart.charAt(0).toUpperCase() + trimmedPart.slice(1);
+    }
+  }
+  
+  // Fallback: if no specific strength part found, create generic description
+  return 'Strength training session';
+};
+
 // Helper function to get essential recovery data
 const getEssentialRecoveryData = (data: WhoopData): string => {
   const latest = data.recovery[0];
