@@ -68,15 +68,16 @@ const getEssentialRecoveryData = (data: WhoopData): string => {
 // Enhanced helper function to create comprehensive user context for program personalization
 const getComprehensiveUserContext = (userProfile: UserProfile, weightHistory: WeightEntry[]): string => {
   const bmi = userProfile.height > 0 ? (userProfile.weight / Math.pow(userProfile.height / 100, 2)).toFixed(1) : 'unknown';
-  const latestWeight = weightHistory.length > 0 ? weightHistory[0].weight : userProfile.weight;
-  const weightTrend = getWeightTrend(weightHistory);
+  const safeWeightHistory = weightHistory || [];
+  const latestWeight = safeWeightHistory.length > 0 ? safeWeightHistory[0].weight : userProfile.weight;
+  const weightTrend = getWeightTrend(safeWeightHistory);
   
   return `${userProfile.age}y ${userProfile.gender}, ${latestWeight}kg, ${userProfile.height}cm (BMI: ${bmi}), ${userProfile.bodyFat ? userProfile.bodyFat + '% BF, ' : ''}${userProfile.activityLevel} activity, goal: ${userProfile.fitnessGoal}${weightTrend ? ', weight trend: ' + weightTrend : ''}`;
 };
 
 // Helper function to analyze weight trend
 const getWeightTrend = (weightHistory: WeightEntry[]): string => {
-  if (weightHistory.length < 2) return '';
+  if (!weightHistory || weightHistory.length < 2) return '';
   
   const recent = weightHistory.slice(0, Math.min(5, weightHistory.length));
   const oldest = recent[recent.length - 1];
@@ -92,6 +93,7 @@ const getWeightTrend = (weightHistory: WeightEntry[]): string => {
 
 // Helper function to calculate goal-specific requirements
 const calculateGoalRequirements = (programType: string, targetMetric: string, goalDate: string, userProfile: UserProfile, weightHistory: WeightEntry[]): any => {
+  const safeWeightHistory = weightHistory || [];
   const today = new Date();
   const goal = new Date(goalDate);
   const daysUntilGoal = Math.max(1, Math.ceil((goal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
@@ -172,7 +174,7 @@ const calculateGoalRequirements = (programType: string, targetMetric: string, go
       const unit = weightMatch[2].toLowerCase();
       const targetWeightLossKg = unit.includes('lb') ? amount * 0.453592 : amount;
       
-      const currentWeight = weightHistory.length > 0 ? weightHistory[0].weight : userProfile.weight;
+      const currentWeight = safeWeightHistory.length > 0 ? safeWeightHistory[0].weight : userProfile.weight;
       const targetWeight = currentWeight - targetWeightLossKg;
       
       // Safe weight loss rate: 0.5-1kg per week
@@ -990,7 +992,7 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN & RECOVERY ANALYSIS:
 - Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
 - HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
 - Recent Strain Pattern: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 - Recovery Capacity: ${data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
 
@@ -1085,6 +1087,11 @@ Return comprehensive JSON with goal-focused structure:
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
               const jsonStr = planText.substring(jsonStart, jsonEnd);
               const planJson = JSON.parse(jsonStr);
+              
+              // Ensure planJson is valid
+              if (!planJson || typeof planJson !== 'object') {
+                throw new Error('Invalid plan JSON structure');
+              }
               
               // Extract nutrition plan if available
               if (planJson.nutritionPlan && typeof planJson.nutritionPlan === 'object') {
@@ -1884,7 +1891,7 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN ANALYSIS & RECOVERY OPTIMIZATION:
 - Current Recovery Score: ${latestRecovery?.score || 'Unknown'}%
 - HRV Status: ${latestRecovery?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency + '%' : 'Unknown'}
+- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
 - Recent Strain Trend: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 
 CRITICAL STRAIN MANAGEMENT REQUIREMENTS:
