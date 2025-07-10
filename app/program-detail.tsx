@@ -2549,7 +2549,7 @@ export default function ProgramDetailScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
-                  {program.updateHistory && program.updateHistory.length > 0 ? 'Your Program Overview' : 'Welcome to Your Program!'}
+                  {program?.updateHistory && program.updateHistory.length > 0 ? 'Your Program Overview' : 'Welcome to Your Program!'}
                 </Text>
                 <TouchableOpacity 
                   style={styles.closeButton}
