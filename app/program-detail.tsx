@@ -327,7 +327,7 @@ export default function ProgramDetailScreen() {
       let weekCounter = 0;
       
       for (const phase of aiPlan.phases) {
-        const phaseDuration = parseInt(phase.duration.split(' ')[0], 10);
+        const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
         if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
           currentPhase = phase;
           break;
@@ -1215,13 +1215,26 @@ export default function ProgramDetailScreen() {
       return;
     }
     
+    // Validate user profile completeness
+    if (!userProfile.name || !userProfile.age || !userProfile.weight || !userProfile.height) {
+      Alert.alert(
+        "Incomplete Profile", 
+        "Please complete your profile first to get personalized recommendations. Go to Settings > Profile.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Go to Profile", onPress: () => router.push('/profile') }
+        ]
+      );
+      return;
+    }
+    
     setIsSubmittingRequest(true);
     
     try {
-      // Create update request
+      // Create update request with comprehensive user data
       const updateRequest: ProgramUpdateRequest = {
         programId: program.id,
-        requestText: personalizationRequest,
+        requestText: personalizationRequest.trim(),
         currentRecovery: latestRecovery?.score || null,
         currentHRV: latestRecovery?.hrvMs || null,
         completedWorkouts: completedWorkouts.length,
@@ -1234,6 +1247,8 @@ export default function ProgramDetailScreen() {
           fitnessGoal: userProfile.fitnessGoal
         }
       };
+      
+      console.log('Submitting personalization request:', updateRequest);
       
       // Submit request
       const feedback = await requestProgramUpdate(updateRequest);
@@ -2549,7 +2564,7 @@ export default function ProgramDetailScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
-                  {program?.updateHistory && program.updateHistory.length > 0 ? 'Your Program Overview' : 'Welcome to Your Program!'}
+                  {program && program.updateHistory && program.updateHistory.length > 0 ? 'Your Program Overview' : 'Welcome to Your Program!'}
                 </Text>
                 <TouchableOpacity 
                   style={styles.closeButton}
@@ -2591,7 +2606,7 @@ export default function ProgramDetailScreen() {
                         </View>
                         <Text style={styles.introText}>
                           Your program is divided into {aiPlan.phases.length} phases over {aiPlan.phases.reduce((total: number, phase: any) => {
-                            const duration = parseInt(phase.duration.split(' ')[0], 10) || 4;
+                            const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
                             return total + duration;
                           }, 0)} weeks:
                         </Text>
@@ -2622,7 +2637,7 @@ export default function ProgramDetailScreen() {
                           let currentPhase = aiPlan.phases[0];
                           
                           for (const phase of aiPlan.phases) {
-                            const phaseDuration = parseInt(phase.duration.split(' ')[0], 10) || 4;
+                            const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
                             if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
                               currentPhase = phase;
                               break;

@@ -1627,10 +1627,11 @@ Return JSON with:
         try {
           set({ isLoading: true });
           
-          const { activePrograms, data, userProfile } = get();
+          const { activePrograms, data, userProfile, weightHistory } = get();
           const program = activePrograms.find(p => p.id === request.programId);
           
           if (!program) {
+            set({ isLoading: false });
             return {
               success: false,
               message: "Program not found. Please try again."
@@ -1640,9 +1641,15 @@ Return JSON with:
           const latestRecovery = data.recovery[0] || null;
           const safeRequestText = safeUserInput(request.requestText);
           
+          // Enhanced user context for better personalization
+          const userContext = getComprehensiveUserContext(userProfile, weightHistory);
+          const recoveryContext = getEssentialRecoveryData(data);
+          const fitnessAssessment = getFitnessAssessment(userProfile, data);
+          
           let prompt = "";
           
           if (request.specificWorkout) {
+            // Handle specific workout updates
             const safeWorkoutData = {
               day: safeUserInput(request.specificWorkout.day),
               originalTitle: safeUserInput(request.specificWorkout.originalTitle),
@@ -1651,12 +1658,95 @@ Return JSON with:
               newIntensity: safeUserInput(request.specificWorkout.newIntensity)
             };
             
-            prompt = `Update ${program.name} workout. Day: ${safeWorkoutData.day}, Current: ${safeWorkoutData.originalTitle}, New: ${safeWorkoutData.newTitle}, Description: ${safeWorkoutData.newDescription}, Intensity: ${safeWorkoutData.newIntensity}. Recovery: ${latestRecovery ? `${latestRecovery.score}%` : 'Unknown'}. Return JSON: {"success": true, "message": "Updated", "changes": ["Updated workout"], "recommendations": ["Good change"]}`;
+            prompt = `Update specific workout in ${program.name} program.
+
+WORKOUT UPDATE:
+- Day: ${safeWorkoutData.day}
+- Current: ${safeWorkoutData.originalTitle}
+- New Title: ${safeWorkoutData.newTitle}
+- New Description: ${safeWorkoutData.newDescription}
+- New Intensity: ${safeWorkoutData.newIntensity}
+
+USER CONTEXT: ${userContext}
+RECOVERY: ${recoveryContext}
+
+Validate this workout change and return JSON:
+{
+  "success": true,
+  "message": "Workout updated successfully",
+  "changes": ["Updated ${safeWorkoutData.day} workout from ${safeWorkoutData.originalTitle} to ${safeWorkoutData.newTitle}"],
+  "recommendations": ["This change aligns well with your fitness level"]
+}`;
           } else {
-            const userContext = getMinimalUserContext(userProfile);
-            const recoveryContext = getEssentialRecoveryData(data);
+            // Handle general program updates
+            const goalRequirements = program.goalDate && program.targetMetric ? 
+              calculateGoalRequirements(program.type, program.targetMetric, program.goalDate, userProfile, weightHistory) : 
+              { daysUntilGoal: null, urgency: 'medium' };
             
-            prompt = `Update ${program.name}. Request: "${safeRequestText}". User: ${userContext}. Recovery: ${recoveryContext}. Return JSON: {"success": true, "message": "Updated", "changes": ["change1"], "recommendations": ["rec1"], "updatedProgram": {"phases": [{"name": "Updated Phase", "weeklyStructure": [{"day": "Monday", "title": "New Workout", "description": "Updated workout", "intensity": "medium", "type": "cardio"}]}]}}`;
+            prompt = `Personalize and update ${program.name} program based on user request.
+
+USER REQUEST: "${safeRequestText}"
+
+CURRENT PROGRAM:
+- Type: ${program.type}
+- Training Days: ${program.trainingDaysPerWeek}/week
+- Goal: ${program.targetMetric || 'General fitness'}
+- Goal Date: ${program.goalDate || 'Not set'}
+- Days Until Goal: ${goalRequirements.daysUntilGoal || 'Unknown'}
+
+USER PROFILE: ${userContext}
+FITNESS ASSESSMENT: ${fitnessAssessment}
+RECOVERY STATUS: ${recoveryContext}
+
+PERSONALIZATION REQUIREMENTS:
+1. Analyze user's specific request and adapt program accordingly
+2. Consider user's age (${userProfile.age}), experience level, and current fitness
+3. Account for recovery capacity and training history
+4. Ensure changes align with goal timeline and feasibility
+5. Maintain program structure while implementing requested changes
+
+Return comprehensive JSON with updated program structure:
+{
+  "success": true,
+  "message": "Program successfully personalized based on your request",
+  "changes": [
+    "Specific change 1 based on user request",
+    "Specific change 2 with reasoning",
+    "Specific change 3 with benefits"
+  ],
+  "recommendations": [
+    "Why this change benefits the user",
+    "How to implement the changes effectively",
+    "Additional tips for success"
+  ],
+  "updatedProgram": {
+    "trainingDaysPerWeek": ${program.trainingDaysPerWeek},
+    "phases": [
+      {
+        "name": "Personalized Phase 1",
+        "duration": "4 weeks",
+        "focus": "Adaptation based on user request",
+        "weeklyStructure": [
+          {
+            "day": "Monday",
+            "title": "Personalized Workout",
+            "description": "Detailed workout adapted to user's request and metrics",
+            "intensity": "Medium",
+            "type": "cardio",
+            "personalizedNotes": "Why this workout fits user's specific needs"
+          }
+        ]
+      }
+    ],
+    "nutritionPlan": {
+      "calories": ${program.nutritionPlan?.calories || 2000},
+      "protein": ${program.nutritionPlan?.protein || 150},
+      "carbs": ${program.nutritionPlan?.carbs || 200},
+      "fat": ${program.nutritionPlan?.fat || 70},
+      "recommendations": ["Updated nutrition advice based on program changes"]
+    }
+  }
+}`;
           }
           
           const response = await fetch('https://toolkit.rork.com/text/llm/', {
@@ -1668,7 +1758,7 @@ Return JSON with:
               messages: [
                 {
                   role: 'system',
-                  content: "AI fitness coach. Return ONLY JSON."
+                  content: "You are an expert AI fitness coach specializing in program personalization. Analyze user requests thoroughly and provide detailed, personalized program adaptations. Always return valid JSON only."
                 },
                 {
                   role: 'user',
@@ -1678,98 +1768,136 @@ Return JSON with:
             }),
           });
           
+          if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+          }
+          
           const result = await response.json();
           
+          if (!result.completion) {
+            throw new Error('No completion received from API');
+          }
+          
           try {
-            const feedbackText = result.completion?.trim() || '';
-            const jsonStart = feedbackText.indexOf('{');
-            const jsonEnd = feedbackText.lastIndexOf('}') + 1;
+            const feedbackText = result.completion.trim();
+            console.log('AI Response:', feedbackText);
             
-            if (jsonStart >= 0 && jsonEnd > jsonStart) {
-              const jsonStr = feedbackText.substring(jsonStart, jsonEnd);
-              const feedbackJson = JSON.parse(jsonStr);
+            // Try to parse JSON from the response
+            let feedbackJson;
+            try {
+              feedbackJson = JSON.parse(feedbackText);
+            } catch (directParseError) {
+              // If direct parsing fails, try to extract JSON
+              const jsonStart = feedbackText.indexOf('{');
+              const jsonEnd = feedbackText.lastIndexOf('}') + 1;
               
-              if (typeof feedbackJson.success === 'boolean' && typeof feedbackJson.message === 'string') {
-                if (request.specificWorkout && feedbackJson.success) {
-                  updateWorkoutInProgram(
-                    program,
-                    request.specificWorkout.day,
-                    request.specificWorkout.originalTitle,
-                    request.specificWorkout.newTitle,
-                    request.specificWorkout.newDescription,
-                    request.specificWorkout.newIntensity
-                  );
-                } else if (feedbackJson.success) {
-                  const update: ProgramUpdate = {
+              if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                const jsonStr = feedbackText.substring(jsonStart, jsonEnd);
+                feedbackJson = JSON.parse(jsonStr);
+              } else {
+                throw new Error('No valid JSON found in response');
+              }
+            }
+            
+            // Validate the response structure
+            if (typeof feedbackJson.success !== 'boolean' || typeof feedbackJson.message !== 'string') {
+              throw new Error('Invalid response structure');
+            }
+            
+            if (feedbackJson.success) {
+              if (request.specificWorkout) {
+                // Update specific workout
+                updateWorkoutInProgram(
+                  program,
+                  request.specificWorkout.day,
+                  request.specificWorkout.originalTitle,
+                  request.specificWorkout.newTitle,
+                  request.specificWorkout.newDescription,
+                  request.specificWorkout.newIntensity
+                );
+                
+                // Update the program in store
+                const updatedProgram = { 
+                  ...program, 
+                  lastUpdated: new Date().toISOString(),
+                  updateHistory: [...(program.updateHistory || []), {
                     date: new Date().toISOString(),
                     requestText: safeRequestText,
-                    changes: feedbackJson.changes || []
-                  };
+                    changes: feedbackJson.changes || [`Updated ${request.specificWorkout.day} workout`]
+                  }]
+                };
+                
+                set((state) => ({
+                  activePrograms: state.activePrograms.map(p => 
+                    p.id === program.id ? updatedProgram : p
+                  )
+                }));
+              } else {
+                // Update entire program
+                const update: ProgramUpdate = {
+                  date: new Date().toISOString(),
+                  requestText: safeRequestText,
+                  changes: feedbackJson.changes || ['Program updated based on your request']
+                };
+                
+                let updatedProgram = { 
+                  ...program, 
+                  lastUpdated: new Date().toISOString(),
+                  updateHistory: [...(program.updateHistory || []), update]
+                };
+                
+                // Apply program updates if provided
+                if (feedbackJson.updatedProgram) {
+                  const updates = feedbackJson.updatedProgram;
                   
-                  const updatedProgram = { 
-                    ...program, 
-                    lastUpdated: new Date().toISOString(),
-                    updateHistory: [...(program.updateHistory || []), update]
-                  };
-                  
-                  if (feedbackJson.updatedProgram) {
-                    if (feedbackJson.updatedProgram.aiPlan) {
-                      updatedProgram.aiPlan = {
-                        ...program.aiPlan,
-                        ...feedbackJson.updatedProgram.aiPlan
-                      };
-                    }
-                    
-                    if (feedbackJson.updatedProgram.phases) {
-                      updatedProgram.aiPlan = {
-                        ...updatedProgram.aiPlan,
-                        phases: feedbackJson.updatedProgram.phases
-                      };
-                    }
-                    
-                    if (feedbackJson.updatedProgram.trainingDaysPerWeek) {
-                      updatedProgram.trainingDaysPerWeek = feedbackJson.updatedProgram.trainingDaysPerWeek;
-                    }
-                    
-                    if (feedbackJson.updatedProgram.strengthTraining) {
-                      updatedProgram.strengthTraining = {
-                        ...program.strengthTraining,
-                        ...feedbackJson.updatedProgram.strengthTraining
-                      };
-                    }
-                    
-                    if (feedbackJson.updatedProgram.nutritionPlan) {
-                      updatedProgram.nutritionPlan = {
-                        ...program.nutritionPlan,
-                        ...feedbackJson.updatedProgram.nutritionPlan
-                      };
-                    }
+                  // Update training days per week
+                  if (updates.trainingDaysPerWeek && typeof updates.trainingDaysPerWeek === 'number') {
+                    updatedProgram.trainingDaysPerWeek = updates.trainingDaysPerWeek;
                   }
                   
-                  set((state) => ({
-                    activePrograms: state.activePrograms.map(p => 
-                      p.id === program.id ? updatedProgram : p
-                    )
-                  }));
+                  // Update AI plan phases
+                  if (updates.phases && Array.isArray(updates.phases)) {
+                    updatedProgram.aiPlan = {
+                      ...updatedProgram.aiPlan,
+                      phases: updates.phases,
+                      programOverview: `Personalized program updated based on: "${safeRequestText}"`
+                    };
+                  }
+                  
+                  // Update nutrition plan
+                  if (updates.nutritionPlan) {
+                    updatedProgram.nutritionPlan = {
+                      ...updatedProgram.nutritionPlan,
+                      ...updates.nutritionPlan
+                    };
+                  }
+                  
+                  // Update strength training config if provided
+                  if (updates.strengthTraining) {
+                    updatedProgram.strengthTraining = {
+                      ...updatedProgram.strengthTraining,
+                      ...updates.strengthTraining
+                    };
+                  }
                 }
                 
-                set({ isLoading: false });
-                return feedbackJson as ProgramFeedback;
+                set((state) => ({
+                  activePrograms: state.activePrograms.map(p => 
+                    p.id === program.id ? updatedProgram : p
+                  )
+                }));
               }
             }
             
             set({ isLoading: false });
-            return {
-              success: false,
-              message: "I could not process your request properly. Please try again with more specific details."
-            };
+            return feedbackJson as ProgramFeedback;
             
           } catch (parseError) {
             console.error('Error parsing AI response:', parseError);
             set({ isLoading: false });
             return {
               success: false,
-              message: "There was an error processing your request. Please try again later."
+              message: "I received a response but couldn't process it properly. Please try rephrasing your request or try again later."
             };
           }
         } catch (error) {
@@ -1777,7 +1905,7 @@ Return JSON with:
           set({ isLoading: false });
           return {
             success: false,
-            message: "There was an error processing your request. Please try again later."
+            message: "There was an error connecting to the AI service. Please check your internet connection and try again."
           };
         }
       },
@@ -1831,7 +1959,7 @@ Return JSON with:
             let weekCounter = 0;
             
             for (const phase of program.aiPlan.phases) {
-              const phaseDuration = parseInt(phase.duration.split(' ')[0], 10);
+              const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
               if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
                 currentPhase = phase;
                 break;
@@ -2089,7 +2217,7 @@ Return JSON with:
         let totalWeeks = 12; // Default
         if (program.aiPlan && program.aiPlan.phases) {
           totalWeeks = program.aiPlan.phases.reduce((total: number, phase: any) => {
-            const phaseDuration = parseInt(phase.duration.split(' ')[0], 10) || 4;
+            const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
             return total + phaseDuration;
           }, 0);
         }
