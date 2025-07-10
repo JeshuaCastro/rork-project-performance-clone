@@ -1860,7 +1860,8 @@ Return comprehensive JSON with updated program structure:
                     updatedProgram.aiPlan = {
                       ...updatedProgram.aiPlan,
                       phases: updates.phases,
-                      programOverview: `Personalized program updated based on: "${safeRequestText}"`
+                      programOverview: `Personalized program updated based on: "${safeRequestText}"`,
+                      lastUpdated: new Date().toISOString()
                     };
                   }
                   

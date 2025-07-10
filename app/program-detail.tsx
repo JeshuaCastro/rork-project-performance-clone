@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -102,6 +102,7 @@ export default function ProgramDetailScreen() {
     markProgramIntroductionShown
   } = useWhoopStore();
   const [program, setProgram] = useState<TrainingProgram | null>(null);
+  const [programUpdateKey, setProgramUpdateKey] = useState(0);
   const [currentWeek, setCurrentWeek] = useState(1);
   const [today] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,9 +181,15 @@ export default function ProgramDetailScreen() {
       if (foundProgram) {
         setProgram(foundProgram);
         
-        // Check if we have an AI plan
+        // Check if we have an AI plan - always update to reflect changes
         if (foundProgram.aiPlan) {
           setAiPlan(foundProgram.aiPlan);
+          // Trigger update if the AI plan has changed
+          if (JSON.stringify(foundProgram.aiPlan) !== JSON.stringify(aiPlan)) {
+            setProgramUpdateKey(prev => prev + 1);
+          }
+        } else {
+          setAiPlan(null);
         }
         
         // Check if we have a nutrition plan
@@ -222,7 +229,7 @@ export default function ProgramDetailScreen() {
         setIsLoading(false);
       }
     }
-  }, [programId, activePrograms]);
+  }, [programId, activePrograms, macroTargets]);
   
   // Update nutrition plan when macroTargets change
   useEffect(() => {
@@ -337,7 +344,21 @@ export default function ProgramDetailScreen() {
       
       // Use the weekly structure from the current phase
       if (currentPhase.weeklyStructure && Array.isArray(currentPhase.weeklyStructure)) {
-        return currentPhase.weeklyStructure.map((workout: any) => enhanceWorkoutWithDetails(workout));
+        // Apply recovery adjustments to the AI-generated workouts
+        return currentPhase.weeklyStructure.map((workout: any) => {
+          const enhancedWorkout = enhanceWorkoutWithDetails(workout);
+          
+          // Apply recovery-based adjustments
+          if (recoveryStatus === 'low' && workout.intensity === 'High') {
+            enhancedWorkout.adjustedForRecovery = "Reduce intensity by 20-30% due to low recovery. Focus on technique and listen to your body.";
+          } else if (recoveryStatus === 'low' && workout.type === 'cardio' && workout.intensity === 'Medium') {
+            enhancedWorkout.adjustedForRecovery = "Consider reducing duration by 15-20% or lowering intensity due to low recovery.";
+          } else if (recoveryStatus === 'high' && workout.intensity === 'Medium') {
+            enhancedWorkout.adjustedForRecovery = "You can push slightly harder today if you feel good - your recovery is excellent.";
+          }
+          
+          return enhancedWorkout;
+        });
       }
     }
     
@@ -1013,7 +1034,10 @@ export default function ProgramDetailScreen() {
     return '250-400 calories';
   };
   
-  const workoutPlan = generateWorkoutPlan();
+  // Memoize the workout plan to ensure it updates when aiPlan changes
+  const workoutPlan = useMemo(() => {
+    return generateWorkoutPlan();
+  }, [aiPlan, currentWeek, recoveryStatus, program?.type, program?.trainingDaysPerWeek, programUpdateKey]);
   
   // Find today's workout
   const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -1263,13 +1287,21 @@ export default function ProgramDetailScreen() {
       
       // Refresh program data after update
       if (feedback.success) {
-        const updatedProgram = activePrograms.find(p => p.id === program.id);
-        if (updatedProgram) {
-          setProgram(updatedProgram);
-          if (updatedProgram.aiPlan) {
-            setAiPlan(updatedProgram.aiPlan);
+        // Force a re-render by updating the program state
+        setTimeout(() => {
+          const updatedProgram = activePrograms.find(p => p.id === program.id);
+          if (updatedProgram) {
+            setProgram(updatedProgram);
+            if (updatedProgram.aiPlan) {
+              setAiPlan(updatedProgram.aiPlan);
+            }
+            if (updatedProgram.nutritionPlan) {
+              setNutritionPlan(updatedProgram.nutritionPlan);
+            }
+            // Force re-render of workout plan
+            setProgramUpdateKey(prev => prev + 1);
           }
-        }
+        }, 100);
       }
     } catch (error) {
       console.error('Error submitting personalization request:', error);
@@ -1333,13 +1365,20 @@ export default function ProgramDetailScreen() {
           };
           
           // Refresh program data after update
-          const updatedProgram = activePrograms.find(p => p.id === program.id);
-          if (updatedProgram) {
-            setProgram(updatedProgram);
-            if (updatedProgram.aiPlan) {
-              setAiPlan(updatedProgram.aiPlan);
+          setTimeout(() => {
+            const updatedProgram = activePrograms.find(p => p.id === program.id);
+            if (updatedProgram) {
+              setProgram(updatedProgram);
+              if (updatedProgram.aiPlan) {
+                setAiPlan(updatedProgram.aiPlan);
+              }
+              if (updatedProgram.nutritionPlan) {
+                setNutritionPlan(updatedProgram.nutritionPlan);
+              }
+              // Force re-render of workout plan
+              setProgramUpdateKey(prev => prev + 1);
             }
-          }
+          }, 100);
           
           // Show success message
           Alert.alert(
