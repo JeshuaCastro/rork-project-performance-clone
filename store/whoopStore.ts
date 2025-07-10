@@ -1000,7 +1000,7 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN & RECOVERY ANALYSIS:
 - Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
 - HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${whoopData.sleep && whoopData.sleep.length > 0 ? whoopData.sleep[0]?.efficiency + '%' : 'Unknown'}
+- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
 - Recent Strain Pattern: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 - Recovery Capacity: ${data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
 
