@@ -1062,8 +1062,9 @@ CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 1. ABSOLUTE RULE: Each workout entry must have EXACTLY ONE type: "cardio", "strength", or "recovery"
 2. NEVER COMBINE TYPES: If a day needs both cardio and strength, create TWO separate workout objects
 3. SEPARATE DESCRIPTIONS: Each workout description must only describe its specific type
-4. NO MIXED LANGUAGE: Never use phrases like "run + strength", "cardio followed by weights", etc.
+4. NO MIXED LANGUAGE: Never use phrases like "run + strength", "cardio followed by weights", "easy run + workout", etc.
 5. DISTINCT TITLES: Each workout must have a title specific to its single type
+6. MANDATORY SEPARATION: Always create separate entries - NEVER combine different exercise types in one workout
 
 EXAMPLES OF CORRECT STRUCTURE:
 ✅ CORRECT - Two separate workouts for one day:
@@ -1082,11 +1083,19 @@ EXAMPLES OF CORRECT STRUCTURE:
   }
 ]
 
-❌ WRONG - Combined workout:
+❌ WRONG - Combined workout (NEVER DO THIS):
 {
   "day": "Monday",
   "title": "Run + Strength Training",
   "description": "Easy run followed by upper body strength work",
+  "type": "cardio"
+}
+
+❌ WRONG - Mixed description (NEVER DO THIS):
+{
+  "day": "Tuesday",
+  "title": "Cardio Session",
+  "description": "Easy run + workout focused on quads, hamstrings and calves",
   "type": "cardio"
 }
 
@@ -1103,6 +1112,8 @@ PHASE STRUCTURE REQUIREMENTS:
 - Phase 2: Development (weeks 5-8) - build specific capacities for goal
 - Phase 3: Intensification (weeks 9-12) - goal-specific training
 - Phase 4: Peak/Taper (final weeks) - optimize for goal performance
+
+FINAL CRITICAL REMINDER: Each workout object must have ONLY ONE type. If a day requires both cardio and strength training, you MUST create TWO separate workout objects with the same day but different types and descriptions.
 
 Return comprehensive JSON with goal-focused structure and STRICT workout separation:
 {
@@ -1216,17 +1227,25 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                         title.includes('+') || 
                         title.includes('and') ||
                         title.includes('followed by') ||
+                        title.includes('then') ||
                         description.includes('+') ||
                         description.includes('followed by') ||
                         description.includes('then') ||
                         description.includes('and then') ||
-                        (description.includes('run') && description.includes('strength')) ||
-                        (description.includes('cardio') && description.includes('weight')) ||
-                        (description.includes('bike') && description.includes('lift'));
+                        description.includes('after') ||
+                        description.includes('before') ||
+                        (description.includes('run') && (description.includes('strength') || description.includes('weight') || description.includes('lift'))) ||
+                        (description.includes('cardio') && (description.includes('weight') || description.includes('strength') || description.includes('lift'))) ||
+                        (description.includes('bike') && (description.includes('lift') || description.includes('strength'))) ||
+                        (description.includes('swim') && (description.includes('lift') || description.includes('strength'))) ||
+                        ((description.includes('squat') || description.includes('deadlift') || description.includes('bench')) && (description.includes('run') || description.includes('cardio')));
                       
                       if (hasCombinedIndicators) {
                         // Split combined workout into separate entries
-                        if (description.includes('run') || description.includes('cardio') || title.includes('run')) {
+                        const hasCardio = description.includes('run') || description.includes('cardio') || description.includes('bike') || description.includes('swim') || description.includes('jog') || title.includes('run') || title.includes('cardio');
+                        const hasStrength = description.includes('strength') || description.includes('weight') || description.includes('lift') || description.includes('squat') || description.includes('deadlift') || description.includes('bench') || description.includes('press') || title.includes('strength') || title.includes('weight');
+                        
+                        if (hasCardio) {
                           // Create cardio workout
                           separatedWorkouts.push({
                             ...workout,
@@ -1236,7 +1255,7 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                           });
                         }
                         
-                        if (description.includes('strength') || description.includes('weight') || description.includes('lift') || title.includes('strength')) {
+                        if (hasStrength) {
                           // Create strength workout
                           separatedWorkouts.push({
                             ...workout,
@@ -1244,6 +1263,12 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                             description: extractStrengthDescription(workout.description) || 'Strength training session',
                             type: 'strength'
                           });
+                        }
+                        
+                        // If neither cardio nor strength detected, keep as is but log warning
+                        if (!hasCardio && !hasStrength) {
+                          console.warn('Combined workout detected but could not separate:', workout.title);
+                          separatedWorkouts.push(workout);
                         }
                       } else {
                         // Keep workout as is if it's already properly separated
