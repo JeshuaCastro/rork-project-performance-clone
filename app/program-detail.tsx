@@ -142,6 +142,9 @@ export default function ProgramDetailScreen() {
   const [programFeedback, setProgramFeedback] = useState<ProgramFeedback | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
+  // Program introduction state
+  const [showIntroductionModal, setShowIntroductionModal] = useState(false);
+  
   // Workout editing state
   const [showEditWorkoutModal, setShowEditWorkoutModal] = useState(false);
   const [selectedWorkoutForEdit, setSelectedWorkoutForEdit] = useState<Workout | null>(null);
@@ -203,6 +206,11 @@ export default function ProgramDetailScreen() {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             const weekNumber = Math.floor(diffDays / 7) + 1;
             setCurrentWeek(Math.max(1, weekNumber)); // Ensure week is at least 1
+            
+            // Show introduction modal if this is a new program (within first 3 days)
+            if (diffDays <= 3 && foundProgram.aiPlan) {
+              setShowIntroductionModal(true);
+            }
           } catch (error) {
             console.error("Error calculating current week:", error);
             setCurrentWeek(1); // Default to week 1 if there's an error
@@ -2503,6 +2511,149 @@ export default function ProgramDetailScreen() {
             </View>
           </View>
         </Modal>
+        
+        {/* Program Introduction Modal */}
+        <Modal
+          visible={showIntroductionModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowIntroductionModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Welcome to Your Program!</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => setShowIntroductionModal(false)}
+                >
+                  <X size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                {program && aiPlan && (
+                  <View style={styles.introductionContainer}>
+                    {/* Program Overview */}
+                    <View style={styles.introSection}>
+                      <View style={styles.introSectionHeader}>
+                        <Target size={20} color={colors.primary} />
+                        <Text style={styles.introSectionTitle}>Your Goal</Text>
+                      </View>
+                      <Text style={styles.introText}>
+                        {program.targetMetric ? 
+                          `You're working towards ${program.targetMetric} by ${program.goalDate ? new Date(program.goalDate).toLocaleDateString() : 'your target date'}.` :
+                          `You've started a ${program.type} program to help you achieve your fitness goals.`
+                        }
+                      </Text>
+                    </View>
+
+                    {/* Program Structure */}
+                    {aiPlan.phases && aiPlan.phases.length > 0 && (
+                      <View style={styles.introSection}>
+                        <View style={styles.introSectionHeader}>
+                          <Calendar size={20} color={colors.primary} />
+                          <Text style={styles.introSectionTitle}>Program Structure</Text>
+                        </View>
+                        <Text style={styles.introText}>
+                          Your program is divided into {aiPlan.phases.length} phases over {aiPlan.phases.reduce((total: number, phase: any) => {
+                            const duration = parseInt(phase.duration.split(' ')[0], 10) || 4;
+                            return total + duration;
+                          }, 0)} weeks:
+                        </Text>
+                        {aiPlan.phases.map((phase: any, index: number) => (
+                          <View key={index} style={styles.phaseOverview}>
+                            <Text style={styles.phaseTitle}>
+                              Phase {index + 1}: {phase.name} ({phase.duration})
+                            </Text>
+                            <Text style={styles.phaseFocus}>
+                              Focus: {phase.focus}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Training Schedule */}
+                    <View style={styles.introSection}>
+                      <View style={styles.introSectionHeader}>
+                        <Dumbbell size={20} color={colors.primary} />
+                        <Text style={styles.introSectionTitle}>Training Schedule</Text>
+                      </View>
+                      <Text style={styles.introText}>
+                        You'll be training {program.trainingDaysPerWeek} days per week. Each workout is designed to progressively build towards your goal while considering your recovery and fitness level.
+                      </Text>
+                    </View>
+
+                    {/* Key Success Factors */}
+                    {aiPlan.keySuccessFactors && (
+                      <View style={styles.introSection}>
+                        <View style={styles.introSectionHeader}>
+                          <Zap size={20} color={colors.primary} />
+                          <Text style={styles.introSectionTitle}>Keys to Success</Text>
+                        </View>
+                        {aiPlan.keySuccessFactors.map((factor: string, index: number) => (
+                          <View key={index} style={styles.successFactor}>
+                            <View style={styles.bulletPoint} />
+                            <Text style={styles.successFactorText}>{factor}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Recovery & Nutrition */}
+                    <View style={styles.introSection}>
+                      <View style={styles.introSectionHeader}>
+                        <Heart size={20} color={colors.primary} />
+                        <Text style={styles.introSectionTitle}>Recovery & Nutrition</Text>
+                      </View>
+                      <Text style={styles.introText}>
+                        {isConnectedToWhoop ? 
+                          "Your WHOOP data will be used to adjust workout intensity based on your daily recovery. " :
+                          "Make sure to prioritize sleep and recovery between workouts. "
+                        }
+                        {nutritionPlan ? 
+                          `Your nutrition plan includes ${nutritionPlan.calories} calories daily with ${nutritionPlan.protein}g protein to support your goals.` :
+                          "Complete your profile to get personalized nutrition recommendations."
+                        }
+                      </Text>
+                    </View>
+
+                    {/* Personalization Note */}
+                    <View style={styles.introSection}>
+                      <View style={styles.introSectionHeader}>
+                        <Brain size={20} color={colors.primary} />
+                        <Text style={styles.introSectionTitle}>AI-Powered Adaptation</Text>
+                      </View>
+                      <Text style={styles.introText}>
+                        This program is powered by AI and will adapt based on your progress, recovery data, and feedback. Use the "Personalize Your Program" button anytime to request adjustments.
+                      </Text>
+                    </View>
+
+                    {/* Call to Action */}
+                    <View style={styles.introCallToAction}>
+                      <Text style={styles.introCallToActionTitle}>Ready to Start?</Text>
+                      <Text style={styles.introCallToActionText}>
+                        Your first workout is waiting for you. Remember, consistency is key to achieving your goals!
+                      </Text>
+                      
+                      <TouchableOpacity 
+                        style={styles.startJourneyButton}
+                        onPress={() => {
+                          setShowIntroductionModal(false);
+                          // Scroll to today's workout section
+                        }}
+                      >
+                        <Play size={20} color={colors.text} />
+                        <Text style={styles.startJourneyButtonText}>Start Your Journey</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -3702,6 +3853,96 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: colors.text,
     fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // Introduction modal styles
+  introductionContainer: {
+    paddingBottom: 20,
+  },
+  introSection: {
+    marginBottom: 24,
+  },
+  introSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  introSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  introText: {
+    fontSize: 16,
+    color: colors.text,
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  phaseOverview: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  phaseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  phaseFocus: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  successFactor: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  successFactorText: {
+    fontSize: 16,
+    color: colors.text,
+    lineHeight: 24,
+    flex: 1,
+  },
+  introCallToAction: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  introCallToActionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  introCallToActionText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  startJourneyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: '100%',
+  },
+  startJourneyButtonText: {
+    color: colors.text,
+    fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
   },

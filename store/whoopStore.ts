@@ -351,6 +351,7 @@ interface WhoopStore {
   macroTargets: MacroTargets | null;
   foodLog: FoodLogEntry[];
   weightHistory: WeightEntry[];
+  programIntroductionsShown: string[]; // Array of program IDs that have shown introduction
   
   setSelectedDate: (date: string) => void;
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -397,6 +398,7 @@ interface WhoopStore {
   // Program personalization methods
   requestProgramUpdate: (request: ProgramUpdateRequest) => Promise<ProgramFeedback>;
   getProgramFeedback: (programId: string) => ProgramFeedback | null;
+  markProgramIntroductionShown: (programId: string) => void;
   
   // Today's workout method
   getTodaysWorkout: () => TodaysWorkout | null;
@@ -433,6 +435,7 @@ export const useWhoopStore = create<WhoopStore>()(
       macroTargets: null,
       foodLog: [],
       weightHistory: [],
+      programIntroductionsShown: [],
       
       setIsLoadingWhoopData: (isLoading) => set({ isLoadingWhoopData: isLoading }),
       
