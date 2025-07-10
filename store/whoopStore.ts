@@ -1882,6 +1882,8 @@ CRITICAL REQUIREMENTS:
 2. Maintain progression toward goal within timeline
 3. Consider user's current fitness level and recovery capacity
 4. Validate that intensity change aligns with goal requirements
+5. ALWAYS create separate workout entries for different types (cardio vs strength)
+6. NEVER combine different workout types into a single workout entry
 
 Return JSON:
 {
@@ -1927,6 +1929,8 @@ IMPLEMENTATION APPROACH:
 3. PROVIDE advisory guidance on recovery optimization when strain increases
 4. OFFER recommendations rather than restrictions
 5. ENHANCE performance through strategic integration
+6. CREATE SEPARATE WORKOUT ENTRIES for different types (strength vs cardio)
+7. ENSURE each workout has a clear, specific type: "cardio", "strength", or "recovery"
 
 ADVISORY FRAMEWORK:
 - When user requests increase training load: IMPLEMENT it AND provide recovery strategies
