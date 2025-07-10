@@ -171,6 +171,7 @@ export interface UserProfile {
   bodyFat?: number; // percentage
   activityLevel: 'sedentary' | 'lightlyActive' | 'moderatelyActive' | 'veryActive' | 'extremelyActive';
   fitnessGoal: 'loseWeight' | 'maintainWeight' | 'gainMuscle' | 'improvePerformance';
+  experienceLevel?: 'beginner' | 'intermediate' | 'advanced';
   createdAt?: Date;
   updatedAt?: Date;
 }

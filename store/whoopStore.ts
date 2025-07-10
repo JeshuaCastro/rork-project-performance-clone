@@ -163,8 +163,9 @@ const calculateGoalRequirements = (programType: string, targetMetric: string, go
       const targetTotalKg = unit === 'lb' ? amount * 0.453592 : amount;
       
       // Estimate current total based on body weight and experience
-      const bodyweightMultiplier = userProfile.experienceLevel === 'advanced' ? 4.5 : 
-                                  userProfile.experienceLevel === 'intermediate' ? 3.5 : 2.5;
+      const experienceLevel = userProfile.experienceLevel || 'intermediate';
+      const bodyweightMultiplier = experienceLevel === 'advanced' ? 4.5 : 
+                                  experienceLevel === 'intermediate' ? 3.5 : 2.5;
       const estimatedCurrentTotal = userProfile.weight * bodyweightMultiplier;
       
       const totalIncrease = targetTotalKg - estimatedCurrentTotal;
@@ -174,7 +175,7 @@ const calculateGoalRequirements = (programType: string, targetMetric: string, go
       requirements.estimatedCurrentTotal = estimatedCurrentTotal.toFixed(0);
       requirements.totalIncrease = totalIncrease.toFixed(0);
       requirements.weeklyIncrease = weeklyIncrease.toFixed(1);
-      requirements.feasible = weeklyIncrease <= (userProfile.experienceLevel === 'beginner' ? 5 : 2.5);
+      requirements.feasible = weeklyIncrease <= (experienceLevel === 'beginner' ? 5 : 2.5);
     }
   } else if (programType === 'hypertrophy') {
     // Parse muscle gain goal (e.g., "10lbs muscle" or "5kg muscle")
@@ -185,8 +186,9 @@ const calculateGoalRequirements = (programType: string, targetMetric: string, go
       const targetMuscleGainKg = unit.includes('lb') ? amount * 0.453592 : amount;
       
       // Realistic muscle gain: 0.25-0.5kg per month for intermediates
-      const maxMonthlyGain = userProfile.experienceLevel === 'beginner' ? 1 : 
-                            userProfile.experienceLevel === 'intermediate' ? 0.5 : 0.25;
+      const experienceLevel = userProfile.experienceLevel || 'intermediate';
+      const maxMonthlyGain = experienceLevel === 'beginner' ? 1 : 
+                            experienceLevel === 'intermediate' ? 0.5 : 0.25;
       const monthsUntilGoal = weeksUntilGoal / 4.33;
       const weeklyGainTarget = targetMuscleGainKg / weeksUntilGoal;
       
@@ -279,6 +281,7 @@ const defaultUserProfile: UserProfile = {
   bodyFat: undefined,
   activityLevel: "moderatelyActive",
   fitnessGoal: "maintainWeight",
+  experienceLevel: "intermediate",
   createdAt: new Date(),
   updatedAt: new Date()
 };
@@ -2072,7 +2075,7 @@ Return JSON with:
         // Calculate total weeks from AI plan or default
         let totalWeeks = 12; // Default
         if (program.aiPlan && program.aiPlan.phases) {
-          totalWeeks = program.aiPlan.phases.reduce((total, phase) => {
+          totalWeeks = program.aiPlan.phases.reduce((total: number, phase: any) => {
             const phaseDuration = parseInt(phase.duration.split(' ')[0], 10) || 4;
             return total + phaseDuration;
           }, 0);
