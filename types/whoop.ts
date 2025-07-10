@@ -16,6 +16,15 @@ export interface StrainData {
   calories: number;
 }
 
+export interface SleepData {
+  id: string;
+  date: string;
+  efficiency: number;
+  duration: number;
+  disturbances: number;
+  qualityScore: number;
+}
+
 export interface WeightEntry {
   id: string;
   date: string;
@@ -27,6 +36,7 @@ export interface WeightEntry {
 export interface WhoopData {
   recovery: RecoveryData[];
   strain: StrainData[];
+  sleep: SleepData[];
 }
 
 export interface AIAnalysis {

@@ -43,6 +43,17 @@ export const mockWhoopData: WhoopData = {
       calories: Math.floor(1500 + Math.random() * 1000)
     };
   }),
+  
+  sleep: dates.map((date, index) => {
+    return {
+      id: `sleep-${index}`,
+      date,
+      efficiency: Math.floor(75 + Math.random() * 20),
+      duration: Math.floor(6.5 + Math.random() * 2) * 60, // in minutes
+      disturbances: Math.floor(Math.random() * 5),
+      qualityScore: Math.floor(70 + Math.random() * 25)
+    };
+  }),
 };
 
 export const mockAIAnalysis = {
