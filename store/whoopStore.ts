@@ -120,18 +120,49 @@ const calculateGoalRequirements = (programType: string, targetMetric: string, go
       requirements.targetPaceMinPerKm = targetPaceMinPerKm.toFixed(2);
       requirements.targetPaceMileMin = (targetPaceMinPerKm * 1.60934).toFixed(2);
       
-      // Calculate weekly mileage progression
-      const currentFitnessLevel = userProfile.activityLevel === 'veryActive' || userProfile.activityLevel === 'extremelyActive' ? 'high' : 
-                                 userProfile.activityLevel === 'moderatelyActive' ? 'medium' : 'low';
+      // Calculate weekly mileage progression based on experience level and goal
+      const experienceLevel = userProfile.experienceLevel || 'intermediate';
       
-      const baseWeeklyMileage = currentFitnessLevel === 'high' ? 40 : currentFitnessLevel === 'medium' ? 25 : 15;
-      const peakWeeklyMileage = programType === 'marathon' ? 
-        (targetPaceMinPerKm < 4.5 ? 70 : targetPaceMinPerKm < 5.5 ? 55 : 45) :
-        (targetPaceMinPerKm < 4.5 ? 45 : targetPaceMinPerKm < 5.5 ? 35 : 25);
+      // Base weekly mileage by experience level
+      const baseMileageMap = {
+        beginner: programType === 'marathon' ? 20 : 15,
+        intermediate: programType === 'marathon' ? 35 : 25,
+        advanced: programType === 'marathon' ? 50 : 35
+      };
+      
+      // Peak weekly mileage adjusted for goal pace
+      const peakMileageMap = {
+        beginner: programType === 'marathon' ? 45 : 30,
+        intermediate: programType === 'marathon' ? 65 : 45,
+        advanced: programType === 'marathon' ? 85 : 60
+      };
+      
+      const baseWeeklyMileage = baseMileageMap[experienceLevel as keyof typeof baseMileageMap] || baseMileageMap.intermediate;
+      let peakWeeklyMileage = peakMileageMap[experienceLevel as keyof typeof peakMileageMap] || peakMileageMap.intermediate;
+      
+      // Adjust peak mileage based on goal pace (faster goals need more volume)
+      if (targetPaceMinPerKm < 4.0) { // Sub-3:30 marathon / Sub-1:25 half
+        peakWeeklyMileage = Math.round(peakWeeklyMileage * 1.2);
+      } else if (targetPaceMinPerKm > 6.0) { // Slower than 4:15 marathon / 2:05 half
+        peakWeeklyMileage = Math.round(peakWeeklyMileage * 0.8);
+      }
       
       requirements.baseWeeklyMileage = baseWeeklyMileage;
       requirements.peakWeeklyMileage = peakWeeklyMileage;
       requirements.mileageProgression = ((peakWeeklyMileage - baseWeeklyMileage) / Math.max(8, weeksUntilGoal - 3)).toFixed(1);
+      
+      // Calculate weekly mileage breakdown
+      const totalTrainingWeeks = Math.min(weeksUntilGoal, programType === 'marathon' ? 16 : 12);
+      const buildWeeks = Math.floor(totalTrainingWeeks * 0.75);
+      const taperWeeks = totalTrainingWeeks - buildWeeks;
+      
+      requirements.totalTrainingWeeks = totalTrainingWeeks;
+      requirements.buildWeeks = buildWeeks;
+      requirements.taperWeeks = taperWeeks;
+      requirements.goalPaceMinPerMile = (targetPaceMinPerKm * 1.60934).toFixed(2);
+      requirements.easyPaceMinPerMile = ((targetPaceMinPerKm + 1.0) * 1.60934).toFixed(2);
+      requirements.tempoPaceMinPerMile = ((targetPaceMinPerKm - 0.3) * 1.60934).toFixed(2);
+      requirements.intervalPaceMinPerMile = ((targetPaceMinPerKm - 1.0) * 1.60934).toFixed(2);
     }
   } else if (programType === 'weight_loss') {
     // Parse weight loss goal (e.g., "15lbs" or "10kg")
@@ -1800,6 +1831,24 @@ CURRENT PROGRAM STATUS:
 USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
+
+${(program.type === 'marathon' || program.type === 'half-marathon') && goalRequirements.baseWeeklyMileage ? `
+RUNNING-SPECIFIC REQUIREMENTS:
+- Base Weekly Mileage: ${goalRequirements.baseWeeklyMileage} miles
+- Peak Weekly Mileage: ${goalRequirements.peakWeeklyMileage} miles
+- Goal Pace: ${goalRequirements.goalPaceMinPerMile} min/mile
+- Easy Pace: ${goalRequirements.easyPaceMinPerMile} min/mile
+- Tempo Pace: ${goalRequirements.tempoPaceMinPerMile} min/mile
+- Interval Pace: ${goalRequirements.intervalPaceMinPerMile} min/mile
+- Training Weeks: ${goalRequirements.totalTrainingWeeks} (${goalRequirements.buildWeeks} build + ${goalRequirements.taperWeeks} taper)
+
+MILEAGE PROGRESSION REQUIREMENTS:
+- Week ${currentWeek} should be approximately ${Math.round(goalRequirements.baseWeeklyMileage + (goalRequirements.peakWeeklyMileage - goalRequirements.baseWeeklyMileage) * Math.min(currentWeek / goalRequirements.buildWeeks, 1))} miles total
+- Long run should be 20-25% of weekly mileage
+- Easy runs should be 60-70% of weekly mileage
+- Tempo/interval work should be 10-15% of weekly mileage
+- Include specific mileage for each workout (e.g., "6 miles at easy pace", "4 x 1 mile at tempo pace")
+` : ''}
 
 INTELLIGENT ADAPTATION REQUIREMENTS:
 1. GOAL PRESERVATION: Any changes must support or enhance progress toward "${program.targetMetric}"

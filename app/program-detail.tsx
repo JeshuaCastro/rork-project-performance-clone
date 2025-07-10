@@ -325,6 +325,136 @@ export default function ProgramDetailScreen() {
     return recommendations;
   };
   
+  // Calculate precise mileage for running programs
+  const calculateRunningMileage = (week: number, programType: string, experienceLevel: string, goalTime?: string): { 
+    longRunMiles: number; 
+    weeklyMileage: number; 
+    easyRunMiles: number; 
+    tempoMiles: number; 
+    intervalMiles: number;
+    paceGuidance: { easy: string; tempo: string; interval: string; long: string };
+  } => {
+    const isMarathon = programType === 'marathon';
+    const isHalfMarathon = programType === 'half-marathon';
+    
+    // Base weekly mileage by experience level
+    const baseMileage = {
+      beginner: isMarathon ? 20 : 15,
+      intermediate: isMarathon ? 35 : 25,
+      advanced: isMarathon ? 50 : 35
+    };
+    
+    // Peak weekly mileage by experience level
+    const peakMileage = {
+      beginner: isMarathon ? 45 : 30,
+      intermediate: isMarathon ? 65 : 45,
+      advanced: isMarathon ? 85 : 60
+    };
+    
+    const base = baseMileage[experienceLevel as keyof typeof baseMileage] || baseMileage.intermediate;
+    const peak = peakMileage[experienceLevel as keyof typeof peakMileage] || peakMileage.intermediate;
+    
+    // Calculate progressive mileage (weeks 1-16 for marathon, 1-12 for half)
+    const totalWeeks = isMarathon ? 16 : 12;
+    const buildWeeks = Math.floor(totalWeeks * 0.75); // 75% build, 25% taper
+    
+    let weeklyMileage: number;
+    let longRunMiles: number;
+    
+    if (week <= buildWeeks) {
+      // Build phase - progressive increase
+      const progressRatio = (week - 1) / (buildWeeks - 1);
+      weeklyMileage = Math.round(base + (peak - base) * progressRatio);
+      
+      // Long run progression (20-25% of weekly mileage)
+      const longRunBase = isMarathon ? 8 : 6;
+      const longRunPeak = isMarathon ? 20 : 13;
+      longRunMiles = Math.round(longRunBase + (longRunPeak - longRunBase) * progressRatio);
+      
+      // Step-back weeks (every 4th week reduce by 20%)
+      if (week % 4 === 0 && week > 4) {
+        weeklyMileage = Math.round(weeklyMileage * 0.8);
+        longRunMiles = Math.round(longRunMiles * 0.85);
+      }
+    } else {
+      // Taper phase - reduce volume
+      const taperWeek = week - buildWeeks;
+      const taperWeeks = totalWeeks - buildWeeks;
+      const taperRatio = 1 - (taperWeek / taperWeeks) * 0.4; // 40% reduction over taper
+      
+      weeklyMileage = Math.round(peak * taperRatio);
+      longRunMiles = isMarathon ? 
+        (taperWeek === 1 ? 12 : taperWeek === 2 ? 8 : 3) : // Marathon taper
+        (taperWeek === 1 ? 8 : taperWeek === 2 ? 5 : 3);   // Half marathon taper
+    }
+    
+    // Calculate other run types based on weekly mileage
+    const easyRunMiles = Math.round((weeklyMileage - longRunMiles) * 0.6);
+    const tempoMiles = Math.round((weeklyMileage - longRunMiles) * 0.25);
+    const intervalMiles = Math.round((weeklyMileage - longRunMiles) * 0.15);
+    
+    // Calculate pace guidance based on goal time
+    let paceGuidance = {
+      easy: "Conversational pace (Zone 2)",
+      tempo: "Comfortably hard pace",
+      interval: "5K race pace",
+      long: "Easy to moderate pace"
+    };
+    
+    if (goalTime && isMarathon) {
+      // Parse marathon goal time (e.g., "3:30:00")
+      const timeMatch = goalTime.match(/(\d+):(\d+):(\d+)/);
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1]);
+        const minutes = parseInt(timeMatch[2]);
+        const seconds = parseInt(timeMatch[3]);
+        const totalMinutes = hours * 60 + minutes + seconds / 60;
+        const goalPaceMinPerMile = totalMinutes / 26.2;
+        
+        const easyPace = goalPaceMinPerMile + 1.5; // 1:30-2:00 slower than goal
+        const tempoPace = goalPaceMinPerMile - 0.5; // 30s faster than goal
+        const intervalPace = goalPaceMinPerMile - 1.5; // 1:30 faster than goal
+        
+        paceGuidance = {
+          easy: `${Math.floor(easyPace)}:${String(Math.round((easyPace % 1) * 60)).padStart(2, '0')}/mile`,
+          tempo: `${Math.floor(tempoPace)}:${String(Math.round((tempoPace % 1) * 60)).padStart(2, '0')}/mile`,
+          interval: `${Math.floor(intervalPace)}:${String(Math.round((intervalPace % 1) * 60)).padStart(2, '0')}/mile`,
+          long: `${Math.floor(easyPace)}:${String(Math.round((easyPace % 1) * 60)).padStart(2, '0')}/mile`
+        };
+      }
+    } else if (goalTime && isHalfMarathon) {
+      // Parse half marathon goal time (e.g., "1:45:00")
+      const timeMatch = goalTime.match(/(\d+):(\d+):(\d+)/);
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1]);
+        const minutes = parseInt(timeMatch[2]);
+        const seconds = parseInt(timeMatch[3]);
+        const totalMinutes = hours * 60 + minutes + seconds / 60;
+        const goalPaceMinPerMile = totalMinutes / 13.1;
+        
+        const easyPace = goalPaceMinPerMile + 1.5;
+        const tempoPace = goalPaceMinPerMile - 0.25;
+        const intervalPace = goalPaceMinPerMile - 1.0;
+        
+        paceGuidance = {
+          easy: `${Math.floor(easyPace)}:${String(Math.round((easyPace % 1) * 60)).padStart(2, '0')}/mile`,
+          tempo: `${Math.floor(tempoPace)}:${String(Math.round((tempoPace % 1) * 60)).padStart(2, '0')}/mile`,
+          interval: `${Math.floor(intervalPace)}:${String(Math.round((intervalPace % 1) * 60)).padStart(2, '0')}/mile`,
+          long: `${Math.floor(easyPace)}:${String(Math.round((easyPace % 1) * 60)).padStart(2, '0')}/mile`
+        };
+      }
+    }
+    
+    return {
+      longRunMiles,
+      weeklyMileage,
+      easyRunMiles,
+      tempoMiles,
+      intervalMiles,
+      paceGuidance
+    };
+  };
+
   // Generate weekly workout plan based on program type and recovery status
   const generateWorkoutPlan = (): Workout[] => {
     // If we have an AI-generated plan, use that
@@ -374,46 +504,61 @@ export default function ProgramDetailScreen() {
     };
     
     if (program?.type === 'marathon' || program?.type === 'half-marathon') {
-      // Marathon training plan - explicitly separate cardio and strength
+      // Calculate precise mileage for this week
+      const mileageData = calculateRunningMileage(
+        currentWeek, 
+        program.type, 
+        program.experienceLevel, 
+        program.targetMetric
+      );
+      
+      // Marathon/Half-Marathon training plan with precise mileage
       
       // Monday - Recovery Run (Cardio)
+      const recoveryMiles = Math.round(mileageData.easyRunMiles * 0.4);
       workouts.push(enhanceWorkoutWithDetails({
         day: "Monday",
         title: "Recovery Run",
-        description: "Easy 30-45 minute run at conversational pace (Zone 2)",
+        description: `${recoveryMiles} miles easy run at ${mileageData.paceGuidance.easy}. Focus on form and recovery.`,
         intensity: "Low",
-        adjustedForRecovery: recoveryStatus === 'low' ? "Reduce to 20-30 minutes or take as rest day" : null,
+        adjustedForRecovery: recoveryStatus === 'low' ? `Reduce to ${Math.max(2, recoveryMiles - 1)} miles or take as rest day` : null,
         type: 'cardio'
       }));
       
       // Monday - Core Strength (Strength)
       workouts.push(enhanceWorkoutWithDetails({
         day: "Monday",
-        title: "Core Strength",
-        description: "15-20 minutes of core exercises: planks, Russian twists, and leg raises",
+        title: "Core & Mobility",
+        description: "20-25 minutes: planks, Russian twists, leg raises, hip flexor stretches, and calf stretches",
         intensity: "Low",
         adjustedForRecovery: null,
         type: 'strength'
       }));
       
       // Tuesday - Speed Work (Cardio)
+      const intervalDistance = Math.round(mileageData.intervalMiles);
+      const intervalCount = program.type === 'marathon' ? 
+        Math.min(12, Math.max(6, currentWeek)) : 
+        Math.min(10, Math.max(5, currentWeek));
+      
       workouts.push(enhanceWorkoutWithDetails({
         day: "Tuesday",
         title: "Speed Work",
-        description: "8-10 x 400m repeats at 5K pace with 200m recovery jog",
+        description: `${intervalDistance} miles total: 1.5 mile warm-up, ${intervalCount} x 400m at ${mileageData.paceGuidance.interval} with 200m recovery jog, 1 mile cool-down`,
         intensity: "High",
-        adjustedForRecovery: recoveryStatus === 'low' ? "Reduce to 4-6 repeats or swap with Thursday" : null,
+        adjustedForRecovery: recoveryStatus === 'low' ? `Reduce to ${Math.max(4, intervalCount - 2)} repeats or swap with Thursday` : null,
         type: 'cardio'
       }));
       
       if (daysPerWeek >= 5) {
         // Wednesday - Easy Run (Cardio)
+        const midWeekMiles = Math.round(mileageData.easyRunMiles * 0.6);
         workouts.push(enhanceWorkoutWithDetails({
           day: "Wednesday",
           title: "Easy Run",
-          description: "40-50 minute easy run (Zone 2)",
+          description: `${midWeekMiles} miles at ${mileageData.paceGuidance.easy}. Maintain conversational pace throughout.`,
           intensity: "Low",
-          adjustedForRecovery: null,
+          adjustedForRecovery: recoveryStatus === 'low' ? `Reduce to ${Math.max(3, midWeekMiles - 1)} miles` : null,
           type: 'cardio'
         }));
         
@@ -421,7 +566,7 @@ export default function ProgramDetailScreen() {
         workouts.push(enhanceWorkoutWithDetails({
           day: "Wednesday",
           title: "Upper Body Strength",
-          description: "Push-ups, rows, and shoulder exercises to maintain upper body strength",
+          description: "25-30 minutes: push-ups, rows, shoulder exercises, and arm swings to maintain upper body strength for running form",
           intensity: "Medium",
           adjustedForRecovery: recoveryStatus === 'low' ? "Reduce volume by 30%" : null,
           type: 'strength'
@@ -429,21 +574,25 @@ export default function ProgramDetailScreen() {
       }
       
       // Thursday - Tempo Run (Cardio)
+      const tempoMiles = Math.round(mileageData.tempoMiles);
+      const tempoPortionMiles = Math.max(2, Math.round(tempoMiles * 0.6));
+      
       workouts.push(enhanceWorkoutWithDetails({
         day: "Thursday",
         title: "Tempo Run",
-        description: "15 minute warm-up, 20 minutes at threshold pace, 10 minute cool-down",
+        description: `${tempoMiles} miles total: 1.5 mile warm-up, ${tempoPortionMiles} miles at ${mileageData.paceGuidance.tempo} (threshold pace), 1 mile cool-down`,
         intensity: "Medium",
-        adjustedForRecovery: recoveryStatus === 'low' ? "Reduce tempo portion to 10-15 minutes" : null,
+        adjustedForRecovery: recoveryStatus === 'low' ? `Reduce tempo portion to ${Math.max(1, tempoPortionMiles - 1)} miles` : null,
         type: 'cardio'
       }));
       
       if (daysPerWeek >= 6) {
         // Friday - Recovery Run (Cardio)
+        const fridayMiles = Math.max(2, Math.round(mileageData.easyRunMiles * 0.3));
         workouts.push(enhanceWorkoutWithDetails({
           day: "Friday",
           title: "Recovery Run",
-          description: "30 minute very easy run or cross-training",
+          description: `${fridayMiles} miles very easy run at ${mileageData.paceGuidance.easy} or cross-training (swimming, cycling)`,
           intensity: "Low",
           adjustedForRecovery: null,
           type: 'cardio'
@@ -452,21 +601,21 @@ export default function ProgramDetailScreen() {
         // Friday - Lower Body (Strength)
         workouts.push(enhanceWorkoutWithDetails({
           day: "Friday",
-          title: "Lower Body Strength",
-          description: "Bodyweight squats, lunges, and calf raises to support running form",
+          title: "Running Strength",
+          description: "20-25 minutes: single-leg squats, lunges, calf raises, glute bridges, and hip strengthening exercises",
           intensity: "Low",
           adjustedForRecovery: null,
           type: 'strength'
         }));
       }
       
-      // Saturday - Long Run (Cardio)
+      // Saturday - Long Run (Cardio) - The key workout of the week
       workouts.push(enhanceWorkoutWithDetails({
         day: "Saturday",
         title: "Long Run",
-        description: `${8 + currentWeek} miles at easy pace (Zone 2)`,
+        description: `${mileageData.longRunMiles} miles at ${mileageData.paceGuidance.long}. Week ${currentWeek} of ${program.type} training. ${currentWeek <= 4 ? 'Focus on building aerobic base.' : currentWeek <= 8 ? 'Building endurance and mental toughness.' : currentWeek <= 12 ? 'Peak training - maintain goal pace sections.' : 'Taper phase - maintain fitness while recovering.'}`,
         intensity: "Medium",
-        adjustedForRecovery: recoveryStatus === 'low' ? "Reduce distance by 20% or postpone to Sunday" : null,
+        adjustedForRecovery: recoveryStatus === 'low' ? `Reduce to ${Math.max(Math.round(mileageData.longRunMiles * 0.8), 6)} miles or postpone to Sunday` : null,
         type: 'cardio'
       }));
       
@@ -475,7 +624,7 @@ export default function ProgramDetailScreen() {
         workouts.push(enhanceWorkoutWithDetails({
           day: "Sunday",
           title: "Rest or Cross-Train",
-          description: "Complete rest or light cross-training (swimming, cycling, yoga)",
+          description: `Complete rest or 30-45 minutes of light cross-training. Weekly mileage target: ${mileageData.weeklyMileage} miles.`,
           intensity: "Very Low",
           adjustedForRecovery: null,
           type: 'recovery'
@@ -1619,6 +1768,85 @@ export default function ProgramDetailScreen() {
                       <Text style={styles.goalStrategyText}>{aiPlan.goalStrategy}</Text>
                     </View>
                   )}
+                </View>
+              )}
+              
+              {/* Weekly Training Plan Summary for Running Programs */}
+              {(program?.type === 'marathon' || program?.type === 'half-marathon') && (
+                <View style={styles.weeklyTrainingPlanContainer}>
+                  <View style={styles.weeklyTrainingPlanHeader}>
+                    <MapPin size={20} color={colors.primary} />
+                    <Text style={styles.weeklyTrainingPlanTitle}>Week {currentWeek} Training Plan</Text>
+                  </View>
+                  
+                  {(() => {
+                    const mileageData = calculateRunningMileage(
+                      currentWeek, 
+                      program.type, 
+                      program.experienceLevel, 
+                      program.targetMetric
+                    );
+                    
+                    return (
+                      <>
+                        <View style={styles.mileageSummaryContainer}>
+                          <View style={styles.mileageSummaryItem}>
+                            <Text style={styles.mileageSummaryLabel}>Weekly Total</Text>
+                            <Text style={styles.mileageSummaryValue}>{mileageData.weeklyMileage} miles</Text>
+                          </View>
+                          
+                          <View style={styles.mileageSummaryItem}>
+                            <Text style={styles.mileageSummaryLabel}>Long Run</Text>
+                            <Text style={styles.mileageSummaryValue}>{mileageData.longRunMiles} miles</Text>
+                          </View>
+                          
+                          <View style={styles.mileageSummaryItem}>
+                            <Text style={styles.mileageSummaryLabel}>Easy Runs</Text>
+                            <Text style={styles.mileageSummaryValue}>{mileageData.easyRunMiles} miles</Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.paceGuidanceContainer}>
+                          <Text style={styles.paceGuidanceTitle}>Pace Guidance</Text>
+                          <View style={styles.paceGuidanceGrid}>
+                            <View style={styles.paceGuidanceItem}>
+                              <Text style={styles.paceGuidanceLabel}>Easy</Text>
+                              <Text style={styles.paceGuidanceValue}>{mileageData.paceGuidance.easy}</Text>
+                            </View>
+                            
+                            <View style={styles.paceGuidanceItem}>
+                              <Text style={styles.paceGuidanceLabel}>Tempo</Text>
+                              <Text style={styles.paceGuidanceValue}>{mileageData.paceGuidance.tempo}</Text>
+                            </View>
+                            
+                            <View style={styles.paceGuidanceItem}>
+                              <Text style={styles.paceGuidanceLabel}>Intervals</Text>
+                              <Text style={styles.paceGuidanceValue}>{mileageData.paceGuidance.interval}</Text>
+                            </View>
+                            
+                            <View style={styles.paceGuidanceItem}>
+                              <Text style={styles.paceGuidanceLabel}>Long Run</Text>
+                              <Text style={styles.paceGuidanceValue}>{mileageData.paceGuidance.long}</Text>
+                            </View>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.trainingPhaseContainer}>
+                          <Text style={styles.trainingPhaseTitle}>Training Phase</Text>
+                          <Text style={styles.trainingPhaseDescription}>
+                            {currentWeek <= 4 ? 
+                              'Base Building: Focus on aerobic development and building weekly mileage gradually.' :
+                              currentWeek <= 8 ? 
+                              'Build Phase: Increasing mileage and introducing more structured workouts.' :
+                              currentWeek <= 12 ? 
+                              'Peak Training: Highest mileage weeks with race-specific workouts.' :
+                              'Taper Phase: Reducing volume while maintaining intensity for race day.'
+                            }
+                          </Text>
+                        </View>
+                      </>
+                    );
+                  })()}
                 </View>
               )}
               
@@ -4397,6 +4625,97 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   goalImpactText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  // Weekly training plan styles
+  weeklyTrainingPlanContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  weeklyTrainingPlanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  weeklyTrainingPlanTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  mileageSummaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+  },
+  mileageSummaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  mileageSummaryLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  mileageSummaryValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  paceGuidanceContainer: {
+    marginBottom: 16,
+  },
+  paceGuidanceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  paceGuidanceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  paceGuidanceItem: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 10,
+    width: '48%',
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  paceGuidanceLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  paceGuidanceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  trainingPhaseContainer: {
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  trainingPhaseTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  trainingPhaseDescription: {
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,
