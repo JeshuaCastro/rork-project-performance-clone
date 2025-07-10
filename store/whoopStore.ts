@@ -468,6 +468,7 @@ interface WhoopStore {
   };
   generateMealSuggestion: (preferences: string) => Promise<string>;
   updateProgramNutrition: (programId: string) => void;
+  syncMacroTargetsWithActiveProgram: () => void;
   
   // Text meal processing method
   processTextMeal: (mealDescription: string) => Promise<any>;
@@ -1323,7 +1324,24 @@ Return comprehensive JSON with goal-focused structure:
       },
       
       calculateMacroTargets: () => {
-        const { userProfile } = get();
+        const { userProfile, activePrograms } = get();
+        
+        // Check if there's an active program with a nutrition plan
+        const activeProgramWithNutrition = activePrograms.find(p => p.active && p.nutritionPlan);
+        
+        if (activeProgramWithNutrition && activeProgramWithNutrition.nutritionPlan) {
+          const programNutrition = activeProgramWithNutrition.nutritionPlan;
+          const macroTargets: MacroTargets = {
+            calories: programNutrition.calories || 2000,
+            protein: programNutrition.protein || 150,
+            carbs: programNutrition.carbs || 200,
+            fat: programNutrition.fat || 70,
+            calculatedAt: new Date()
+          };
+          
+          set({ macroTargets });
+          return macroTargets;
+        }
         
         let bmr = 0;
         
@@ -1519,6 +1537,29 @@ Return comprehensive JSON with goal-focused structure:
             p.id === programId ? { ...p, nutritionPlan } : p
           )
         }));
+      },
+      
+      syncMacroTargetsWithActiveProgram: () => {
+        const { activePrograms } = get();
+        
+        // Find the first active program with a nutrition plan
+        const activeProgramWithNutrition = activePrograms.find(p => p.active && p.nutritionPlan);
+        
+        if (activeProgramWithNutrition && activeProgramWithNutrition.nutritionPlan) {
+          const programNutrition = activeProgramWithNutrition.nutritionPlan;
+          const macroTargets: MacroTargets = {
+            calories: programNutrition.calories || 2000,
+            protein: programNutrition.protein || 150,
+            carbs: programNutrition.carbs || 200,
+            fat: programNutrition.fat || 70,
+            calculatedAt: new Date()
+          };
+          
+          set({ macroTargets });
+        } else {
+          // If no active program with nutrition plan, recalculate based on user profile
+          get().calculateMacroTargets();
+        }
       },
       
       processTextMeal: async (mealDescription: string) => {
@@ -2118,6 +2159,17 @@ Return comprehensive JSON with goal-focused adaptations and strain optimization:
                       ...updatedProgram.nutritionPlan,
                       ...updates.nutritionPlan
                     };
+                    
+                    // Update global macro targets to match the program's nutrition plan
+                    const newMacroTargets: MacroTargets = {
+                      calories: updates.nutritionPlan.calories || updatedProgram.nutritionPlan?.calories || 2000,
+                      protein: updates.nutritionPlan.protein || updatedProgram.nutritionPlan?.protein || 150,
+                      carbs: updates.nutritionPlan.carbs || updatedProgram.nutritionPlan?.carbs || 200,
+                      fat: updates.nutritionPlan.fat || updatedProgram.nutritionPlan?.fat || 70,
+                      calculatedAt: new Date()
+                    };
+                    
+                    set({ macroTargets: newMacroTargets });
                   }
                   
                   // Update strength training config if provided

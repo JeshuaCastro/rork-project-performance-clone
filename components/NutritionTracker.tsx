@@ -36,7 +36,8 @@ export default function NutritionTracker() {
   const { 
     userProfile, 
     macroTargets, 
-    calculateMacroTargets, 
+    calculateMacroTargets,
+    syncMacroTargetsWithActiveProgram,
     addFoodLogEntry, 
     removeFoodLogEntry, 
     getFoodLogEntriesByDate, 
@@ -91,16 +92,19 @@ export default function NutritionTracker() {
   );
   
   useEffect(() => {
-    // Calculate macro targets if not already calculated and profile is complete
-    if (!macroTargets && isProfileComplete) {
-      calculateMacroTargets();
-    }
-    
-    // Load today's food entries if profile is complete
+    // Always recalculate macro targets when component loads to ensure they're up-to-date with any program changes
     if (isProfileComplete) {
+      calculateMacroTargets();
       loadTodayEntries();
     }
   }, [isProfileComplete]);
+  
+  // Recalculate macro targets when they change to ensure UI updates
+  useEffect(() => {
+    if (isProfileComplete) {
+      loadTodayEntries();
+    }
+  }, [macroTargets]);
   
   const loadTodayEntries = () => {
     const entries = getFoodLogEntriesByDate(today);
