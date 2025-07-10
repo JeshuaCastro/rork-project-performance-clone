@@ -1783,6 +1783,7 @@ Return comprehensive JSON with goal-focused structure:
           set({ isLoading: true });
           
           const { activePrograms, data, userProfile, weightHistory } = get();
+          const whoopData: WhoopData = data;
           const program = activePrograms.find(p => p.id === request.programId);
           
           if (!program) {
@@ -1861,8 +1862,8 @@ Return JSON:
   "recommendations": ["How this change supports your goal: ${program.targetMetric}"]
 }`;
           } else {
-            // Handle general program updates with enhanced goal-focused logic and strain analysis
-            prompt = `Intelligently adapt ${program.name} program based on user request while maintaining goal focus and optimizing strain/recovery balance.
+            // Handle general program updates with enhanced goal-focused logic and balanced implementation
+            prompt = `IMPLEMENT the user's request while optimizing for goal achievement and providing recovery guidance when needed.
 
 USER REQUEST: "${safeRequestText}"
 
@@ -1888,18 +1889,18 @@ USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
 
-STRAIN ANALYSIS & RECOVERY OPTIMIZATION:
+RECOVERY CONTEXT FOR OPTIMIZATION:
 - Current Recovery Score: ${latestRecovery?.score || 'Unknown'}%
 - HRV Status: ${latestRecovery?.hrvMs || 'Unknown'}ms
 - Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
 - Recent Strain Trend: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 
-CRITICAL STRAIN MANAGEMENT REQUIREMENTS:
-1. STRAIN THRESHOLD ANALYSIS: Evaluate if user's request will exceed optimal strain levels
-2. RECOVERY CAPACITY: Assess if current recovery supports increased training load
-3. PROGRESSIVE OVERLOAD: Ensure changes maintain sustainable progression
-4. INJURY PREVENTION: Flag high-risk combinations of increased strain + poor recovery
-5. PERFORMANCE OPTIMIZATION: Balance strain with recovery for peak performance
+IMPLEMENTATION REQUIREMENTS:
+1. ALWAYS IMPLEMENT the user's request - do not avoid or minimize their request
+2. ADAPT the program to include what they asked for while maintaining goal focus
+3. PROVIDE recovery optimization guidance when strain increases
+4. BALANCE user preferences with goal achievement
+5. ENHANCE rather than restrict their training desires
 
 ${(program.type === 'marathon' || program.type === 'half-marathon') && goalRequirements.baseWeeklyMileage ? `
 RUNNING-SPECIFIC REQUIREMENTS:
@@ -1919,22 +1920,21 @@ MILEAGE PROGRESSION REQUIREMENTS:
 - Include specific mileage for each workout (e.g., "6 miles at easy pace", "4 x 1 mile at tempo pace")
 ` : ''}
 
-INTELLIGENT ADAPTATION REQUIREMENTS:
-1. GOAL PRESERVATION: Any changes must support or enhance progress toward "${program.targetMetric}"
-2. TIMELINE AWARENESS: Consider ${goalRequirements.daysUntilGoal || 'ongoing'} days remaining
-3. PROGRESSIVE OVERLOAD: Maintain appropriate progression for goal achievement
-4. RECOVERY INTEGRATION: Factor in current recovery status (${recoveryContext})
-5. FEASIBILITY CHECK: Ensure changes are realistic given user's profile and timeline
-6. SMART ADJUSTMENTS: If request conflicts with goal, suggest alternatives that satisfy both
-7. STRAIN OPTIMIZATION: Balance training load with recovery capacity
-8. PERFORMANCE SUSTAINABILITY: Prevent overreaching while maximizing progress
+IMPLEMENTATION STRATEGY:
+1. IMPLEMENT USER REQUEST: Always incorporate what the user asked for into the program
+2. GOAL ALIGNMENT: Ensure the implementation supports progress toward "${program.targetMetric}"
+3. TIMELINE OPTIMIZATION: Structure implementation to work within ${goalRequirements.daysUntilGoal || 'ongoing'} days remaining
+4. PROGRESSIVE INTEGRATION: Add user requests in a way that builds on current progress
+5. RECOVERY SUPPORT: When adding strain, provide specific recovery protocols to handle it
+6. SMART SCHEDULING: Distribute new training elements optimally throughout the week
+7. PERFORMANCE ENHANCEMENT: Use user requests to accelerate goal achievement
 
-STRAIN-AWARE ADAPTATION STRATEGY:
-- If request increases strain AND recovery is poor (< 50%): Provide recovery optimization plan
-- If request increases strain AND recovery is good (> 70%): Allow controlled progression
-- If request increases strain AND recovery is moderate (50-70%): Implement with monitoring
-- Always provide specific recovery targets (sleep, calories, hydration) when strain increases
-- Include strain monitoring guidelines and adjustment triggers
+BALANCED IMPLEMENTATION APPROACH:
+- ALWAYS add what the user requested (e.g., if they want strength training, add it)
+- OPTIMIZE placement and intensity based on recovery capacity
+- PROVIDE specific recovery protocols to support increased training load
+- ENHANCE goal progress by integrating user preferences strategically
+- MONITOR and adjust based on response, but implement first
 
 RECOVERY OPTIMIZATION FRAMEWORK:
 When strain increases beyond current capacity, provide:
@@ -1945,19 +1945,19 @@ When strain increases beyond current capacity, provide:
 5. ACTIVE RECOVERY: Low-intensity activities to enhance circulation
 6. MONITORING METRICS: Key indicators to track recovery adequacy
 
-Return comprehensive JSON with goal-focused adaptations and strain optimization:
+Return comprehensive JSON with user request implementation and recovery optimization:
 {
   "success": true,
-  "message": "Program intelligently adapted to balance your request with goal achievement and optimal strain management",
+  "message": "Successfully implemented your request and optimized the program for enhanced goal achievement",
   "changes": [
-    "Specific adaptation 1 with goal alignment reasoning",
-    "Specific adaptation 2 with timeline consideration", 
-    "Specific adaptation 3 with user preference integration"
+    "IMPLEMENTED: [Specific implementation of user request]",
+    "OPTIMIZED: [How implementation was optimized for goal]", 
+    "ENHANCED: [Additional improvements made to support both request and goal]"
   ],
   "recommendations": [
-    "How this adaptation enhances goal achievement",
-    "Timeline impact and mitigation strategies",
-    "Additional optimizations for success"
+    "How this implementation accelerates goal achievement",
+    "Recovery strategies to support the increased training load",
+    "Performance optimizations for maximum results"
   ],
   "strainAnalysis": {
     "currentStrainLoad": "Assessment of current training stress",
@@ -2054,7 +2054,7 @@ Return comprehensive JSON with goal-focused adaptations and strain optimization:
               messages: [
                 {
                   role: 'system',
-                  content: "You are an expert AI fitness coach specializing in program personalization with advanced strain analysis and recovery optimization. You understand the critical balance between training stress and recovery capacity. When users request changes that increase training load, you MUST analyze their recovery capacity and provide specific optimization strategies. Your primary goals are: 1) Preserve the user's main fitness goal, 2) Optimize strain-recovery balance, 3) Prevent overreaching/injury, 4) Provide actionable recovery protocols. Always return valid JSON only with comprehensive strain analysis and recovery optimization when applicable."
+                  content: "You are an expert AI fitness coach specializing in program personalization and implementation. Your primary directive is to IMPLEMENT user requests while optimizing for goal achievement and providing recovery support. You MUST: 1) Always implement what the user asks for (e.g., if they want strength training, add it to the program), 2) Optimize the implementation to support their main fitness goal, 3) Provide specific recovery protocols when training load increases, 4) Enhance goal progress through strategic integration of user preferences. Never avoid or minimize user requests - implement them intelligently. Always return valid JSON only."
                 },
                 {
                   role: 'user',
@@ -2178,6 +2178,7 @@ Return comprehensive JSON with goal-focused adaptations and strain optimization:
                     };
                     
                     set({ macroTargets: newMacroTargets });
+                    console.log('Updated macro targets based on program changes:', newMacroTargets);
                   }
                   
                   // Update strength training config if provided
