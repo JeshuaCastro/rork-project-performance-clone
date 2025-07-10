@@ -1455,6 +1455,16 @@ export default function ProgramDetailScreen() {
           </View>
         )}
         
+        {/* Goal contribution info */}
+        {(workout as any).goalContribution && (
+          <View style={styles.goalContributionContainer}>
+            <Text style={styles.goalContributionTitle}>Goal Impact:</Text>
+            <Text style={styles.goalContributionText} numberOfLines={2} ellipsizeMode="tail">
+              {(workout as any).goalContribution}
+            </Text>
+          </View>
+        )}
+        
         <View style={styles.workoutButtonsRow}>
           <TouchableOpacity 
             style={[
@@ -1560,6 +1570,57 @@ export default function ProgramDetailScreen() {
                   </Text>
                 </View>
               </View>
+              
+              {/* Goal Progress Tracking */}
+              {program.targetMetric && program.goalDate && (
+                <View style={styles.goalProgressContainer}>
+                  <View style={styles.goalProgressHeader}>
+                    <Target size={20} color={colors.primary} />
+                    <Text style={styles.goalProgressTitle}>Goal Progress</Text>
+                  </View>
+                  
+                  <Text style={styles.goalProgressTarget}>
+                    Target: {program.targetMetric}
+                  </Text>
+                  
+                  {daysUntilGoal !== null && (
+                    <View style={styles.goalProgressDetails}>
+                      <View style={styles.goalProgressItem}>
+                        <Text style={styles.goalProgressLabel}>Days Remaining</Text>
+                        <Text style={styles.goalProgressValue}>
+                          {daysUntilGoal > 0 ? daysUntilGoal : 'Goal Date Reached!'}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.goalProgressItem}>
+                        <Text style={styles.goalProgressLabel}>Current Week</Text>
+                        <Text style={styles.goalProgressValue}>
+                          Week {currentWeek}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.goalProgressItem}>
+                        <Text style={styles.goalProgressLabel}>Progress</Text>
+                        <Text style={styles.goalProgressValue}>
+                          {Math.round((currentWeek / (aiPlan?.phases ? 
+                            aiPlan.phases.reduce((total: number, phase: any) => {
+                              const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+                              return total + duration;
+                            }, 0) : 12)) * 100)}%
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {/* Goal-specific insights */}
+                  {aiPlan?.goalStrategy && (
+                    <View style={styles.goalStrategyContainer}>
+                      <Text style={styles.goalStrategyTitle}>Strategy</Text>
+                      <Text style={styles.goalStrategyText}>{aiPlan.goalStrategy}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
               
               {/* Action Buttons Row */}
               <View style={styles.actionButtonsRow}>
@@ -2362,10 +2423,19 @@ export default function ProgramDetailScreen() {
               <ScrollView style={styles.modalScroll}>
                 <View style={styles.personalizeInfo}>
                   <Brain size={24} color={colors.primary} />
-                  <Text style={styles.personalizeInfoTitle}>AI-Powered Personalization</Text>
+                  <Text style={styles.personalizeInfoTitle}>AI-Powered Goal-Focused Personalization</Text>
                   <Text style={styles.personalizeInfoText}>
-                    Tell us how you would like to personalize your program. Our AI coach will analyze your request and adapt your program accordingly.
+                    Tell us how you'd like to personalize your program. Our AI coach will adapt your program while keeping your goal "{program?.targetMetric || 'fitness improvement'}" as the top priority.
                   </Text>
+                  
+                  {program?.targetMetric && program?.goalDate && (
+                    <View style={styles.goalReminderContainer}>
+                      <Target size={16} color={colors.primary} />
+                      <Text style={styles.goalReminderText}>
+                        Goal: {program.targetMetric} by {new Date(program.goalDate).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 
                 <Text style={styles.personalizeLabel}>Your Request</Text>
@@ -2381,29 +2451,35 @@ export default function ProgramDetailScreen() {
                 />
                 
                 <View style={styles.examplesContainer}>
-                  <Text style={styles.examplesTitle}>Example Requests:</Text>
+                  <Text style={styles.examplesTitle}>Example Goal-Focused Requests:</Text>
                   <View style={styles.exampleItem}>
                     <View style={styles.bulletPoint} />
                     <Text style={styles.exampleText}>
-                      "I need to reduce my training volume this week due to work stress."
+                      "I need to reduce training volume this week but don't want to compromise my goal progress."
                     </Text>
                   </View>
                   <View style={styles.exampleItem}>
                     <View style={styles.bulletPoint} />
                     <Text style={styles.exampleText}>
-                      "I want to focus more on strength training and less on cardio."
+                      "I want to focus more on the specific skills needed for my goal."
                     </Text>
                   </View>
                   <View style={styles.exampleItem}>
                     <View style={styles.bulletPoint} />
                     <Text style={styles.exampleText}>
-                      "I can only train 3 days this week instead of my usual 5."
+                      "I can only train 3 days this week - prioritize the most important workouts for my goal."
                     </Text>
                   </View>
                   <View style={styles.exampleItem}>
                     <View style={styles.bulletPoint} />
                     <Text style={styles.exampleText}>
-                      "I would like to add more core exercises to my routine."
+                      "I'm feeling behind on my goal timeline - can we intensify the program?"
+                    </Text>
+                  </View>
+                  <View style={styles.exampleItem}>
+                    <View style={styles.bulletPoint} />
+                    <Text style={styles.exampleText}>
+                      "I want to add exercises that will directly improve my performance for my target."
                     </Text>
                   </View>
                 </View>
@@ -2489,6 +2565,40 @@ export default function ProgramDetailScreen() {
                             <Text style={styles.recommendationText}>{recommendation}</Text>
                           </View>
                         ))}
+                      </View>
+                    )}
+                    
+                    {/* Goal Impact Analysis */}
+                    {(programFeedback as any).goalImpactAnalysis && (
+                      <View style={styles.goalImpactContainer}>
+                        <Text style={styles.goalImpactTitle}>Goal Impact Analysis:</Text>
+                        
+                        {(programFeedback as any).goalImpactAnalysis.timelineAdjustment && (
+                          <View style={styles.goalImpactItem}>
+                            <Text style={styles.goalImpactLabel}>Timeline Impact:</Text>
+                            <Text style={styles.goalImpactText}>
+                              {(programFeedback as any).goalImpactAnalysis.timelineAdjustment}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).goalImpactAnalysis.progressOptimization && (
+                          <View style={styles.goalImpactItem}>
+                            <Text style={styles.goalImpactLabel}>Progress Optimization:</Text>
+                            <Text style={styles.goalImpactText}>
+                              {(programFeedback as any).goalImpactAnalysis.progressOptimization}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {(programFeedback as any).goalImpactAnalysis.riskMitigation && (
+                          <View style={styles.goalImpactItem}>
+                            <Text style={styles.goalImpactLabel}>Risk Mitigation:</Text>
+                            <Text style={styles.goalImpactText}>
+                              {(programFeedback as any).goalImpactAnalysis.riskMitigation}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     )}
                     
@@ -4165,5 +4275,130 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     flex: 1,
     lineHeight: 18,
+  },
+  // Goal progress styles
+  goalProgressContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  goalProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  goalProgressTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  goalProgressTarget: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  goalProgressDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  goalProgressItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  goalProgressLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  goalProgressValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  goalStrategyContainer: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  goalStrategyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  goalStrategyText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  // Goal contribution styles
+  goalContributionContainer: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
+  },
+  goalContributionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 4,
+  },
+  goalContributionText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  // Goal reminder styles
+  goalReminderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+  },
+  goalReminderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 6,
+    flex: 1,
+  },
+  // Goal impact analysis styles
+  goalImpactContainer: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  goalImpactTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 12,
+  },
+  goalImpactItem: {
+    marginBottom: 12,
+  },
+  goalImpactLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  goalImpactText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
 });

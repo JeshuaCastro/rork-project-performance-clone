@@ -249,6 +249,53 @@ const getFitnessAssessment = (userProfile: UserProfile, data: WhoopData): string
   return assessments.join(', ');
 };
 
+// Helper function to analyze program effectiveness and progress
+const analyzeProgramEffectiveness = (program: TrainingProgram, currentWeek: number, goalRequirements: any): { progressStatus: string; effectiveness: string } => {
+  const totalWeeks = program.aiPlan?.phases ? 
+    program.aiPlan.phases.reduce((total: number, phase: any) => {
+      const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+      return total + duration;
+    }, 0) : 12;
+  
+  const progressPercentage = Math.min((currentWeek / totalWeeks) * 100, 100);
+  
+  let progressStatus = '';
+  let effectiveness = '';
+  
+  // Analyze progress status
+  if (progressPercentage < 25) {
+    progressStatus = 'early phase - building foundation';
+  } else if (progressPercentage < 50) {
+    progressStatus = 'building phase - developing capacity';
+  } else if (progressPercentage < 75) {
+    progressStatus = 'development phase - increasing intensity';
+  } else {
+    progressStatus = 'peak phase - goal-specific preparation';
+  }
+  
+  // Analyze effectiveness based on goal timeline
+  if (goalRequirements.daysUntilGoal) {
+    const timelineProgress = ((totalWeeks * 7 - goalRequirements.daysUntilGoal) / (totalWeeks * 7)) * 100;
+    
+    if (timelineProgress > progressPercentage + 10) {
+      effectiveness = 'ahead of schedule - can accommodate modifications';
+    } else if (timelineProgress < progressPercentage - 10) {
+      effectiveness = 'behind schedule - need to prioritize goal-critical activities';
+    } else {
+      effectiveness = 'on track - balanced approach possible';
+    }
+  } else {
+    effectiveness = 'flexible timeline - can accommodate user preferences';
+  }
+  
+  // Factor in goal feasibility
+  if (goalRequirements.feasible === false) {
+    effectiveness += ' (goal timeline may need adjustment)';
+  }
+  
+  return { progressStatus, effectiveness };
+};
+
 // Create empty data structure for initial state
 const emptyWhoopData: WhoopData = {
   recovery: [],
@@ -891,16 +938,21 @@ export const useWhoopStore = create<WhoopStore>()(
             weightHistory
           );
           
-          // Enhanced system prompt with detailed personalization
-          const systemPrompt = `Create highly personalized ${programType} program.
+          // Enhanced system prompt with goal-focused personalization
+          const systemPrompt = `Create highly personalized ${programType} program with laser focus on goal achievement.
+
+PRIMARY GOAL ANALYSIS:
+- Target: ${userConfig.targetMetric || 'General fitness improvement'}
+- Timeline: ${goalRequirements.daysUntilGoal} days (${goalRequirements.weeksUntilGoal} weeks)
+- Urgency Level: ${goalRequirements.urgency}
+- Feasibility: ${goalRequirements.feasible ? 'Achievable with proper planning' : 'Requires timeline adjustment or modified expectations'}
+
+GOAL-SPECIFIC REQUIREMENTS:
+${JSON.stringify(goalRequirements, null, 2)}
 
 USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
-GOAL TIMELINE: ${goalRequirements.daysUntilGoal} days (${goalRequirements.weeksUntilGoal} weeks), urgency: ${goalRequirements.urgency}
-
-GOAL REQUIREMENTS:
-${JSON.stringify(goalRequirements, null, 2)}
 
 TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
@@ -908,30 +960,40 @@ TRAINING CONFIG:
 - Strength training: ${userConfig.strengthTraining?.enabled ? 'Yes' : 'No'}
 - Nutrition goal: ${userConfig.nutritionPreferences?.goal || 'maintain'}
 
-PERSONALIZATION REQUIREMENTS:
-1. Adjust intensity based on age (${userProfile.age}y) and recovery capacity
-2. Scale volume for ${userProfile.activityLevel} activity level
-3. Account for ${goalRequirements.urgency} urgency timeline
-4. Include specific progressions to meet goal requirements
-5. Adapt for ${userProfile.gender} physiology
-6. Consider ${userProfile.fitnessGoal} primary objective
+GOAL-FOCUSED PERSONALIZATION REQUIREMENTS:
+1. GOAL PRIMACY: Every workout must contribute directly to achieving "${userConfig.targetMetric}"
+2. TIMELINE OPTIMIZATION: Structure phases to peak at goal date (${userConfig.goalDate})
+3. PROGRESSIVE TARGETING: Each phase should build specific capacities needed for the goal
+4. RECOVERY INTEGRATION: Balance intensity with recovery needs for sustainable progress
+5. RISK MANAGEMENT: Prevent injuries that could derail goal achievement
+6. MEASURABLE PROGRESSION: Include specific metrics to track goal progress
 
-Return JSON with:
+PHASE STRUCTURE REQUIREMENTS:
+- Phase 1: Foundation building (weeks 1-4) - establish base fitness for goal
+- Phase 2: Development (weeks 5-8) - build specific capacities for goal
+- Phase 3: Intensification (weeks 9-12) - goal-specific training
+- Phase 4: Peak/Taper (final weeks) - optimize for goal performance
+
+Return comprehensive JSON with goal-focused structure:
 {
-  "programOverview": "Detailed overview explaining personalization",
+  "programOverview": "Detailed explanation of how this program is specifically designed to achieve ${userConfig.targetMetric} by ${userConfig.goalDate}",
+  "goalStrategy": "Overall strategy for achieving the specific goal within the timeline",
   "phases": [
     {
-      "name": "Phase name",
+      "name": "Goal-Focused Phase Name",
       "duration": "X weeks", 
-      "focus": "Phase focus",
+      "focus": "How this phase specifically contributes to goal achievement",
+      "goalMilestones": ["Specific milestones to track progress toward goal"],
       "weeklyStructure": [
         {
           "day": "Monday",
-          "title": "Workout name",
-          "description": "Detailed description with specific metrics/targets",
-          "intensity": "Low/Medium/High",
+          "title": "Goal-Specific Workout Name",
+          "description": "Detailed description with specific metrics/targets that contribute to goal",
+          "intensity": "Calculated based on goal requirements and timeline",
           "type": "cardio/strength/recovery",
-          "personalizedNotes": "Why this workout fits user's profile"
+          "goalContribution": "How this workout specifically helps achieve ${userConfig.targetMetric}",
+          "progressionMetrics": "Specific metrics to track improvement toward goal",
+          "personalizedNotes": "Why this workout is optimized for user's profile and goal"
         }
       ]
     }
@@ -941,11 +1003,17 @@ Return JSON with:
     "protein": ${macroTargets?.protein || 150},
     "carbs": ${macroTargets?.carbs || 200},
     "fat": ${macroTargets?.fat || 70},
-    "recommendations": ["Personalized nutrition advice"]
+    "recommendations": ["Goal-specific nutrition advice optimized for ${userConfig.targetMetric}"]
   },
-  "recoveryStrategies": "Age and goal-specific recovery protocols",
-  "progressionPlan": "How to progress toward specific goal",
-  "riskMitigation": "Age and experience-specific injury prevention"
+  "recoveryStrategies": "Recovery protocols optimized for goal achievement and timeline",
+  "progressionPlan": "Detailed progression strategy to achieve ${userConfig.targetMetric} by ${userConfig.goalDate}",
+  "riskMitigation": "Injury prevention strategies that protect goal achievement",
+  "keySuccessFactors": ["Critical factors for achieving ${userConfig.targetMetric}"],
+  "goalTracking": {
+    "weeklyMetrics": ["Metrics to track weekly progress toward goal"],
+    "milestoneChecks": ["Key checkpoints to ensure on-track progress"],
+    "adjustmentTriggers": ["Indicators that program needs modification"]
+  }
 }`;
           
           const response = await fetch('https://toolkit.rork.com/text/llm/', {
@@ -1646,6 +1714,21 @@ Return JSON with:
           const recoveryContext = getEssentialRecoveryData(data);
           const fitnessAssessment = getFitnessAssessment(userProfile, data);
           
+          // Calculate goal requirements and progress tracking
+          const goalRequirements = program.goalDate && program.targetMetric ? 
+            calculateGoalRequirements(program.type, program.targetMetric, program.goalDate, userProfile, weightHistory) : 
+            { daysUntilGoal: null, urgency: 'medium', feasible: true };
+          
+          // Calculate current program progress
+          const today = new Date();
+          const startDate = new Date(program.startDate);
+          const diffTime = Math.abs(today.getTime() - startDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const currentWeek = Math.floor(diffDays / 7) + 1;
+          
+          // Analyze program effectiveness so far
+          const programAnalysis = analyzeProgramEffectiveness(program, currentWeek, goalRequirements);
+          
           let prompt = "";
           
           if (request.specificWorkout) {
@@ -1658,7 +1741,7 @@ Return JSON with:
               newIntensity: safeUserInput(request.specificWorkout.newIntensity)
             };
             
-            prompt = `Update specific workout in ${program.name} program.
+            prompt = `Update specific workout in ${program.name} program while maintaining goal alignment.
 
 WORKOUT UPDATE:
 - Day: ${safeWorkoutData.day}
@@ -1667,73 +1750,107 @@ WORKOUT UPDATE:
 - New Description: ${safeWorkoutData.newDescription}
 - New Intensity: ${safeWorkoutData.newIntensity}
 
+GOAL CONTEXT:
+- Primary Goal: ${program.targetMetric || 'General fitness improvement'}
+- Goal Date: ${program.goalDate || 'Ongoing'}
+- Days Remaining: ${goalRequirements.daysUntilGoal || 'N/A'}
+- Goal Feasibility: ${goalRequirements.feasible ? 'On track' : 'Needs adjustment'}
+
 USER CONTEXT: ${userContext}
 RECOVERY: ${recoveryContext}
+PROGRAM PROGRESS: Week ${currentWeek}, ${programAnalysis.progressStatus}
 
-Validate this workout change and return JSON:
+CRITICAL REQUIREMENTS:
+1. Ensure workout change supports the primary goal: ${program.targetMetric || program.type}
+2. Maintain progression toward goal within timeline
+3. Consider user's current fitness level and recovery capacity
+4. Validate that intensity change aligns with goal requirements
+
+Return JSON:
 {
   "success": true,
-  "message": "Workout updated successfully",
+  "message": "Workout updated while maintaining goal alignment",
   "changes": ["Updated ${safeWorkoutData.day} workout from ${safeWorkoutData.originalTitle} to ${safeWorkoutData.newTitle}"],
-  "recommendations": ["This change aligns well with your fitness level"]
+  "recommendations": ["How this change supports your goal: ${program.targetMetric}"]
 }`;
           } else {
-            // Handle general program updates
-            const goalRequirements = program.goalDate && program.targetMetric ? 
-              calculateGoalRequirements(program.type, program.targetMetric, program.goalDate, userProfile, weightHistory) : 
-              { daysUntilGoal: null, urgency: 'medium' };
-            
-            prompt = `Personalize and update ${program.name} program based on user request.
+            // Handle general program updates with enhanced goal-focused logic
+            prompt = `Intelligently adapt ${program.name} program based on user request while maintaining goal focus.
 
 USER REQUEST: "${safeRequestText}"
 
-CURRENT PROGRAM:
-- Type: ${program.type}
-- Training Days: ${program.trainingDaysPerWeek}/week
+PRIMARY GOAL ANALYSIS:
 - Goal: ${program.targetMetric || 'General fitness'}
 - Goal Date: ${program.goalDate || 'Not set'}
-- Days Until Goal: ${goalRequirements.daysUntilGoal || 'Unknown'}
+- Days Remaining: ${goalRequirements.daysUntilGoal || 'Unknown'}
+- Timeline Urgency: ${goalRequirements.urgency}
+- Goal Feasibility: ${goalRequirements.feasible ? 'Achievable' : 'Needs timeline adjustment'}
+- Current Progress: Week ${currentWeek} of program
+
+GOAL-SPECIFIC REQUIREMENTS:
+${JSON.stringify(goalRequirements, null, 2)}
+
+CURRENT PROGRAM STATUS:
+- Type: ${program.type}
+- Training Days: ${program.trainingDaysPerWeek}/week
+- Experience Level: ${program.experienceLevel}
+- Program Analysis: ${programAnalysis.progressStatus}
+- Effectiveness: ${programAnalysis.effectiveness}
 
 USER PROFILE: ${userContext}
 FITNESS ASSESSMENT: ${fitnessAssessment}
 RECOVERY STATUS: ${recoveryContext}
 
-PERSONALIZATION REQUIREMENTS:
-1. Analyze user's specific request and adapt program accordingly
-2. Consider user's age (${userProfile.age}), experience level, and current fitness
-3. Account for recovery capacity and training history
-4. Ensure changes align with goal timeline and feasibility
-5. Maintain program structure while implementing requested changes
+INTELLIGENT ADAPTATION REQUIREMENTS:
+1. GOAL PRESERVATION: Any changes must support or enhance progress toward "${program.targetMetric}"
+2. TIMELINE AWARENESS: Consider ${goalRequirements.daysUntilGoal || 'ongoing'} days remaining
+3. PROGRESSIVE OVERLOAD: Maintain appropriate progression for goal achievement
+4. RECOVERY INTEGRATION: Factor in current recovery status (${recoveryContext})
+5. FEASIBILITY CHECK: Ensure changes are realistic given user's profile and timeline
+6. SMART ADJUSTMENTS: If request conflicts with goal, suggest alternatives that satisfy both
 
-Return comprehensive JSON with updated program structure:
+ADAPTATION STRATEGY:
+- If request supports goal: Implement fully with optimizations
+- If request conflicts with goal: Modify request to align with goal while addressing user's concern
+- If timeline is tight: Prioritize goal-critical activities
+- If timeline is flexible: Allow more user preference accommodation
+
+Return comprehensive JSON with goal-focused adaptations:
 {
   "success": true,
-  "message": "Program successfully personalized based on your request",
+  "message": "Program intelligently adapted to balance your request with goal achievement",
   "changes": [
-    "Specific change 1 based on user request",
-    "Specific change 2 with reasoning",
-    "Specific change 3 with benefits"
+    "Specific adaptation 1 with goal alignment reasoning",
+    "Specific adaptation 2 with timeline consideration",
+    "Specific adaptation 3 with user preference integration"
   ],
   "recommendations": [
-    "Why this change benefits the user",
-    "How to implement the changes effectively",
-    "Additional tips for success"
+    "How this adaptation enhances goal achievement",
+    "Timeline impact and mitigation strategies",
+    "Additional optimizations for success"
   ],
+  "goalImpactAnalysis": {
+    "timelineAdjustment": "How changes affect goal timeline",
+    "progressOptimization": "How changes improve goal progress",
+    "riskMitigation": "Potential risks and how they're addressed"
+  },
   "updatedProgram": {
     "trainingDaysPerWeek": ${program.trainingDaysPerWeek},
     "phases": [
       {
-        "name": "Personalized Phase 1",
+        "name": "Goal-Focused Phase 1",
         "duration": "4 weeks",
-        "focus": "Adaptation based on user request",
+        "focus": "Optimized for ${program.targetMetric} while incorporating user feedback",
+        "goalAlignment": "How this phase specifically supports the goal",
         "weeklyStructure": [
           {
             "day": "Monday",
-            "title": "Personalized Workout",
-            "description": "Detailed workout adapted to user's request and metrics",
-            "intensity": "Medium",
+            "title": "Goal-Optimized Workout",
+            "description": "Workout designed to maximize progress toward ${program.targetMetric}",
+            "intensity": "Calculated based on goal requirements and user capacity",
             "type": "cardio",
-            "personalizedNotes": "Why this workout fits user's specific needs"
+            "goalContribution": "How this workout specifically contributes to goal achievement",
+            "personalizedNotes": "Why this workout balances user request with goal optimization"
           }
         ]
       }
@@ -1743,8 +1860,12 @@ Return comprehensive JSON with updated program structure:
       "protein": ${program.nutritionPlan?.protein || 150},
       "carbs": ${program.nutritionPlan?.carbs || 200},
       "fat": ${program.nutritionPlan?.fat || 70},
-      "recommendations": ["Updated nutrition advice based on program changes"]
-    }
+      "recommendations": ["Goal-specific nutrition advice optimized for ${program.targetMetric}"]
+    },
+    "goalOptimizations": [
+      "Specific optimization 1 for goal achievement",
+      "Specific optimization 2 for timeline management"
+    ]
   }
 }`;
           }
