@@ -284,11 +284,19 @@ const getFitnessAssessment = (userProfile: UserProfile, data: WhoopData): string
 
 // Helper function to analyze program effectiveness and progress
 const analyzeProgramEffectiveness = (program: TrainingProgram, currentWeek: number, goalRequirements: any): { progressStatus: string; effectiveness: string } => {
-  const totalWeeks = program.aiPlan?.phases && Array.isArray(program.aiPlan.phases) ? 
-    program.aiPlan.phases.reduce((total: number, phase: any) => {
-      const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
-      return total + duration;
-    }, 0) : 12;
+  let totalWeeks = 12; // Default fallback
+  
+  try {
+    if (program.aiPlan?.phases && Array.isArray(program.aiPlan.phases) && program.aiPlan.phases.length > 0) {
+      totalWeeks = program.aiPlan.phases.reduce((total: number, phase: any) => {
+        const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+        return total + duration;
+      }, 0);
+    }
+  } catch (error) {
+    console.error('Error calculating total weeks:', error);
+    totalWeeks = 12;
+  }
   
   const progressPercentage = Math.min((currentWeek / totalWeeks) * 100, 100);
   
@@ -992,7 +1000,7 @@ RECOVERY STATUS: ${recoveryContext}
 STRAIN & RECOVERY ANALYSIS:
 - Current Recovery Score: ${data.recovery[0]?.score || 'Unknown'}%
 - HRV Status: ${data.recovery[0]?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
+- Sleep Quality: ${whoopData.sleep && whoopData.sleep.length > 0 ? whoopData.sleep[0]?.efficiency + '%' : 'Unknown'}
 - Recent Strain Pattern: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 - Recovery Capacity: ${data.recovery && data.recovery.length > 0 ? (data.recovery.slice(0, 7).reduce((sum, r) => sum + r.score, 0) / Math.min(7, data.recovery.length)).toFixed(1) : 'Unknown'}% avg
 
@@ -1094,7 +1102,7 @@ Return comprehensive JSON with goal-focused structure:
               }
               
               // Extract nutrition plan if available
-              if (planJson.nutritionPlan && typeof planJson.nutritionPlan === 'object') {
+              if (planJson && planJson.nutritionPlan && typeof planJson.nutritionPlan === 'object') {
                 const nutritionPlan: NutritionPlan = {
                   calories: planJson.nutritionPlan.calories || 0,
                   protein: planJson.nutritionPlan.protein || 0,
@@ -1116,7 +1124,7 @@ Return comprehensive JSON with goal-focused structure:
                     }
                   });
                 }
-              } else if (macroTargets) {
+              } else if (macroTargets && planJson) {
                 planJson.nutritionPlan = {
                   calories: macroTargets.calories,
                   protein: macroTargets.protein,
@@ -1124,17 +1132,38 @@ Return comprehensive JSON with goal-focused structure:
                   fat: macroTargets.fat,
                   recommendations: generateNutritionRecommendations(programType, userProfile.fitnessGoal)
                 };
+              } else if (planJson) {
+                // Fallback nutrition plan
+                planJson.nutritionPlan = {
+                  calories: 2000,
+                  protein: 150,
+                  carbs: 200,
+                  fat: 70,
+                  recommendations: generateNutritionRecommendations(programType, userProfile.fitnessGoal)
+                };
               }
               
               // Add goal requirements to the plan for reference
-              planJson.goalRequirements = goalRequirements;
-              planJson.userMetrics = {
-                age: userProfile.age,
-                weight: userProfile.weight,
-                height: userProfile.height,
-                activityLevel: userProfile.activityLevel,
-                fitnessGoal: userProfile.fitnessGoal
-              };
+              if (planJson) {
+                planJson.goalRequirements = goalRequirements;
+                planJson.userMetrics = {
+                  age: userProfile.age,
+                  weight: userProfile.weight,
+                  height: userProfile.height,
+                  activityLevel: userProfile.activityLevel,
+                  fitnessGoal: userProfile.fitnessGoal
+                };
+                
+                // Ensure phases array exists and is valid
+                if (!planJson.phases || !Array.isArray(planJson.phases)) {
+                  planJson.phases = [{
+                    name: "Foundation Phase",
+                    duration: "4 weeks",
+                    focus: "Building base fitness",
+                    weeklyStructure: []
+                  }];
+                }
+              }
               
               set({ isLoading: false });
               return planJson;
@@ -1783,7 +1812,7 @@ Return comprehensive JSON with goal-focused structure:
           set({ isLoading: true });
           
           const { activePrograms, data, userProfile, weightHistory } = get();
-          const whoopData: WhoopData = data;
+          const whoopData: WhoopData = data || emptyWhoopData;
           const program = activePrograms.find(p => p.id === request.programId);
           
           if (!program) {
@@ -1794,13 +1823,13 @@ Return comprehensive JSON with goal-focused structure:
             };
           }
           
-          const latestRecovery = data.recovery[0] || null;
+          const latestRecovery = (whoopData.recovery && whoopData.recovery.length > 0) ? whoopData.recovery[0] : null;
           const safeRequestText = safeUserInput(request.requestText);
           
           // Enhanced user context for better personalization
           const userContext = getComprehensiveUserContext(userProfile, weightHistory);
-          const recoveryContext = getEssentialRecoveryData(data);
-          const fitnessAssessment = getFitnessAssessment(userProfile, data);
+          const recoveryContext = getEssentialRecoveryData(whoopData);
+          const fitnessAssessment = getFitnessAssessment(userProfile, whoopData);
           
           // Calculate goal requirements and progress tracking
           const goalRequirements = program.goalDate && program.targetMetric ? 
@@ -1862,8 +1891,8 @@ Return JSON:
   "recommendations": ["How this change supports your goal: ${program.targetMetric}"]
 }`;
           } else {
-            // Handle general program updates with enhanced goal-focused logic and balanced implementation
-            prompt = `IMPLEMENT the user's request while optimizing for goal achievement and providing recovery guidance when needed.
+            // Handle general program updates with advisory approach - implement user requests while providing recovery guidance
+            prompt = `IMPLEMENT the user's request while providing advisory guidance for optimal performance and recovery.
 
 USER REQUEST: "${safeRequestText}"
 
@@ -1874,9 +1903,6 @@ PRIMARY GOAL ANALYSIS:
 - Timeline Urgency: ${goalRequirements.urgency}
 - Goal Feasibility: ${goalRequirements.feasible ? 'Achievable' : 'Needs timeline adjustment'}
 - Current Progress: Week ${currentWeek} of program
-
-GOAL-SPECIFIC REQUIREMENTS:
-${JSON.stringify(goalRequirements, null, 2)}
 
 CURRENT PROGRAM STATUS:
 - Type: ${program.type}
@@ -1892,156 +1918,113 @@ RECOVERY STATUS: ${recoveryContext}
 RECOVERY CONTEXT FOR OPTIMIZATION:
 - Current Recovery Score: ${latestRecovery?.score || 'Unknown'}%
 - HRV Status: ${latestRecovery?.hrvMs || 'Unknown'}ms
-- Sleep Quality: ${data.sleep && data.sleep.length > 0 ? data.sleep[0]?.efficiency + '%' : 'Unknown'}
-- Recent Strain Trend: ${data.strain && data.strain.length > 0 ? data.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
+- Sleep Quality: ${whoopData.sleep && whoopData.sleep.length > 0 ? whoopData.sleep[0]?.efficiency + '%' : 'Unknown'}
+- Recent Strain Trend: ${whoopData.strain && whoopData.strain.length > 0 ? whoopData.strain.slice(0, 7).map(s => s.score).join(', ') : 'No data'}
 
-IMPLEMENTATION REQUIREMENTS:
-1. ALWAYS IMPLEMENT the user's request - do not avoid or minimize their request
-2. ADAPT the program to include what they asked for while maintaining goal focus
-3. PROVIDE recovery optimization guidance when strain increases
-4. BALANCE user preferences with goal achievement
-5. ENHANCE rather than restrict their training desires
+IMPLEMENTATION APPROACH:
+1. ALWAYS IMPLEMENT what the user requested - add it to their program
+2. MAINTAIN the core program structure and goal-focused workouts
+3. PROVIDE advisory guidance on recovery optimization when strain increases
+4. OFFER recommendations rather than restrictions
+5. ENHANCE performance through strategic integration
 
-${(program.type === 'marathon' || program.type === 'half-marathon') && goalRequirements.baseWeeklyMileage ? `
-RUNNING-SPECIFIC REQUIREMENTS:
-- Base Weekly Mileage: ${goalRequirements.baseWeeklyMileage} miles
-- Peak Weekly Mileage: ${goalRequirements.peakWeeklyMileage} miles
-- Goal Pace: ${goalRequirements.goalPaceMinPerMile} min/mile
-- Easy Pace: ${goalRequirements.easyPaceMinPerMile} min/mile
-- Tempo Pace: ${goalRequirements.tempoPaceMinPerMile} min/mile
-- Interval Pace: ${goalRequirements.intervalPaceMinPerMile} min/mile
-- Training Weeks: ${goalRequirements.totalTrainingWeeks} (${goalRequirements.buildWeeks} build + ${goalRequirements.taperWeeks} taper)
+ADVISORY FRAMEWORK:
+- When user requests increase training load: IMPLEMENT it AND provide recovery strategies
+- When strain may exceed capacity: IMPLEMENT it AND advise on optimization protocols
+- Focus on "how to succeed with this change" rather than "why you shouldn't do this"
+- Provide specific actionable advice for managing increased demands
 
-MILEAGE PROGRESSION REQUIREMENTS:
-- Week ${currentWeek} should be approximately ${Math.round(goalRequirements.baseWeeklyMileage + (goalRequirements.peakWeeklyMileage - goalRequirements.baseWeeklyMileage) * Math.min(currentWeek / goalRequirements.buildWeeks, 1))} miles total
-- Long run should be 20-25% of weekly mileage
-- Easy runs should be 60-70% of weekly mileage
-- Tempo/interval work should be 10-15% of weekly mileage
-- Include specific mileage for each workout (e.g., "6 miles at easy pace", "4 x 1 mile at tempo pace")
-` : ''}
-
-IMPLEMENTATION STRATEGY:
-1. IMPLEMENT USER REQUEST: Always incorporate what the user asked for into the program
-2. GOAL ALIGNMENT: Ensure the implementation supports progress toward "${program.targetMetric}"
-3. TIMELINE OPTIMIZATION: Structure implementation to work within ${goalRequirements.daysUntilGoal || 'ongoing'} days remaining
-4. PROGRESSIVE INTEGRATION: Add user requests in a way that builds on current progress
-5. RECOVERY SUPPORT: When adding strain, provide specific recovery protocols to handle it
-6. SMART SCHEDULING: Distribute new training elements optimally throughout the week
-7. PERFORMANCE ENHANCEMENT: Use user requests to accelerate goal achievement
-
-BALANCED IMPLEMENTATION APPROACH:
-- ALWAYS add what the user requested (e.g., if they want strength training, add it)
-- OPTIMIZE placement and intensity based on recovery capacity
-- PROVIDE specific recovery protocols to support increased training load
-- ENHANCE goal progress by integrating user preferences strategically
-- MONITOR and adjust based on response, but implement first
-
-RECOVERY OPTIMIZATION FRAMEWORK:
-When strain increases beyond current capacity, provide:
-1. SLEEP OPTIMIZATION: Exact hours needed, sleep hygiene recommendations
-2. NUTRITION REQUIREMENTS: Precise calorie and macro targets for recovery
-3. HYDRATION PROTOCOL: Daily water intake and electrolyte needs
-4. STRESS MANAGEMENT: Specific techniques to improve HRV and recovery
-5. ACTIVE RECOVERY: Low-intensity activities to enhance circulation
-6. MONITORING METRICS: Key indicators to track recovery adequacy
-
-Return comprehensive JSON with user request implementation and recovery optimization:
+Return JSON with implementation and advisory guidance:
 {
   "success": true,
-  "message": "Successfully implemented your request and optimized the program for enhanced goal achievement",
+  "message": "Successfully implemented your request with optimization strategies for peak performance",
   "changes": [
     "IMPLEMENTED: [Specific implementation of user request]",
-    "OPTIMIZED: [How implementation was optimized for goal]", 
-    "ENHANCED: [Additional improvements made to support both request and goal]"
+    "INTEGRATED: [How it was added to existing program structure]", 
+    "OPTIMIZED: [Strategic placement and timing of new elements]"
   ],
   "recommendations": [
-    "How this implementation accelerates goal achievement",
-    "Recovery strategies to support the increased training load",
-    "Performance optimizations for maximum results"
+    "Performance strategies to maximize results from this change",
+    "Recovery protocols to support the enhanced training load",
+    "Monitoring guidelines to ensure sustainable progress"
   ],
-  "strainAnalysis": {
-    "currentStrainLoad": "Assessment of current training stress",
-    "proposedStrainIncrease": "How much additional strain the changes will add",
-    "recoveryCapacityMatch": "Whether current recovery can handle the increased strain",
-    "riskAssessment": "Low/Medium/High risk of overreaching or injury",
-    "strainOptimization": "Specific adjustments to optimize strain-recovery balance"
-  },
-  "recoveryOptimization": {
-    "sleepRequirements": {
-      "hoursNeeded": "Exact sleep duration needed for recovery (e.g., 8.5 hours)",
-      "sleepQualityTargets": "Sleep efficiency and deep sleep targets",
-      "sleepHygiene": ["Specific sleep optimization recommendations"]
+  "advisoryGuidance": {
+    "strainManagement": {
+      "expectedIncrease": "Moderate increase in weekly training stress",
+      "managementStrategy": "Strategic recovery protocols to handle increased load",
+      "monitoringAdvice": "Key metrics to track for optimal adaptation"
     },
-    "nutritionRequirements": {
-      "dailyCalories": "Exact calorie needs for recovery and performance",
-      "proteinTarget": "Protein grams needed for muscle recovery",
-      "carbTarget": "Carb grams needed for glycogen replenishment", 
-      "hydrationTarget": "Daily water intake in liters",
-      "micronutrients": ["Key vitamins/minerals for recovery"],
-      "mealTiming": ["Pre/post workout nutrition timing"]
+    "recoveryOptimization": {
+      "sleepGuidance": {
+        "targetHours": "8-9 hours for enhanced recovery",
+        "qualityTips": ["Sleep hygiene recommendations for better recovery"],
+        "timing": "Consistent sleep schedule to support adaptation"
+      },
+      "nutritionGuidance": {
+        "calorieAdjustment": "Increase by 200-300 calories on high-intensity days",
+        "proteinTarget": "1.8-2.2g per kg body weight for muscle recovery",
+        "hydrationTarget": "3-4 liters daily, more on training days",
+        "timingAdvice": ["Pre/post workout nutrition strategies"]
+      },
+      "activeRecovery": [
+        "Light movement on rest days (walking, yoga)",
+        "Foam rolling and stretching protocols",
+        "Stress management techniques for HRV optimization"
+      ]
     },
-    "recoveryProtocols": [
-      "Specific recovery techniques (massage, stretching, etc.)",
-      "Active recovery activities and duration",
-      "Stress management techniques for HRV improvement"
-    ],
-    "monitoringMetrics": [
-      "Key recovery indicators to track daily",
-      "Warning signs that indicate need for rest",
-      "Target ranges for recovery scores"
+    "performanceOptimization": [
+      "How to maximize benefits from the new training elements",
+      "Progressive overload strategies for continued adaptation",
+      "Signs of positive adaptation vs. overreaching"
     ]
-  },
-  "goalImpactAnalysis": {
-    "timelineAdjustment": "How changes affect goal timeline",
-    "progressOptimization": "How changes improve goal progress", 
-    "riskMitigation": "Potential risks and how they're addressed",
-    "sustainabilityAssessment": "Long-term viability of the training approach"
   },
   "updatedProgram": {
     "trainingDaysPerWeek": ${program.trainingDaysPerWeek},
     "phases": [
       {
-        "name": "Goal-Focused Phase 1",
+        "name": "Enhanced ${program.type} Phase",
         "duration": "4 weeks",
-        "focus": "Optimized for ${program.targetMetric} while incorporating user feedback",
-        "goalAlignment": "How this phase specifically supports the goal",
+        "focus": "Incorporating user request while maintaining goal progression",
         "weeklyStructure": [
           {
             "day": "Monday",
-            "title": "Goal-Optimized Workout",
-            "description": "Workout designed to maximize progress toward ${program.targetMetric}",
-            "intensity": "Calculated based on goal requirements and user capacity",
+            "title": "Goal-Focused Workout",
+            "description": "Core workout maintaining program structure",
+            "intensity": "Medium-High",
             "type": "cardio",
-            "goalContribution": "How this workout specifically contributes to goal achievement",
-            "personalizedNotes": "Why this workout balances user request with goal optimization"
+            "goalContribution": "Primary driver of goal achievement"
+          },
+          {
+            "day": "Tuesday", 
+            "title": "User-Requested Addition",
+            "description": "Implementation of user's specific request",
+            "intensity": "Medium",
+            "type": "strength",
+            "goalContribution": "Supports overall fitness and user preferences"
           }
         ]
       }
     ],
     "nutritionPlan": {
-      "calories": ${program.nutritionPlan?.calories || 2000},
-      "protein": ${program.nutritionPlan?.protein || 150},
-      "carbs": ${program.nutritionPlan?.carbs || 200},
+      "calories": ${Math.round((program.nutritionPlan?.calories || 2000) * 1.1)},
+      "protein": ${Math.round((program.nutritionPlan?.protein || 150) * 1.1)},
+      "carbs": ${Math.round((program.nutritionPlan?.carbs || 200) * 1.1)},
       "fat": ${program.nutritionPlan?.fat || 70},
-      "recommendations": ["Goal-specific nutrition advice optimized for ${program.targetMetric}"]
-    },
-    "goalOptimizations": [
-      "Specific optimization 1 for goal achievement",
-      "Specific optimization 2 for timeline management"
-    ],
-    "strainManagement": {
-      "weeklyStrainTargets": "Optimal strain distribution across the week",
-      "recoveryDays": "Specific days designated for recovery",
-      "strainProgression": "How strain will increase over time",
-      "adaptationTriggers": "Metrics that indicate need for program adjustment"
+      "recommendations": ["Increased nutrition to support enhanced training load"]
     }
   },
-  "warningFlags": {
-    "overreachingRisk": "Assessment of overtraining risk with current changes",
-    "recoveryDeficit": "Whether current recovery is insufficient for proposed strain",
-    "injuryRisk": "Specific injury risks and prevention strategies",
-    "performanceImpact": "How strain-recovery imbalance might affect goal performance"
-  }
+  "successMetrics": [
+    "Energy levels remain stable or improve",
+    "Recovery scores stay within normal range (above 60%)",
+    "Progressive improvement in goal-specific metrics",
+    "Sustainable motivation and enjoyment of training"
+  ],
+  "warningSignsToMonitor": [
+    "Persistent fatigue or declining performance",
+    "Recovery scores consistently below 50%",
+    "Loss of motivation or training enjoyment",
+    "Increased injury risk indicators"
+  ]
 }`;
           }
           
@@ -2054,7 +2037,7 @@ Return comprehensive JSON with user request implementation and recovery optimiza
               messages: [
                 {
                   role: 'system',
-                  content: "You are an expert AI fitness coach specializing in program personalization and implementation. Your primary directive is to IMPLEMENT user requests while optimizing for goal achievement and providing recovery support. You MUST: 1) Always implement what the user asks for (e.g., if they want strength training, add it to the program), 2) Optimize the implementation to support their main fitness goal, 3) Provide specific recovery protocols when training load increases, 4) Enhance goal progress through strategic integration of user preferences. Never avoid or minimize user requests - implement them intelligently. Always return valid JSON only."
+                  content: "You are an expert AI fitness coach specializing in program enhancement and performance optimization. Your approach is IMPLEMENTATION-FOCUSED with ADVISORY GUIDANCE. Core principles: 1) ALWAYS implement what the user requests - add it to their program, 2) MAINTAIN the core program structure and goal focus, 3) PROVIDE advisory guidance on how to succeed with increased demands, 4) OFFER recovery optimization strategies rather than restrictions, 5) Focus on 'how to make this work' rather than 'why this might be too much'. Your role is to help users achieve their goals while managing any increased training demands through smart recovery and nutrition strategies. Always return valid JSON only."
                 },
                 {
                   role: 'user',
@@ -2142,48 +2125,97 @@ Return comprehensive JSON with user request implementation and recovery optimiza
                   updateHistory: [...(program.updateHistory || []), update]
                 };
                 
-                // Apply program updates if provided
+                // Apply program updates if provided - focus on additions rather than replacements
                 if (feedbackJson.updatedProgram) {
                   const updates = feedbackJson.updatedProgram;
                   
-                  // Update training days per week
+                  // Only update training days if it's a reasonable increase (max +2 days)
                   if (updates.trainingDaysPerWeek && typeof updates.trainingDaysPerWeek === 'number') {
-                    updatedProgram.trainingDaysPerWeek = updates.trainingDaysPerWeek;
+                    const currentDays = updatedProgram.trainingDaysPerWeek;
+                    const newDays = updates.trainingDaysPerWeek;
+                    if (newDays <= currentDays + 2 && newDays <= 7) {
+                      updatedProgram.trainingDaysPerWeek = newDays;
+                    }
                   }
                   
-                  // Update AI plan phases
-                  if (updates.phases && Array.isArray(updates.phases)) {
+                  // Enhance existing phases rather than replacing them entirely
+                  if (updates.phases && Array.isArray(updates.phases) && updatedProgram.aiPlan?.phases) {
+                    // Merge new workouts into existing structure rather than replacing
+                    const enhancedPhases = updatedProgram.aiPlan.phases.map((existingPhase: any, index: number) => {
+                      const newPhase = updates.phases[index];
+                      if (newPhase && newPhase.weeklyStructure) {
+                        // Add new workouts to existing structure
+                        const enhancedWeeklyStructure = [...(existingPhase.weeklyStructure || [])];
+                        
+                        // Add new workouts that don't conflict with existing ones
+                        newPhase.weeklyStructure.forEach((newWorkout: any) => {
+                          const existingWorkoutIndex = enhancedWeeklyStructure.findIndex(
+                            (existing: any) => existing.day === newWorkout.day
+                          );
+                          
+                          if (existingWorkoutIndex === -1) {
+                            // Add new workout if day is free
+                            enhancedWeeklyStructure.push(newWorkout);
+                          } else if (newWorkout.title !== enhancedWeeklyStructure[existingWorkoutIndex].title) {
+                            // Add as secondary workout or modify existing
+                            enhancedWeeklyStructure[existingWorkoutIndex] = {
+                              ...enhancedWeeklyStructure[existingWorkoutIndex],
+                              description: `${enhancedWeeklyStructure[existingWorkoutIndex].description} + ${newWorkout.description}`,
+                              personalizedNotes: `Enhanced with: ${newWorkout.title}`
+                            };
+                          }
+                        });
+                        
+                        return {
+                          ...existingPhase,
+                          weeklyStructure: enhancedWeeklyStructure,
+                          focus: `${existingPhase.focus} + ${newPhase.focus || 'user enhancements'}`
+                        };
+                      }
+                      return existingPhase;
+                    });
+                    
                     updatedProgram.aiPlan = {
                       ...updatedProgram.aiPlan,
-                      phases: updates.phases,
-                      programOverview: `Personalized program updated based on: "${safeRequestText}"`,
+                      phases: enhancedPhases,
+                      programOverview: `${updatedProgram.aiPlan.programOverview} Enhanced based on: "${safeRequestText}"`,
                       lastUpdated: new Date().toISOString()
                     };
                   }
                   
-                  // Update nutrition plan
-                  if (updates.nutritionPlan) {
-                    updatedProgram.nutritionPlan = {
-                      ...updatedProgram.nutritionPlan,
-                      ...updates.nutritionPlan
+                  // Update nutrition plan with moderate increases to support additional training
+                  if (updates.nutritionPlan && updatedProgram.nutritionPlan) {
+                    const currentNutrition = updatedProgram.nutritionPlan;
+                    const updatedNutrition = {
+                      calories: Math.min(updates.nutritionPlan.calories || currentNutrition.calories, currentNutrition.calories * 1.2),
+                      protein: Math.min(updates.nutritionPlan.protein || currentNutrition.protein, currentNutrition.protein * 1.3),
+                      carbs: Math.min(updates.nutritionPlan.carbs || currentNutrition.carbs, currentNutrition.carbs * 1.2),
+                      fat: updates.nutritionPlan.fat || currentNutrition.fat,
+                      recommendations: [
+                        ...(currentNutrition.recommendations || []),
+                        ...(updates.nutritionPlan.recommendations || [])
+                      ]
                     };
                     
-                    // Update global macro targets to match the program's nutrition plan
+                    updatedProgram.nutritionPlan = updatedNutrition;
+                    
+                    // Update global macro targets with moderate increases
                     const newMacroTargets: MacroTargets = {
-                      calories: updates.nutritionPlan.calories || updatedProgram.nutritionPlan?.calories || 2000,
-                      protein: updates.nutritionPlan.protein || updatedProgram.nutritionPlan?.protein || 150,
-                      carbs: updates.nutritionPlan.carbs || updatedProgram.nutritionPlan?.carbs || 200,
-                      fat: updates.nutritionPlan.fat || updatedProgram.nutritionPlan?.fat || 70,
+                      calories: updatedNutrition.calories,
+                      protein: updatedNutrition.protein,
+                      carbs: updatedNutrition.carbs,
+                      fat: updatedNutrition.fat,
                       calculatedAt: new Date()
                     };
                     
                     set({ macroTargets: newMacroTargets });
-                    console.log('Updated macro targets based on program changes:', newMacroTargets);
+                    console.log('Updated macro targets with moderate increases:', newMacroTargets);
                   }
                   
-                  // Update strength training config if provided
+                  // Add strength training config if provided
                   if (updates.strengthTraining) {
                     updatedProgram.strengthTraining = {
+                      enabled: true,
                       ...updatedProgram.strengthTraining,
                       ...updates.strengthTraining
                     };
