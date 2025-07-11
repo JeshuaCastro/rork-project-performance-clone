@@ -973,7 +973,7 @@ export default function ProgramsScreen() {
                     >
                       <View style={styles.sectionHeaderLeft}>
                         <Dumbbell size={20} color={colors.primary} />
-                        <Text style={styles.sectionTitle}>Strength Training</Text>
+                        <Text style={styles.sectionHeaderTitle}>Strength Training</Text>
                       </View>
                       <View style={styles.sectionHeaderRight}>
                         <Switch
@@ -1063,7 +1063,7 @@ export default function ProgramsScreen() {
                     >
                       <View style={styles.sectionHeaderLeft}>
                         <Utensils size={20} color={colors.primary} />
-                        <Text style={styles.sectionTitle}>Nutrition Preferences</Text>
+                        <Text style={styles.sectionHeaderTitle}>Nutrition Preferences</Text>
                       </View>
                       <View style={styles.sectionHeaderRight}>
                         {nutritionSectionExpanded ? 
@@ -1742,7 +1742,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  sectionTitle: {
+  sectionHeaderTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
