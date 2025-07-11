@@ -463,6 +463,13 @@ export default function ProgramsScreen() {
     setAiGeneratingPlan(true);
     
     try {
+      console.log('Generating program with config:', {
+        programType: selectedProgram.type,
+        strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+        nutritionPreferences: nutritionPreferences,
+        programConfig
+      });
+      
       // Generate AI-tailored program with strength training and nutrition preferences
       const aiPlan = await generatePersonalizedTrainingPlan(
         selectedProgram.type, 
@@ -475,6 +482,21 @@ export default function ProgramsScreen() {
       
       setAiPlanResult(aiPlan);
       
+      console.log('AI Plan generated:', aiPlan);
+      
+      // Validate strength training integration
+      if (strengthTraining.enabled && aiPlan?.phases) {
+        const strengthWorkouts = aiPlan.phases.flatMap((phase: any) => 
+          phase.weeklyStructure?.filter((w: any) => w.type === 'strength') || []
+        );
+        console.log(`Strength training requested: ${strengthTraining.daysPerWeek} days/week`);
+        console.log(`Strength workouts found in AI plan: ${strengthWorkouts.length}`);
+        
+        if (strengthWorkouts.length === 0) {
+          console.warn('No strength training workouts found in AI plan despite being requested!');
+        }
+      }
+      
       // Create the program with AI-generated plan
       const newProgram: Omit<TrainingProgram, 'id' | 'startDate' | 'active'> = {
         name: selectedProgram.name,
@@ -485,7 +507,7 @@ export default function ProgramsScreen() {
         experienceLevel: programConfig.experienceLevel as 'beginner' | 'intermediate' | 'advanced',
         strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
         nutritionPreferences: nutritionPreferences,
-        nutritionPlan: aiPlan.nutritionPlan,
+        nutritionPlan: aiPlan?.nutritionPlan,
         aiPlan: aiPlan
       };
       
@@ -493,9 +515,15 @@ export default function ProgramsScreen() {
       setModalVisible(false);
       setAiGeneratingPlan(false);
       
+      // Show success message with strength training confirmation
+      let successMessage = `Your personalized ${selectedProgram.name} program has been created based on your profile data and goals.`;
+      if (strengthTraining.enabled) {
+        successMessage += ` Strength training (${strengthTraining.daysPerWeek} days/week) has been integrated into your program.`;
+      }
+      
       Alert.alert(
         "Program Created",
-        `Your personalized ${selectedProgram.name} program has been created based on your profile data and goals.`,
+        successMessage,
         [{ text: "Great!" }]
       );
       
@@ -506,9 +534,14 @@ export default function ProgramsScreen() {
       console.error('Error generating AI plan:', error);
       setAiGeneratingPlan(false);
       
+      let errorMessage = "There was an error creating your personalized program. Please try again.";
+      if (strengthTraining.enabled) {
+        errorMessage += " If the issue persists, try creating the program without strength training first, then add it later through program customization.";
+      }
+      
       Alert.alert(
         "Error Creating Program",
-        "There was an error creating your personalized program. Please try again.",
+        errorMessage,
         [{ text: "OK" }]
       );
     }
@@ -1164,7 +1197,7 @@ export default function ProgramsScreen() {
                     <Text style={styles.aiInfoText}>
                       Our AI coach will analyze your profile data and create a completely personalized 
                       training program based on your current fitness level, body metrics, and goals.
-                      {strengthTraining.enabled ? " Strength training will be integrated into your program." : ""}
+                      {strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split} split) will be integrated into your program.` : ""}
                       {" A personalized nutrition plan will be created to support your goals."}
                     </Text>
                   </View>

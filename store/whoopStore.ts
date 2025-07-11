@@ -1013,6 +1013,12 @@ export const useWhoopStore = create<WhoopStore>()(
         try {
           set({ isLoading: true });
           
+          console.log('Starting AI plan generation with config:', {
+            programType,
+            strengthTraining: userConfig.strengthTraining,
+            trainingDaysPerWeek: userConfig.trainingDaysPerWeek
+          });
+          
           const { data, userProfile, macroTargets, weightHistory } = get();
           
           // Enhanced user context with comprehensive metrics
@@ -1055,8 +1061,44 @@ STRAIN & RECOVERY ANALYSIS:
 TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
 - Training days: ${userConfig.trainingDaysPerWeek}/week
-- Strength training: ${userConfig.strengthTraining?.enabled ? 'Yes' : 'No'}
+- Strength training: ${userConfig.strengthTraining?.enabled ? 'Yes - ' + userConfig.strengthTraining.daysPerWeek + ' days/week, ' + userConfig.strengthTraining.split + ' split' : 'No'}
 - Nutrition goal: ${userConfig.nutritionPreferences?.goal || 'maintain'}
+
+STRENGTH TRAINING INTEGRATION REQUIREMENTS:
+${userConfig.strengthTraining?.enabled ? `
+MANDATORY: User has specifically requested strength training integration with the following requirements:
+- Strength Training Days: ${userConfig.strengthTraining.daysPerWeek} days per week
+- Training Split: ${userConfig.strengthTraining.split}
+- Focus Areas: ${userConfig.strengthTraining.focusAreas?.join(', ') || 'General strength development'}
+
+CRITICAL STRENGTH TRAINING IMPLEMENTATION RULES:
+1. MUST include exactly ${userConfig.strengthTraining.daysPerWeek} strength training sessions per week
+2. MUST use the ${userConfig.strengthTraining.split} training split approach
+3. MUST create separate workout entries for each strength training session
+4. MUST balance strength training with the primary ${programType} goal
+5. MUST distribute strength training sessions throughout the week for optimal recovery
+6. MUST ensure strength training complements rather than interferes with primary goal workouts
+
+STRENGTH TRAINING SPLIT IMPLEMENTATION:
+${userConfig.strengthTraining.split === 'fullBody' ? '- Each strength session should target all major muscle groups\n- Focus on compound movements (squat, deadlift, bench press, rows)\n- 6-8 exercises per session covering upper and lower body' : ''}
+${userConfig.strengthTraining.split === 'upperLower' ? '- Alternate between upper body and lower body focused sessions\n- Upper: chest, back, shoulders, arms\n- Lower: quads, hamstrings, glutes, calves, core' : ''}
+${userConfig.strengthTraining.split === 'pushPullLegs' ? '- Push: chest, shoulders, triceps\n- Pull: back, biceps\n- Legs: quads, hamstrings, glutes, calves' : ''}
+${userConfig.strengthTraining.split === 'bodyPart' ? '- Focus on 1-2 muscle groups per session\n- Allow for higher volume per muscle group\n- Ensure each muscle group is trained 1-2x per week' : ''}
+
+EXAMPLE STRENGTH TRAINING INTEGRATION:
+If primary program has 4 cardio days and user wants 3 strength days:
+- Monday: Primary cardio workout (separate entry)
+- Monday: Upper body strength training (separate entry) 
+- Tuesday: Primary cardio workout (separate entry)
+- Wednesday: Lower body strength training (separate entry)
+- Thursday: Primary cardio workout (separate entry)
+- Friday: Full body strength training (separate entry)
+- Saturday: Primary cardio workout (separate entry)
+- Sunday: Rest day
+
+NEVER combine strength and cardio into single workout descriptions like "run + strength training"
+ALWAYS create separate, distinct workout entries for each type
+` : 'User has not requested strength training integration.'}
 
 CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 1. ABSOLUTE RULE: Each workout entry must have EXACTLY ONE type: "cardio", "strength", or "recovery"
@@ -1065,6 +1107,8 @@ CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 4. NO MIXED LANGUAGE: Never use phrases like "run + strength", "cardio followed by weights", "easy run + workout", etc.
 5. DISTINCT TITLES: Each workout must have a title specific to its single type
 6. MANDATORY SEPARATION: Always create separate entries - NEVER combine different exercise types in one workout
+7. STRENGTH TRAINING INTEGRATION: If user requested strength training, MUST include the exact number of strength sessions requested
+8. BALANCED SCHEDULING: Distribute strength and cardio sessions throughout the week for optimal recovery
 
 EXAMPLES OF CORRECT STRUCTURE:
 ✅ CORRECT - Two separate workouts for one day:
@@ -1079,6 +1123,34 @@ EXAMPLES OF CORRECT STRUCTURE:
     "day": "Monday", 
     "title": "Evening Upper Body Strength",
     "description": "Upper body strength training focusing on chest, shoulders, and arms",
+    "type": "strength"
+  }
+]
+
+✅ CORRECT - Strength training integration example (if user wants 3 strength days):
+[
+  {
+    "day": "Monday",
+    "title": "Tempo Run",
+    "description": "20-minute tempo run at comfortably hard pace",
+    "type": "cardio"
+  },
+  {
+    "day": "Monday",
+    "title": "Upper Body Strength",
+    "description": "Upper body strength training: bench press, rows, overhead press",
+    "type": "strength"
+  },
+  {
+    "day": "Wednesday",
+    "title": "Lower Body Strength",
+    "description": "Lower body strength training: squats, deadlifts, lunges",
+    "type": "strength"
+  },
+  {
+    "day": "Friday",
+    "title": "Full Body Strength",
+    "description": "Full body strength training with compound movements",
     "type": "strength"
   }
 ]
@@ -1212,11 +1284,15 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                 throw new Error('Invalid plan JSON structure');
               }
               
-              // Post-process to ensure workout separation
+              // Post-process to ensure workout separation and strength training integration
               if (planJson.phases && Array.isArray(planJson.phases)) {
                 planJson.phases = planJson.phases.map((phase: any) => {
                   if (phase.weeklyStructure && Array.isArray(phase.weeklyStructure)) {
                     const separatedWorkouts: any[] = [];
+                    
+                    // Track if we have enough strength training sessions
+                    const requiredStrengthSessions = userConfig.strengthTraining?.enabled ? userConfig.strengthTraining.daysPerWeek : 0;
+                    let strengthSessionsFound = 0;
                     
                     phase.weeklyStructure.forEach((workout: any) => {
                       // Check if workout contains combined activities
@@ -1263,6 +1339,7 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                             description: extractStrengthDescription(workout.description) || 'Strength training session',
                             type: 'strength'
                           });
+                          strengthSessionsFound++;
                         }
                         
                         // If neither cardio nor strength detected, keep as is but log warning
@@ -1273,10 +1350,47 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                       } else {
                         // Keep workout as is if it's already properly separated
                         separatedWorkouts.push(workout);
+                        
+                        // Count existing strength sessions
+                        if (workout.type === 'strength') {
+                          strengthSessionsFound++;
+                        }
                       }
                     });
                     
+                    // If strength training was requested but not enough sessions were created, add them
+                    if (requiredStrengthSessions > 0 && strengthSessionsFound < requiredStrengthSessions) {
+                      const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                      const usedDays = new Set(separatedWorkouts.map(w => w.day));
+                      const availableDays = daysOfWeek.filter(day => !usedDays.has(day));
+                      
+                      const sessionsToAdd = requiredStrengthSessions - strengthSessionsFound;
+                      console.log(`Adding ${sessionsToAdd} missing strength training sessions`);
+                      
+                      for (let i = 0; i < sessionsToAdd && i < availableDays.length; i++) {
+                        const day = availableDays[i];
+                        const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining);
+                        separatedWorkouts.push(strengthWorkout);
+                      }
+                      
+                      // If we still need more sessions and no available days, add to existing days
+                      if (sessionsToAdd > availableDays.length) {
+                        const remainingSessions = sessionsToAdd - availableDays.length;
+                        for (let i = 0; i < remainingSessions; i++) {
+                          const day = daysOfWeek[i % daysOfWeek.length];
+                          const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining, true);
+                          separatedWorkouts.push(strengthWorkout);
+                        }
+                      }
+                    }
+                    
                     phase.weeklyStructure = separatedWorkouts;
+                    
+                    // Final validation: ensure we have the required number of strength sessions
+                    const finalStrengthCount = separatedWorkouts.filter(w => w.type === 'strength').length;
+                    if (requiredStrengthSessions > 0) {
+                      console.log(`Phase "${phase.name}": Required ${requiredStrengthSessions} strength sessions, found ${finalStrengthCount}`);
+                    }
                   }
                   return phase;
                 });
@@ -1360,6 +1474,12 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
           }
         } catch (error) {
           console.error('Error generating personalized training plan:', error);
+          
+          // Log specific details about the error for debugging
+          if (userConfig.strengthTraining?.enabled) {
+            console.error('Strength training was enabled with config:', userConfig.strengthTraining);
+          }
+          
           set({ isLoading: false });
           return null;
         }
@@ -2986,6 +3106,65 @@ function generateDuration(type: string, intensity: string): string {
     return '20-45 minutes';
   }
   return '30-45 minutes';
+}
+
+// Helper function to generate strength workout based on user preferences
+function generateStrengthWorkout(day: string, strengthConfig: any, isSecondary: boolean = false): any {
+  const split = strengthConfig?.split || 'fullBody';
+  const suffix = isSecondary ? ' (Evening)' : '';
+  
+  const workoutTemplates = {
+    fullBody: {
+      title: `${day} Full Body Strength${suffix}`,
+      description: 'Full body strength training focusing on compound movements: squats, deadlifts, bench press, rows, and overhead press',
+      intensity: 'Medium-High',
+      type: 'strength',
+      goalContribution: 'Builds overall strength and muscle mass to support primary training goals',
+      progressionMetrics: 'Weight lifted, reps completed, form quality',
+      personalizedNotes: 'Focus on compound movements with progressive overload'
+    },
+    upperLower: {
+      title: day === 'Monday' || day === 'Wednesday' || day === 'Friday' ? 
+        `${day} Upper Body Strength${suffix}` : `${day} Lower Body Strength${suffix}`,
+      description: day === 'Monday' || day === 'Wednesday' || day === 'Friday' ?
+        'Upper body strength training: bench press, rows, overhead press, pull-ups, and arm work' :
+        'Lower body strength training: squats, deadlifts, lunges, hip thrusts, and calf raises',
+      intensity: 'Medium-High',
+      type: 'strength',
+      goalContribution: 'Builds targeted strength in upper or lower body muscle groups',
+      progressionMetrics: 'Weight lifted, reps completed, muscle activation',
+      personalizedNotes: 'Focus on progressive overload and proper form'
+    },
+    pushPullLegs: {
+      title: day === 'Monday' || day === 'Thursday' ? `${day} Push Strength${suffix}` :
+             day === 'Tuesday' || day === 'Friday' ? `${day} Pull Strength${suffix}` :
+             `${day} Leg Strength${suffix}`,
+      description: day === 'Monday' || day === 'Thursday' ? 
+        'Push day: chest, shoulders, triceps - bench press, overhead press, dips, tricep work' :
+        day === 'Tuesday' || day === 'Friday' ?
+        'Pull day: back, biceps - rows, pull-ups, lat pulldowns, bicep curls' :
+        'Leg day: quads, hamstrings, glutes, calves - squats, deadlifts, lunges, calf raises',
+      intensity: 'Medium-High',
+      type: 'strength',
+      goalContribution: 'Builds specific muscle group strength with focused training',
+      progressionMetrics: 'Weight lifted, reps completed, muscle pump',
+      personalizedNotes: 'Focus on muscle group specific movements and progressive overload'
+    },
+    bodyPart: {
+      title: `${day} Strength Training${suffix}`,
+      description: 'Targeted muscle group training with high volume and focused exercises for maximum muscle development',
+      intensity: 'Medium-High',
+      type: 'strength',
+      goalContribution: 'Builds specific muscle groups with high volume training',
+      progressionMetrics: 'Weight lifted, reps completed, muscle fatigue',
+      personalizedNotes: 'Focus on 1-2 muscle groups with higher volume'
+    }
+  };
+  
+  return {
+    day,
+    ...workoutTemplates[split as keyof typeof workoutTemplates] || workoutTemplates.fullBody
+  };
 }
 
 // Helper function to generate a basic workout for today if no AI plan exists
