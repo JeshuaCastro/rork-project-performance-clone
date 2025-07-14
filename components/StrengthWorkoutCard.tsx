@@ -11,7 +11,8 @@ import {
   Eye,
   Weight,
   Zap,
-  BarChart3
+  BarChart3,
+  CheckCircle
 } from 'lucide-react-native';
 
 interface Exercise {
@@ -202,8 +203,8 @@ export default function StrengthWorkoutCard({
         >
           {isCompleted ? (
             <>
-              <Check size={18} color={colors.text} />
-              <Text style={styles.startWorkoutText}>Completed</Text>
+              <CheckCircle size={20} color="#FFFFFF" />
+              <Text style={[styles.startWorkoutText, { color: '#FFFFFF' }]}>Completed</Text>
             </>
           ) : (
             <>
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   completedWorkoutButton: {
-    backgroundColor: colors.success,
+    backgroundColor: '#22C55E',
   },
   startWorkoutText: {
     color: colors.text,
