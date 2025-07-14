@@ -3292,7 +3292,61 @@ function generateDuration(type: string, intensity: string): string {
 // Helper function to generate strength workout based on user preferences
 function generateStrengthWorkout(day: string, strengthConfig: any, isSecondary: boolean = false): any {
   const split = strengthConfig?.split || 'fullBody';
+  const customSplit = strengthConfig?.customSplit || '';
   const suffix = isSecondary ? ' (Evening)' : '';
+  
+  // Handle custom split case
+  if (split === 'custom' && customSplit) {
+    console.log(`Generating custom strength workout for ${day} with split: "${customSplit}"`);
+    
+    // Parse the custom split to determine what to do for this day
+    const customSplitLower = customSplit.toLowerCase();
+    let title = `${day} Custom Strength${suffix}`;
+    let description = `Custom strength training session based on your specified split: "${customSplit}"`;
+    
+    // Try to intelligently parse the custom split description
+    if (customSplitLower.includes('push') && (customSplitLower.includes('pull') || customSplitLower.includes('legs'))) {
+      // Push/Pull/Legs style split
+      if (day === 'Monday' || day === 'Thursday') {
+        title = `${day} Push Day${suffix}`;
+        description = `Push day from your custom split: chest, shoulders, triceps - ${customSplit}`;
+      } else if (day === 'Tuesday' || day === 'Friday') {
+        title = `${day} Pull Day${suffix}`;
+        description = `Pull day from your custom split: back, biceps - ${customSplit}`;
+      } else {
+        title = `${day} Leg Day${suffix}`;
+        description = `Leg day from your custom split: quads, hamstrings, glutes - ${customSplit}`;
+      }
+    } else if (customSplitLower.includes('upper') && customSplitLower.includes('lower')) {
+      // Upper/Lower split
+      if (day === 'Monday' || day === 'Wednesday' || day === 'Friday') {
+        title = `${day} Upper Body${suffix}`;
+        description = `Upper body day from your custom split: ${customSplit}`;
+      } else {
+        title = `${day} Lower Body${suffix}`;
+        description = `Lower body day from your custom split: ${customSplit}`;
+      }
+    } else if (customSplitLower.includes('chest') || customSplitLower.includes('back') || customSplitLower.includes('legs') || customSplitLower.includes('shoulders') || customSplitLower.includes('arms')) {
+      // Body part split
+      title = `${day} Targeted Training${suffix}`;
+      description = `Targeted muscle group training from your custom split: ${customSplit}`;
+    } else {
+      // Generic custom split
+      title = `${day} Custom Training${suffix}`;
+      description = `Custom strength training following your specified split: ${customSplit}`;
+    }
+    
+    return {
+      day,
+      title,
+      description,
+      intensity: 'Medium-High',
+      type: 'strength',
+      goalContribution: 'Builds strength according to your custom training split preferences',
+      progressionMetrics: 'Weight lifted, reps completed, adherence to custom split',
+      personalizedNotes: `Following your custom split: "${customSplit}"`
+    };
+  }
   
   const workoutTemplates = {
     fullBody: {
