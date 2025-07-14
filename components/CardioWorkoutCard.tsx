@@ -106,7 +106,7 @@ export default function CardioWorkoutCard({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Header with cardio-specific styling */}
+      {/* Header */}
       <View style={styles.workoutHeader}>
         <View style={styles.workoutTitleContainer}>
           <View style={styles.cardioIconContainer}>
@@ -128,132 +128,49 @@ export default function CardioWorkoutCard({
         </View>
       </View>
       
-      {/* Cardio-specific metrics */}
-      <View style={styles.cardioMetrics}>
-        <View style={styles.metricsRow}>
-          {workout.duration && (
-            <View style={styles.metricItem}>
-              <Clock size={14} color={colors.textSecondary} />
-              <Text style={styles.metricText}>{workout.duration}</Text>
-            </View>
-          )}
-          
-          {workout.distance && (
-            <View style={styles.metricItem}>
-              <MapPin size={14} color={colors.textSecondary} />
-              <Text style={styles.metricText}>{workout.distance}</Text>
-            </View>
-          )}
-          
-          {workout.pace && (
-            <View style={styles.metricItem}>
-              <TrendingUp size={14} color={colors.textSecondary} />
-              <Text style={styles.metricText}>{workout.pace}</Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.metricsRow}>
-          {workout.targetHeartRate && (
-            <View style={styles.metricItem}>
-              <Heart size={14} color={colors.textSecondary} />
-              <Text style={styles.metricText}>{workout.targetHeartRate} bpm</Text>
-            </View>
-          )}
-          
-          {workout.caloriesBurned && (
-            <View style={styles.metricItem}>
-              <Zap size={14} color={colors.textSecondary} />
-              <Text style={styles.metricText}>{workout.caloriesBurned} cal</Text>
-            </View>
-          )}
-        </View>
-      </View>
-      
-      <Text style={styles.workoutDescription} numberOfLines={2} ellipsizeMode="tail">
-        {workout.description}
-      </Text>
-      
-      {/* Interval structure if available */}
-      {workout.intervals && (
-        <View style={styles.intervalsContainer}>
-          <Text style={styles.intervalsTitle}>Structure:</Text>
-          <View style={styles.intervalsRow}>
-            {workout.intervals.warmup && (
-              <Text style={styles.intervalText}>Warmup: {workout.intervals.warmup}</Text>
-            )}
-            {workout.intervals.work && (
-              <Text style={styles.intervalText}>Work: {workout.intervals.work}</Text>
-            )}
-            {workout.intervals.rest && (
-              <Text style={styles.intervalText}>Rest: {workout.intervals.rest}</Text>
-            )}
-            {workout.intervals.cooldown && (
-              <Text style={styles.intervalText}>Cooldown: {workout.intervals.cooldown}</Text>
-            )}
+      {/* Essential info only */}
+      <View style={styles.metaInfoRow}>
+        {workout.duration && (
+          <View style={styles.metaItem}>
+            <Clock size={14} color={colors.textSecondary} />
+            <Text style={styles.metaText}>{workout.duration}</Text>
           </View>
-        </View>
-      )}
-      
-      {workout.location && (
-        <View style={styles.locationContainer}>
-          <MapPin size={14} color={colors.textSecondary} />
-          <Text style={styles.locationText}>{workout.location}</Text>
-        </View>
-      )}
-      
-      {workout.adjustedForRecovery && (
-        <View style={styles.adjustmentContainer}>
-          <Text style={styles.adjustmentTitle}>Recovery Adjustment:</Text>
-          <Text style={styles.adjustmentText} numberOfLines={2} ellipsizeMode="tail">
-            {workout.adjustedForRecovery}
-          </Text>
-        </View>
-      )}
-      
-      {/* Action buttons */}
-      <View style={styles.workoutButtonsRow}>
-        <TouchableOpacity 
-          style={[
-            styles.startWorkoutButton,
-            isCompleted && styles.completedWorkoutButton
-          ]}
-          onPress={(e) => {
-            e.stopPropagation();
-            if (!isCompleted) {
-              onStart();
-            }
-          }}
-          disabled={isCompleted}
-        >
-          {isCompleted ? (
-            <>
-              <CheckCircle size={20} color="#FFFFFF" />
-              <Text style={[styles.startWorkoutText, { color: '#FFFFFF' }]}>Completed</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.startWorkoutText}>Start Cardio</Text>
-              <ArrowRight size={18} color={colors.text} />
-            </>
-          )}
-        </TouchableOpacity>
+        )}
         
-        <TouchableOpacity 
-          style={styles.editWorkoutButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Edit3 size={18} color={colors.text} />
-        </TouchableOpacity>
+        {workout.distance && (
+          <View style={styles.metaItem}>
+            <MapPin size={14} color={colors.textSecondary} />
+            <Text style={styles.metaText}>{workout.distance}</Text>
+          </View>
+        )}
       </View>
       
-      <View style={styles.clickHint}>
-        <Eye size={14} color={colors.textSecondary} />
-        <Text style={styles.clickHintText}>Tap for workout details</Text>
-      </View>
+      {/* Action button */}
+      <TouchableOpacity 
+        style={[
+          styles.startWorkoutButton,
+          isCompleted && styles.completedWorkoutButton
+        ]}
+        onPress={(e) => {
+          e.stopPropagation();
+          if (!isCompleted) {
+            onStart();
+          }
+        }}
+        disabled={isCompleted}
+      >
+        {isCompleted ? (
+          <>
+            <CheckCircle size={20} color="#FFFFFF" />
+            <Text style={[styles.startWorkoutText, { color: '#FFFFFF' }]}>Completed</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.startWorkoutText}>Start Cardio</Text>
+            <ArrowRight size={18} color={colors.text} />
+          </>
+        )}
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -265,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#4ECDC4', // Cardio-specific color
+    borderLeftColor: '#4ECDC4',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -279,8 +196,8 @@ const styles = StyleSheet.create({
   workoutHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   workoutTitleContainer: {
     flexDirection: 'row',
@@ -326,84 +243,20 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     marginLeft: 4,
   },
-  cardioMetrics: {
-    marginBottom: 8,
-  },
-  metricsRow: {
+  metaInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  metricItem: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
   },
-  metricText: {
+  metaText: {
     fontSize: 12,
     color: colors.textSecondary,
     marginLeft: 4,
-  },
-  workoutDescription: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  intervalsContainer: {
-    backgroundColor: 'rgba(78, 205, 196, 0.1)',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
-  },
-  intervalsTitle: {
-    fontSize: 12,
-    color: '#4ECDC4',
-    fontWeight: '600' as const,
-    marginBottom: 4,
-  },
-  intervalsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  intervalText: {
-    fontSize: 11,
-    color: colors.text,
-    marginRight: 12,
-    marginBottom: 2,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  locationText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
-  },
-  adjustmentContainer: {
-    backgroundColor: 'rgba(93, 95, 239, 0.1)',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 12,
-  },
-  adjustmentTitle: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600' as const,
-    marginBottom: 4,
-  },
-  adjustmentText: {
-    fontSize: 12,
-    color: colors.text,
-    lineHeight: 16,
-  },
-  workoutButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
   },
   startWorkoutButton: {
     flexDirection: 'row',
@@ -411,9 +264,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ECDC4',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    flex: 1,
-    marginRight: 8,
+    paddingVertical: 12,
     justifyContent: 'center',
   },
   completedWorkoutButton: {
@@ -424,23 +275,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     marginRight: 4,
-  },
-  editWorkoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#2A2A2A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clickHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clickHintText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
   },
 });

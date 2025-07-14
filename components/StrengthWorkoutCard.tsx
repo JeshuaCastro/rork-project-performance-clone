@@ -94,7 +94,7 @@ export default function StrengthWorkoutCard({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Header with strength-specific styling */}
+      {/* Header */}
       <View style={styles.workoutHeader}>
         <View style={styles.workoutTitleContainer}>
           <View style={styles.strengthIconContainer}>
@@ -116,35 +116,7 @@ export default function StrengthWorkoutCard({
         </View>
       </View>
       
-      {/* Strength-specific info */}
-      <View style={styles.strengthInfo}>
-        {workout.targetMuscleGroups && workout.targetMuscleGroups.length > 0 && (
-          <View style={styles.muscleGroupsContainer}>
-            <Text style={styles.muscleGroupsLabel}>Target:</Text>
-            <Text style={styles.muscleGroupsText} numberOfLines={1}>
-              {workout.targetMuscleGroups.join(', ')}
-            </Text>
-          </View>
-        )}
-        
-        {workout.exercises && workout.exercises.length > 0 && (
-          <View style={styles.exercisePreview}>
-            <Text style={styles.exerciseCount}>
-              {workout.exercises.length} exercise{workout.exercises.length !== 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.exercisePreviewText} numberOfLines={1}>
-              {workout.exercises.slice(0, 2).map(ex => ex.name).join(', ')}
-              {workout.exercises.length > 2 ? '...' : ''}
-            </Text>
-          </View>
-        )}
-      </View>
-      
-      <Text style={styles.workoutDescription} numberOfLines={2} ellipsizeMode="tail">
-        {workout.description}
-      </Text>
-      
-      {/* Strength-specific metadata */}
+      {/* Essential info only */}
       <View style={styles.metaInfoRow}>
         {workout.duration && (
           <View style={styles.metaItem}>
@@ -153,82 +125,40 @@ export default function StrengthWorkoutCard({
           </View>
         )}
         
-        {workout.estimatedWeight && (
-          <View style={styles.metaItem}>
-            <Weight size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{workout.estimatedWeight}</Text>
-          </View>
-        )}
-        
-        {workout.restPeriods && (
+        {workout.exercises && workout.exercises.length > 0 && (
           <View style={styles.metaItem}>
             <Target size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{workout.restPeriods} rest</Text>
+            <Text style={styles.metaText}>{workout.exercises.length} exercises</Text>
           </View>
         )}
       </View>
       
-      {workout.equipment && workout.equipment.length > 0 && (
-        <View style={styles.equipmentContainer}>
-          <Text style={styles.equipmentLabel}>Equipment:</Text>
-          <Text style={styles.equipmentText} numberOfLines={1}>
-            {workout.equipment.join(', ')}
-          </Text>
-        </View>
-      )}
-      
-      {workout.adjustedForRecovery && (
-        <View style={styles.adjustmentContainer}>
-          <Text style={styles.adjustmentTitle}>Recovery Adjustment:</Text>
-          <Text style={styles.adjustmentText} numberOfLines={2} ellipsizeMode="tail">
-            {workout.adjustedForRecovery}
-          </Text>
-        </View>
-      )}
-      
-      {/* Action buttons */}
-      <View style={styles.workoutButtonsRow}>
-        <TouchableOpacity 
-          style={[
-            styles.startWorkoutButton,
-            isCompleted && styles.completedWorkoutButton
-          ]}
-          onPress={(e) => {
-            e.stopPropagation();
-            if (!isCompleted) {
-              onStart();
-            }
-          }}
-          disabled={isCompleted}
-        >
-          {isCompleted ? (
-            <>
-              <CheckCircle size={20} color="#FFFFFF" />
-              <Text style={[styles.startWorkoutText, { color: '#FFFFFF' }]}>Completed</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.startWorkoutText}>Start Lifting</Text>
-              <ArrowRight size={18} color={colors.text} />
-            </>
-          )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.editWorkoutButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Edit3 size={18} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.clickHint}>
-        <Eye size={14} color={colors.textSecondary} />
-        <Text style={styles.clickHintText}>Tap for exercise details</Text>
-      </View>
+      {/* Action button */}
+      <TouchableOpacity 
+        style={[
+          styles.startWorkoutButton,
+          isCompleted && styles.completedWorkoutButton
+        ]}
+        onPress={(e) => {
+          e.stopPropagation();
+          if (!isCompleted) {
+            onStart();
+          }
+        }}
+        disabled={isCompleted}
+      >
+        {isCompleted ? (
+          <>
+            <CheckCircle size={20} color="#FFFFFF" />
+            <Text style={[styles.startWorkoutText, { color: '#FFFFFF' }]}>Completed</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.startWorkoutText}>Start Lifting</Text>
+            <ArrowRight size={18} color={colors.text} />
+          </>
+        )}
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -254,8 +184,8 @@ const styles = StyleSheet.create({
   workoutHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   workoutTitleContainer: {
     flexDirection: 'row',
@@ -301,50 +231,10 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     marginLeft: 4,
   },
-  strengthInfo: {
-    marginBottom: 8,
-  },
-  muscleGroupsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  muscleGroupsLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '600' as const,
-    marginRight: 6,
-  },
-  muscleGroupsText: {
-    fontSize: 12,
-    color: colors.text,
-    flex: 1,
-  },
-  exercisePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  exerciseCount: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600' as const,
-    marginRight: 8,
-  },
-  exercisePreviewText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  workoutDescription: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
   metaInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   metaItem: {
     flexDirection: 'row',
@@ -356,54 +246,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginLeft: 4,
   },
-  equipmentContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  equipmentLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '600' as const,
-    marginRight: 6,
-  },
-  equipmentText: {
-    fontSize: 12,
-    color: colors.text,
-    flex: 1,
-  },
-  adjustmentContainer: {
-    backgroundColor: 'rgba(93, 95, 239, 0.1)',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 12,
-  },
-  adjustmentTitle: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600' as const,
-    marginBottom: 4,
-  },
-  adjustmentText: {
-    fontSize: 12,
-    color: colors.text,
-    lineHeight: 16,
-  },
-  workoutButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
   startWorkoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    flex: 1,
-    marginRight: 8,
+    paddingVertical: 12,
     justifyContent: 'center',
   },
   completedWorkoutButton: {
@@ -414,23 +263,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     marginRight: 4,
-  },
-  editWorkoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#2A2A2A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clickHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clickHintText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
   },
 });
