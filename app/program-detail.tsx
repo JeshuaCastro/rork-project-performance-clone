@@ -1670,6 +1670,7 @@ export default function ProgramDetailScreen() {
           onPress={() => handleWorkoutCardClick(workout)}
           onStart={() => handleStartWorkout(workout)}
           onEdit={() => handleEditWorkout(workout)}
+          onDetails={() => handleWorkoutCardClick(workout)}
         />
       );
     } else if (workout.type === 'cardio') {
@@ -1681,6 +1682,7 @@ export default function ProgramDetailScreen() {
           onPress={() => handleWorkoutCardClick(workout)}
           onStart={() => handleStartWorkout(workout)}
           onEdit={() => handleEditWorkout(workout)}
+          onDetails={() => handleWorkoutCardClick(workout)}
         />
       );
     }

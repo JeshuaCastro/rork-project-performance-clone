@@ -39,7 +39,9 @@ import {
   Users,
   Flame,
   Eye,
-  Check
+  Check,
+  CheckCircle,
+  Info
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -640,11 +642,22 @@ export default function DashboardScreen() {
                       {todaysWorkout.title}
                     </Text>
                   </View>
-                  <View style={[
-                    styles.intensityBadge,
-                    { backgroundColor: getIntensityColor(todaysWorkout.intensity) }
-                  ]}>
-                    <Text style={styles.intensityText}>{todaysWorkout.intensity}</Text>
+                  <View style={styles.headerActions}>
+                    <View style={[
+                      styles.intensityBadge,
+                      { backgroundColor: getIntensityColor(todaysWorkout.intensity) }
+                    ]}>
+                      <Text style={styles.intensityText}>{todaysWorkout.intensity}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.detailsButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleWorkoutCardClick();
+                      }}
+                    >
+                      <Info size={16} color={colors.text} />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 
@@ -652,16 +665,21 @@ export default function DashboardScreen() {
                   {todaysWorkout.description}
                 </Text>
                 
-                {todaysWorkout.duration && (
-                  <View style={styles.workoutMetaInfo}>
-                    <Clock size={14} color={colors.textSecondary} />
-                    <Text style={styles.workoutMetaText}>{todaysWorkout.duration}</Text>
-                  </View>
-                )}
-                
-                <View style={styles.clickHint}>
-                  <Eye size={14} color={colors.textSecondary} />
-                  <Text style={styles.clickHintText}>Tap for workout details</Text>
+                {/* Completion Status & Meta Info */}
+                <View style={styles.workoutMetaRow}>
+                  {todaysWorkout.duration && (
+                    <View style={styles.workoutMetaInfo}>
+                      <Clock size={14} color={colors.textSecondary} />
+                      <Text style={styles.workoutMetaText}>{todaysWorkout.duration}</Text>
+                    </View>
+                  )}
+                  
+                  {isWorkoutCompletedToday && (
+                    <View style={styles.completionBadge}>
+                      <CheckCircle size={14} color={colors.success} />
+                      <Text style={styles.completionText}>Completed Today</Text>
+                    </View>
+                  )}
                 </View>
                 
                 <View style={styles.workoutActions}>
@@ -1158,6 +1176,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  detailsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
   workoutTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1187,15 +1223,34 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
+  workoutMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   workoutMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   workoutMetaText: {
     fontSize: 14,
     color: colors.textSecondary,
     marginLeft: 6,
+  },
+  completionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  completionText: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   clickHint: {
     flexDirection: 'row',

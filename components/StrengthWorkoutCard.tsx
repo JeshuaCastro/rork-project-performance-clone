@@ -118,17 +118,19 @@ export default function StrengthWorkoutCard({
             {getIntensityIcon(workout.intensity)}
             <Text style={styles.intensityText}>{workout.intensity}</Text>
           </View>
-          {onDetails && (
-            <TouchableOpacity 
-              style={styles.detailsButton}
-              onPress={(e) => {
-                e.stopPropagation();
+          <TouchableOpacity 
+            style={styles.detailsButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (onDetails) {
                 onDetails();
-              }}
-            >
-              <Info size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          )}
+              } else {
+                onPress();
+              }
+            }}
+          >
+            <Info size={18} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
       
@@ -145,6 +147,13 @@ export default function StrengthWorkoutCard({
           <View style={styles.metaItem}>
             <Target size={14} color={colors.textSecondary} />
             <Text style={styles.metaText}>{workout.exercises.length} exercises</Text>
+          </View>
+        )}
+        
+        {isCompleted && (
+          <View style={styles.completionIndicator}>
+            <CheckCircle size={14} color={colors.success} />
+            <Text style={styles.completionText}>Done</Text>
           </View>
         )}
       </View>
@@ -281,6 +290,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginLeft: 4,
+  },
+  completionIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  completionText: {
+    fontSize: 11,
+    color: colors.success,
+    fontWeight: '600' as const,
+    marginLeft: 3,
   },
   startWorkoutButton: {
     flexDirection: 'row',
