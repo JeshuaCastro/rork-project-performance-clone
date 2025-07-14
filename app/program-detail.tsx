@@ -476,21 +476,38 @@ export default function ProgramDetailScreen() {
       
       // Use the weekly structure from the current phase
       if (currentPhase.weeklyStructure && Array.isArray(currentPhase.weeklyStructure)) {
-        // Apply recovery adjustments to the AI-generated workouts
-        return currentPhase.weeklyStructure.map((workout: any) => {
-          const enhancedWorkout = enhanceWorkoutWithDetails(workout);
-          
-          // Apply recovery-based adjustments
-          if (recoveryStatus === 'low' && workout.intensity === 'High') {
-            enhancedWorkout.adjustedForRecovery = "Reduce intensity by 20-30% due to low recovery. Focus on technique and listen to your body.";
-          } else if (recoveryStatus === 'low' && workout.type === 'cardio' && workout.intensity === 'Medium') {
-            enhancedWorkout.adjustedForRecovery = "Consider reducing duration by 15-20% or lowering intensity due to low recovery.";
-          } else if (recoveryStatus === 'high' && workout.intensity === 'Medium') {
-            enhancedWorkout.adjustedForRecovery = "You can push slightly harder today if you feel good - your recovery is excellent.";
-          }
-          
-          return enhancedWorkout;
-        });
+        // Define day order for sorting
+        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        // Sort workouts by day of the week and apply recovery adjustments
+        const sortedWorkouts = currentPhase.weeklyStructure
+          .map((workout: any) => {
+            const enhancedWorkout = enhanceWorkoutWithDetails(workout);
+            
+            // Apply recovery-based adjustments
+            if (recoveryStatus === 'low' && workout.intensity === 'High') {
+              enhancedWorkout.adjustedForRecovery = "Reduce intensity by 20-30% due to low recovery. Focus on technique and listen to your body.";
+            } else if (recoveryStatus === 'low' && workout.type === 'cardio' && workout.intensity === 'Medium') {
+              enhancedWorkout.adjustedForRecovery = "Consider reducing duration by 15-20% or lowering intensity due to low recovery.";
+            } else if (recoveryStatus === 'high' && workout.intensity === 'Medium') {
+              enhancedWorkout.adjustedForRecovery = "You can push slightly harder today if you feel good - your recovery is excellent.";
+            }
+            
+            return enhancedWorkout;
+          })
+          .sort((a, b) => {
+            const dayA = dayOrder.indexOf(a.day);
+            const dayB = dayOrder.indexOf(b.day);
+            
+            // If day is not found in dayOrder, put it at the end
+            if (dayA === -1 && dayB === -1) return 0;
+            if (dayA === -1) return 1;
+            if (dayB === -1) return -1;
+            
+            return dayA - dayB;
+          });
+        
+        return sortedWorkouts;
       }
     }
     
