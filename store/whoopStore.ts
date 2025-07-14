@@ -1132,6 +1132,7 @@ ${userConfig.strengthTraining.split === 'fullBody' ? '- Each strength session sh
 ${userConfig.strengthTraining.split === 'upperLower' ? '- Alternate between upper body and lower body focused sessions\n- Upper: chest, back, shoulders, arms\n- Lower: quads, hamstrings, glutes, calves, core' : ''}
 ${userConfig.strengthTraining.split === 'pushPullLegs' ? '- Push: chest, shoulders, triceps\n- Pull: back, biceps\n- Legs: quads, hamstrings, glutes, calves' : ''}
 ${userConfig.strengthTraining.split === 'bodyPart' ? '- Focus on 1-2 muscle groups per session\n- Allow for higher volume per muscle group\n- Ensure each muscle group is trained 1-2x per week' : ''}
+${userConfig.strengthTraining.split === 'custom' ? `- CUSTOM SPLIT: Follow the user's specific training split requirements:\n- User's custom split description: "${userConfig.strengthTraining.customSplit || 'No specific description provided'}"\n- Design strength sessions based on this custom split pattern\n- Ensure the split is distributed across ${userConfig.strengthTraining.daysPerWeek} training days\n- Follow the user's specified muscle group organization and training frequency` : ''}
 
 EXAMPLE STRENGTH TRAINING INTEGRATION:
 If primary program has 4 cardio days and user wants 3 strength days:
