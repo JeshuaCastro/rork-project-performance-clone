@@ -14,7 +14,8 @@ import {
   Target,
   Timer,
   TrendingUp,
-  CheckCircle
+  CheckCircle,
+  Info
 } from 'lucide-react-native';
 
 interface CardioWorkout {
@@ -46,6 +47,7 @@ interface CardioWorkoutCardProps {
   onPress: () => void;
   onStart: () => void;
   onEdit: () => void;
+  onDetails?: () => void;
 }
 
 export default function CardioWorkoutCard({ 
@@ -53,7 +55,8 @@ export default function CardioWorkoutCard({
   isCompleted, 
   onPress, 
   onStart, 
-  onEdit 
+  onEdit,
+  onDetails 
 }: CardioWorkoutCardProps) {
   const getIntensityColor = (intensity: string) => {
     switch (intensity.toLowerCase()) {
@@ -119,12 +122,25 @@ export default function CardioWorkoutCard({
             <Text style={styles.workoutType}>Cardio Training</Text>
           </View>
         </View>
-        <View style={[
-          styles.intensityBadge,
-          { backgroundColor: getIntensityColor(workout.intensity) }
-        ]}>
-          {getIntensityIcon(workout.intensity)}
-          <Text style={styles.intensityText}>{workout.intensity}</Text>
+        <View style={styles.headerActions}>
+          <View style={[
+            styles.intensityBadge,
+            { backgroundColor: getIntensityColor(workout.intensity) }
+          ]}>
+            {getIntensityIcon(workout.intensity)}
+            <Text style={styles.intensityText}>{workout.intensity}</Text>
+          </View>
+          {onDetails && (
+            <TouchableOpacity 
+              style={styles.detailsButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                onDetails();
+              }}
+            >
+              <Info size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       
@@ -198,6 +214,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   workoutTitleContainer: {
     flexDirection: 'row',
