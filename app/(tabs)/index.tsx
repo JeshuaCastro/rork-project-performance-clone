@@ -145,23 +145,30 @@ export default function DashboardScreen() {
   const todaysWorkout = getTodaysWorkout();
   
   // Check if today's workout is completed
-  useEffect(() => {
-    const checkWorkoutCompletion = async () => {
-      if (todaysWorkout && todaysWorkout.programId) {
-        try {
-          const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
-          setIsWorkoutCompletedToday(completed);
-        } catch (error) {
-          console.error('Error checking workout completion:', error);
-          setIsWorkoutCompletedToday(false);
-        }
-      } else {
+  const checkWorkoutCompletion = async () => {
+    if (todaysWorkout && todaysWorkout.programId) {
+      try {
+        const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
+        setIsWorkoutCompletedToday(completed);
+      } catch (error) {
+        console.error('Error checking workout completion:', error);
         setIsWorkoutCompletedToday(false);
       }
-    };
-    
+    } else {
+      setIsWorkoutCompletedToday(false);
+    }
+  };
+
+  useEffect(() => {
     checkWorkoutCompletion();
   }, [todaysWorkout, isWorkoutCompleted]);
+
+  // Re-check workout completion when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkWorkoutCompletion();
+    }, [todaysWorkout, isWorkoutCompleted])
+  );
   
   const handleSyncData = async () => {
     setSyncAttempted(true);
