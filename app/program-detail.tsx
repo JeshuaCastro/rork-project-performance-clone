@@ -1728,81 +1728,52 @@ export default function ProgramDetailScreen() {
             </View>
           ) : (
             <>
-              {/* Program Summary Card */}
-              <View style={styles.programSummary}>
-                <View style={styles.summaryItem}>
-                  <Calendar size={20} color={colors.primary} />
-                  <Text style={styles.summaryLabel}>Goal Date</Text>
-                  <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
-                    {program.goalDate || 'Not set'}
-                  </Text>
+              {/* Program Hero Card */}
+              <View style={styles.programHero}>
+                <View style={styles.heroContent}>
+                  <Text style={styles.heroTitle}>{program.name}</Text>
+                  {program.targetMetric && (
+                    <Text style={styles.heroTarget}>
+                      Goal: {program.targetMetric}
+                    </Text>
+                  )}
+                  {program.goalDate && (
+                    <Text style={styles.heroDate}>
+                      Target Date: {new Date(program.goalDate).toLocaleDateString()}
+                    </Text>
+                  )}
                 </View>
-                
-                <View style={styles.summaryItem}>
-                  <Trophy size={20} color={colors.primary} />
-                  <Text style={styles.summaryLabel}>Target</Text>
-                  <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
-                    {program.targetMetric || 'Not set'}
-                  </Text>
-                </View>
-                
-                <View style={styles.summaryItem}>
-                  <Dumbbell size={20} color={colors.primary} />
-                  <Text style={styles.summaryLabel}>Experience</Text>
-                  <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
-                    {program.experienceLevel.charAt(0).toUpperCase() + program.experienceLevel.slice(1)}
-                  </Text>
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStat}>
+                    <Text style={styles.heroStatValue}>Week {currentWeek}</Text>
+                    <Text style={styles.heroStatLabel}>Current</Text>
+                  </View>
+                  <View style={styles.heroStat}>
+                    <Text style={styles.heroStatValue}>{program.trainingDaysPerWeek}</Text>
+                    <Text style={styles.heroStatLabel}>Days/Week</Text>
+                  </View>
                 </View>
               </View>
               
-              {/* Goal Progress Tracking */}
-              {program.targetMetric && program.goalDate && (
-                <View style={styles.goalProgressContainer}>
-                  <View style={styles.goalProgressHeader}>
-                    <Target size={20} color={colors.primary} />
-                    <Text style={styles.goalProgressTitle}>Goal Progress</Text>
+              {/* Goal Progress */}
+              {program.targetMetric && program.goalDate && daysUntilGoal !== null && (
+                <View style={styles.goalProgress}>
+                  <View style={styles.goalProgressContent}>
+                    <Text style={styles.goalProgressTarget}>{program.targetMetric}</Text>
+                    <Text style={styles.goalProgressDays}>
+                      {daysUntilGoal > 0 ? `${daysUntilGoal} days to go` : 'Goal achieved!'}
+                    </Text>
                   </View>
-                  
-                  <Text style={styles.goalProgressTarget}>
-                    Target: {program.targetMetric}
-                  </Text>
-                  
-                  {daysUntilGoal !== null && (
-                    <View style={styles.goalProgressDetails}>
-                      <View style={styles.goalProgressItem}>
-                        <Text style={styles.goalProgressLabel}>Days Remaining</Text>
-                        <Text style={styles.goalProgressValue}>
-                          {daysUntilGoal > 0 ? daysUntilGoal : 'Goal Date Reached!'}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.goalProgressItem}>
-                        <Text style={styles.goalProgressLabel}>Current Week</Text>
-                        <Text style={styles.goalProgressValue}>
-                          Week {currentWeek}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.goalProgressItem}>
-                        <Text style={styles.goalProgressLabel}>Progress</Text>
-                        <Text style={styles.goalProgressValue}>
-                          {Math.round((currentWeek / (aiPlan?.phases ? 
-                            aiPlan.phases.reduce((total: number, phase: any) => {
-                              const duration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
-                              return total + duration;
-                            }, 0) : 12)) * 100)}%
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                  
-                  {/* Goal-specific insights */}
-                  {aiPlan?.goalStrategy && (
-                    <View style={styles.goalStrategyContainer}>
-                      <Text style={styles.goalStrategyTitle}>Strategy</Text>
-                      <Text style={styles.goalStrategyText}>{aiPlan.goalStrategy}</Text>
-                    </View>
-                  )}
+                  <View style={styles.goalProgressBar}>
+                    <View 
+                      style={[
+                        styles.goalProgressFill, 
+                        { 
+                          width: `${Math.min(100, Math.max(0, 100 - (daysUntilGoal / 90) * 100))}%` 
+                        }
+                      ]} 
+                    />
+                  </View>
                 </View>
               )}
               
@@ -1885,132 +1856,121 @@ export default function ProgramDetailScreen() {
                 </View>
               )}
               
-              {/* Action Buttons Row */}
-              <View style={styles.actionButtonsRow}>
+              {/* Quick Actions */}
+              <View style={styles.quickActions}>
                 <TouchableOpacity 
-                  style={styles.personalizeButton}
+                  style={styles.primaryAction}
                   onPress={() => setShowPersonalizeModal(true)}
                 >
-                  <Edit3 size={20} color={colors.text} />
-                  <Text style={styles.personalizeButtonText}>Personalize Program</Text>
+                  <Edit3 size={18} color={colors.text} />
+                  <Text style={styles.primaryActionText}>Customize</Text>
                 </TouchableOpacity>
                 
-                {/* Program Overview Button - only show if AI plan exists */}
                 {aiPlan && (
                   <TouchableOpacity 
-                    style={styles.overviewButton}
+                    style={styles.secondaryAction}
                     onPress={() => setShowIntroductionModal(true)}
                   >
-                    <Eye size={20} color={colors.text} />
-                    <Text style={styles.overviewButtonText}>View Program Overview</Text>
+                    <Eye size={18} color={colors.textSecondary} />
+                    <Text style={styles.secondaryActionText}>Overview</Text>
                     {program.updateHistory && program.updateHistory.length > 0 && (
-                      <View style={styles.updateIndicator}>
-                        <Text style={styles.updateIndicatorText}>Updated</Text>
-                      </View>
+                      <View style={styles.updateDot} />
                     )}
                   </TouchableOpacity>
                 )}
               </View>
               
-              {/* Goal Countdown */}
-              {daysUntilGoal !== null && (
-                <View style={styles.countdownContainer}>
-                  <Text style={styles.countdownLabel}>
-                    {daysUntilGoal > 0 
-                      ? `${daysUntilGoal} days until your goal` 
-                      : "Today is your goal day!"}
-                  </Text>
-                  <View style={styles.countdownBar}>
-                    <View 
-                      style={[
-                        styles.countdownFill, 
-                        { 
-                          width: `${Math.min(100, Math.max(0, 100 - (daysUntilGoal / 90) * 100))}%` 
-                        }
-                      ]} 
-                    />
-                  </View>
-                </View>
-              )}
+
               
               {/* Recovery Status */}
               {isConnectedToWhoop && (
-                <View style={styles.recoveryStatus}>
-                  <Text style={styles.recoveryTitle}>Today&apos;s Recovery: {latestRecovery?.score || '--'}%</Text>
-                  <View style={[
-                    styles.recoveryIndicator, 
-                    { backgroundColor: colors.recovery[recoveryStatus] }
-                  ]} />
-                  <Text style={styles.recoveryText}>
-                    {recoveryStatus === 'high' 
-                      ? "Your body is well recovered. You can push harder in today&apos;s workout."
-                      : recoveryStatus === 'medium'
-                        ? "Moderate recovery. Proceed with the planned workout but listen to your body."
-                        : "Low recovery detected. Consider reducing intensity or taking a rest day."
-                    }
+                <View style={styles.recoveryBanner}>
+                  <View style={styles.recoveryInfo}>
+                    <Text style={styles.recoveryScore}>{latestRecovery?.score || '--'}%</Text>
+                    <Text style={styles.recoveryLabel}>Recovery</Text>
+                  </View>
+                  <View style={[styles.recoveryDot, { backgroundColor: colors.recovery[recoveryStatus] }]} />
+                  <Text style={styles.recoveryMessage}>
+                    {recoveryStatus === 'high' ? "Ready to push hard" 
+                      : recoveryStatus === 'medium' ? "Listen to your body"
+                      : "Consider reducing intensity"}
                   </Text>
                 </View>
               )}
               
-              {/* Today's Workouts - Horizontal Layout */}
+              {/* Today's Focus */}
               {todayWorkouts.length > 0 && (
-                <View style={styles.todayWorkout}>
-                  <Text style={styles.todayTitle}>Today&apos;s Workout</Text>
+                <View style={styles.todayFocus}>
+                  <View style={styles.todayHeader}>
+                    <Text style={styles.todayTitle}>Today&apos;s Focus</Text>
+                    <Text style={styles.todayDate}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+                  </View>
                   
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.horizontalScrollContent}
-                  >
-                    {/* Cardio Workouts */}
-                    {cardioWorkouts.length > 0 && (
-                      <View style={[styles.workoutColumn, { width: columnWidth }]}>
-                        <Text style={styles.columnTitle}>Cardio</Text>
-                        {cardioWorkouts.map(renderWorkoutCard)}
-                      </View>
-                    )}
-                    
-                    {/* Strength Workouts */}
-                    {strengthWorkouts.length > 0 && (
-                      <View style={[styles.workoutColumn, { width: columnWidth }]}>
-                        <Text style={styles.columnTitle}>Strength</Text>
-                        {strengthWorkouts.map(renderWorkoutCard)}
-                      </View>
-                    )}
-                    
-                    {/* Recovery Workouts */}
-                    {recoveryWorkouts.length > 0 && (
-                      <View style={[styles.workoutColumn, { width: columnWidth }]}>
-                        <Text style={styles.columnTitle}>Recovery</Text>
-                        {recoveryWorkouts.map(renderWorkoutCard)}
-                      </View>
-                    )}
-                    
-                    {/* Other Workouts */}
-                    {otherWorkouts.length > 0 && (
-                      <View style={[styles.workoutColumn, { width: columnWidth }]}>
-                        <Text style={styles.columnTitle}>Other</Text>
-                        {otherWorkouts.map(renderWorkoutCard)}
-                      </View>
-                    )}
-                  </ScrollView>
+                  <View style={styles.todayWorkouts}>
+                    {todayWorkouts.map((workout, index) => (
+                      <TouchableOpacity 
+                        key={index}
+                        style={styles.todayWorkoutCard}
+                        onPress={() => handleWorkoutCardClick(workout)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.todayWorkoutHeader}>
+                          <View style={styles.todayWorkoutInfo}>
+                            {getWorkoutIcon(workout.title, workout.type)}
+                            <View style={styles.todayWorkoutText}>
+                              <Text style={styles.todayWorkoutTitle}>{workout.title}</Text>
+                              <Text style={styles.todayWorkoutType}>{workout.type.charAt(0).toUpperCase() + workout.type.slice(1)}</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.todayIntensityBadge, { backgroundColor: getIntensityColor(workout.intensity) }]}>
+                            <Text style={styles.todayIntensityText}>{workout.intensity}</Text>
+                          </View>
+                        </View>
+                        
+                        <Text style={styles.todayWorkoutDescription} numberOfLines={2}>
+                          {workout.description}
+                        </Text>
+                        
+                        <View style={styles.todayWorkoutActions}>
+                          <TouchableOpacity 
+                            style={styles.todayStartButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleStartWorkout(workout);
+                            }}
+                          >
+                            <Play size={16} color={colors.text} />
+                            <Text style={styles.todayStartText}>Start</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity 
+                            style={styles.todayDetailsButton}
+                            onPress={() => handleWorkoutCardClick(workout)}
+                          >
+                            <Text style={styles.todayDetailsText}>Details</Text>
+                            <ArrowRight size={16} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               )}
               
-              {/* Weekly Plan - Collapsible */}
-              <View style={styles.sectionContainer}>
+              {/* Weekly Plan */}
+              <View style={styles.weeklyPlanSection}>
                 <TouchableOpacity 
-                  style={styles.sectionHeader}
+                  style={styles.weeklyPlanHeader}
                   onPress={() => setWeeklyPlanExpanded(!weeklyPlanExpanded)}
                 >
-                  <View style={styles.sectionTitleContainer}>
-                    <Calendar size={20} color={colors.primary} />
-                    <Text style={styles.sectionTitle}>Week {currentWeek} Plan</Text>
+                  <Text style={styles.weeklyPlanTitle}>Week {currentWeek} Schedule</Text>
+                  <View style={styles.weeklyPlanToggle}>
+                    <Text style={styles.weeklyPlanToggleText}>{weeklyPlanExpanded ? 'Hide' : 'Show'}</Text>
+                    {weeklyPlanExpanded ? 
+                      <ChevronUp size={18} color={colors.textSecondary} /> : 
+                      <ChevronDown size={18} color={colors.textSecondary} />
+                    }
                   </View>
-                  {weeklyPlanExpanded ? 
-                    <ChevronUp size={20} color={colors.text} /> : 
-                    <ChevronDown size={20} color={colors.text} />
-                  }
                 </TouchableOpacity>
                 
                 {weeklyPlanExpanded && (
@@ -2193,75 +2153,9 @@ export default function ProgramDetailScreen() {
                 </View>
               )}
               
-              {/* Strength Training Configuration */}
-              {program.strengthTraining && program.strengthTraining.enabled && (
-                <View style={styles.strengthTrainingContainer}>
-                  <View style={styles.strengthTrainingHeader}>
-                    <Dumbbell size={18} color={colors.primary} />
-                    <Text style={styles.strengthTrainingTitle}>Strength Training</Text>
-                  </View>
-                  <View style={styles.strengthTrainingDetails}>
-                    <View style={styles.strengthTrainingDetail}>
-                      <Text style={styles.strengthTrainingLabel}>Days per Week</Text>
-                      <Text style={styles.strengthTrainingValue}>{program.strengthTraining.daysPerWeek}</Text>
-                    </View>
-                    <View style={styles.strengthTrainingDetail}>
-                      <Text style={styles.strengthTrainingLabel}>Split</Text>
-                      <Text style={styles.strengthTrainingValue} numberOfLines={1} ellipsizeMode="tail">
-                        {program.strengthTraining.split === 'fullBody' ? 'Full Body' :
-                         program.strengthTraining.split === 'upperLower' ? 'Upper/Lower' :
-                         program.strengthTraining.split === 'pushPullLegs' ? 'Push/Pull/Legs' :
-                         program.strengthTraining.split === 'bodyPart' ? 'Body Part Split' :
-                         'Custom'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
+
               
-              {/* Nutrition Preferences */}
-              {program.nutritionPreferences && (
-                <View style={styles.nutritionPreferencesContainer}>
-                  <View style={styles.nutritionPreferencesHeader}>
-                    <Utensils size={18} color={colors.primary} />
-                    <Text style={styles.nutritionPreferencesTitle}>Nutrition Preferences</Text>
-                  </View>
-                  <View style={styles.nutritionPreferencesDetails}>
-                    <View style={styles.nutritionPreferencesDetail}>
-                      <Text style={styles.nutritionPreferencesLabel}>Goal</Text>
-                      <Text style={styles.nutritionPreferencesValue} numberOfLines={1} ellipsizeMode="tail">
-                        {program.nutritionPreferences.goal === 'deficit' ? 'Weight Loss' :
-                         program.nutritionPreferences.goal === 'maintain' ? 'Maintenance' :
-                         'Muscle Gain'}
-                      </Text>
-                    </View>
-                    {program.nutritionPreferences.dietaryRestrictions && program.nutritionPreferences.dietaryRestrictions.length > 0 && (
-                      <View style={styles.nutritionPreferencesDetail}>
-                        <Text style={styles.nutritionPreferencesLabel}>Dietary Restrictions</Text>
-                        <Text style={styles.nutritionPreferencesValue} numberOfLines={1} ellipsizeMode="tail">
-                          {program.nutritionPreferences.dietaryRestrictions.join(', ')}
-                        </Text>
-                      </View>
-                    )}
-                    {program.nutritionPreferences.mealFrequency && (
-                      <View style={styles.nutritionPreferencesDetail}>
-                        <Text style={styles.nutritionPreferencesLabel}>Meals per Day</Text>
-                        <Text style={styles.nutritionPreferencesValue}>
-                          {program.nutritionPreferences.mealFrequency}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              )}
-              
-              <TouchableOpacity 
-                style={styles.viewAllButton}
-                onPress={() => Alert.alert("Coming Soon", "Full program calendar view will be available in the next update.")}
-              >
-                <Calendar size={18} color={colors.text} />
-                <Text style={styles.viewAllText}>View Full Program Calendar</Text>
-              </TouchableOpacity>
+
             </>
           )}
         </ScrollView>
@@ -3407,107 +3301,103 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
   },
-  programSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  // Program Hero Card
+  programHero: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
   },
-  summaryItem: {
-    alignItems: 'center',
-    flex: 1,
+  heroContent: {
+    marginBottom: 16,
   },
-  summaryLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  summaryValue: {
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.text,
-    fontSize: 14,
+    marginBottom: 8,
+  },
+  heroTarget: {
+    fontSize: 16,
     fontWeight: '600',
-    textAlign: 'center',
-    paddingHorizontal: 4,
+    color: colors.primary,
+    marginBottom: 4,
   },
-  actionButtonsRow: {
+  heroDate: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  heroStats: {
     flexDirection: 'row',
-    marginBottom: 12,
-    gap: 8,
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#2A2A2A',
   },
-  personalizeButton: {
+  heroStat: {
+    alignItems: 'center',
+  },
+  heroStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  heroStatLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    gap: 12,
+  },
+  primaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     flex: 1,
   },
-  personalizeButtonText: {
+  primaryActionText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
   },
-  overviewButton: {
+  secondaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2A2A2A',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     flex: 1,
     position: 'relative',
   },
-  overviewButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
+  secondaryActionText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
     marginLeft: 8,
   },
-  updateIndicator: {
+  updateDot: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  updateIndicatorText: {
-    color: colors.text,
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  countdownContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-  },
-  countdownLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  countdownBar: {
+    top: 8,
+    right: 8,
+    width: 8,
     height: 8,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 4,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  countdownFill: {
-    height: '100%',
     backgroundColor: colors.primary,
     borderRadius: 4,
   },
+
   strengthTrainingContainer: {
     backgroundColor: colors.card,
     borderRadius: 16,
@@ -3593,27 +3483,40 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
   },
-  recoveryStatus: {
+  // Recovery Banner
+  recoveryBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
-  recoveryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  recoveryInfo: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  recoveryScore: {
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
   },
-  recoveryIndicator: {
-    height: 8,
-    borderRadius: 4,
-    marginBottom: 12,
+  recoveryLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
-  recoveryText: {
+  recoveryDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  recoveryMessage: {
     fontSize: 14,
     color: colors.text,
-    lineHeight: 20,
+    fontWeight: '500',
+    flex: 1,
   },
   phaseIndicator: {
     backgroundColor: 'rgba(93, 95, 239, 0.1)',
@@ -3631,14 +3534,108 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  todayWorkout: {
+  // Today's Focus Section
+  todayFocus: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  todayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   todayTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 10,
+  },
+  todayDate: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  todayWorkouts: {
+    gap: 12,
+  },
+  todayWorkoutCard: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 16,
+  },
+  todayWorkoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  todayWorkoutInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  todayWorkoutText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  todayWorkoutTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  todayWorkoutType: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  todayIntensityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  todayIntensityText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  todayWorkoutDescription: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  todayWorkoutActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  todayStartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  todayStartText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  todayDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  todayDetailsText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 4,
   },
   // Updated for horizontal scrolling layout with responsive widths
   horizontalScrollContent: {
@@ -3778,6 +3775,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginLeft: 4,
+  },
+  // Weekly Plan Section
+  weeklyPlanSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  weeklyPlanHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  weeklyPlanTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  weeklyPlanToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  weeklyPlanToggleText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginRight: 4,
   },
   // Collapsible section styles
   sectionContainer: {
@@ -4724,52 +4748,39 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-  // Goal progress styles
-  goalProgressContainer: {
+  // Goal Progress
+  goalProgress: {
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
+    marginBottom: 16,
   },
-  goalProgressHeader: {
-    flexDirection: 'row',
+  goalProgressContent: {
     alignItems: 'center',
     marginBottom: 12,
-  },
-  goalProgressTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginLeft: 8,
   },
   goalProgressTarget: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  goalProgressDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  goalProgressItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  goalProgressLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  goalProgressValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: 4,
     textAlign: 'center',
+  },
+  goalProgressDays: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  goalProgressBar: {
+    height: 6,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  goalProgressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
   },
   goalStrategyContainer: {
     backgroundColor: '#2A2A2A',
