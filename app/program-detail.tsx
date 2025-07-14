@@ -1998,52 +1998,7 @@ export default function ProgramDetailScreen() {
                   </View>
                   
                   <View style={styles.todayWorkouts}>
-                    {todayWorkouts.map((workout, index) => (
-                      <TouchableOpacity 
-                        key={index}
-                        style={styles.todayWorkoutCard}
-                        onPress={() => handleWorkoutCardClick(workout)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.todayWorkoutHeader}>
-                          <View style={styles.todayWorkoutInfo}>
-                            {getWorkoutIcon(workout.title, workout.type)}
-                            <View style={styles.todayWorkoutText}>
-                              <Text style={styles.todayWorkoutTitle}>{workout.title}</Text>
-                              <Text style={styles.todayWorkoutType}>{workout.type.charAt(0).toUpperCase() + workout.type.slice(1)}</Text>
-                            </View>
-                          </View>
-                          <View style={[styles.todayIntensityBadge, { backgroundColor: getIntensityColor(workout.intensity) }]}>
-                            <Text style={styles.todayIntensityText}>{workout.intensity}</Text>
-                          </View>
-                        </View>
-                        
-                        <Text style={styles.todayWorkoutDescription} numberOfLines={2}>
-                          {workout.description}
-                        </Text>
-                        
-                        <View style={styles.todayWorkoutActions}>
-                          <TouchableOpacity 
-                            style={styles.todayStartButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleStartWorkout(workout);
-                            }}
-                          >
-                            <Play size={16} color={colors.text} />
-                            <Text style={styles.todayStartText}>Start</Text>
-                          </TouchableOpacity>
-                          
-                          <TouchableOpacity 
-                            style={styles.todayDetailsButton}
-                            onPress={() => handleWorkoutCardClick(workout)}
-                          >
-                            <Text style={styles.todayDetailsText}>Details</Text>
-                            <ArrowRight size={16} color={colors.textSecondary} />
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+                    {todayWorkouts.map((workout, index) => renderWorkoutCard(workout))}
                   </View>
                 </View>
               )}
