@@ -495,7 +495,8 @@ export default function ProgramsScreen() {
         strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
         cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
         nutritionPreferences: nutritionPreferences,
-        programConfig
+        programConfig,
+        customSplit: customSplit
       });
       
       // Generate AI-tailored program with strength/cardio training and nutrition preferences
@@ -503,6 +504,8 @@ export default function ProgramsScreen() {
         ...strengthTraining,
         customSplit: strengthTraining.split === 'custom' ? customSplit : undefined
       } : undefined;
+      
+      console.log('Strength config being sent to AI:', strengthConfig);
       
       const aiPlan = await generatePersonalizedTrainingPlan(
         selectedProgram.type, 

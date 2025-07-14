@@ -1016,7 +1016,8 @@ export const useWhoopStore = create<WhoopStore>()(
           console.log('Starting AI plan generation with config:', {
             programType,
             strengthTraining: userConfig.strengthTraining,
-            trainingDaysPerWeek: userConfig.trainingDaysPerWeek
+            trainingDaysPerWeek: userConfig.trainingDaysPerWeek,
+            customSplit: userConfig.strengthTraining?.customSplit
           });
           
           const { data, userProfile, macroTargets, weightHistory } = get();
