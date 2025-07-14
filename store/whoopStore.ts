@@ -1325,7 +1325,7 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
               if (planJson.phases && Array.isArray(planJson.phases)) {
                 planJson.phases = planJson.phases.map((phase: any) => {
                   if (phase.weeklyStructure && Array.isArray(phase.weeklyStructure)) {
-                    const separatedWorkouts: any[] = [];
+                    let separatedWorkouts: any[] = [];
                     
                     // Track if we have enough strength training sessions
                     const requiredStrengthSessions = userConfig.strengthTraining?.enabled ? userConfig.strengthTraining.daysPerWeek : 0;
