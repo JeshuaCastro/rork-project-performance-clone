@@ -139,10 +139,14 @@ export default function ProgramDetailScreen() {
   useEffect(() => {
     const loadCompletedWorkouts = async () => {
       try {
+        console.log('Loading completed workouts from AsyncStorage, key:', `completed-workouts-${todayKey}`);
         const stored = await AsyncStorage.getItem(`completed-workouts-${todayKey}`);
         if (stored) {
           const parsed = JSON.parse(stored);
+          console.log('Loaded completed workouts:', parsed);
           setCompletedWorkouts(parsed);
+        } else {
+          console.log('No stored completed workouts found');
         }
       } catch (error) {
         console.error('Error loading completed workouts:', error);
@@ -158,7 +162,9 @@ export default function ProgramDetailScreen() {
   useEffect(() => {
     const saveCompletedWorkouts = async () => {
       try {
+        console.log('Saving completed workouts to AsyncStorage:', completedWorkouts, 'key:', `completed-workouts-${todayKey}`);
         await AsyncStorage.setItem(`completed-workouts-${todayKey}`, JSON.stringify(completedWorkouts));
+        console.log('Successfully saved completed workouts');
       } catch (error) {
         console.error('Error saving completed workouts:', error);
       }
@@ -1438,7 +1444,10 @@ export default function ProgramDetailScreen() {
     setCompletedWorkouts(prev => {
       if (!prev.includes(workoutKey)) {
         console.log('Marking workout as completed:', workoutKey);
-        return [...prev, workoutKey];
+        console.log('Previous completed workouts:', prev);
+        const newCompleted = [...prev, workoutKey];
+        console.log('New completed workouts:', newCompleted);
+        return newCompleted;
       }
       return prev;
     });
@@ -1649,9 +1658,7 @@ export default function ProgramDetailScreen() {
     const isCompleted = completedWorkouts.includes(workoutKey);
     
     // Debug log to check completion state
-    if (isCompleted) {
-      console.log('Workout is completed:', workoutKey);
-    }
+    console.log('Rendering workout card:', workoutKey, 'isCompleted:', isCompleted, 'completedWorkouts:', completedWorkouts);
     
     // Use specialized cards based on workout type
     if (workout.type === 'strength') {
