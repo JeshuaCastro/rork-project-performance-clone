@@ -1769,7 +1769,19 @@ export default function ProgramDetailScreen() {
                       style={[
                         styles.goalProgressFill, 
                         { 
-                          width: `${Math.min(100, Math.max(0, 100 - (daysUntilGoal / 90) * 100))}%` 
+                          width: `${(() => {
+                            if (!program.startDate || !program.goalDate) return 0;
+                            
+                            const startDate = new Date(program.startDate);
+                            const goalDate = new Date(program.goalDate);
+                            const currentDate = new Date();
+                            
+                            const totalDuration = goalDate.getTime() - startDate.getTime();
+                            const elapsed = currentDate.getTime() - startDate.getTime();
+                            
+                            const progressPercentage = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+                            return progressPercentage;
+                          })()}%` 
                         }
                       ]} 
                     />
