@@ -206,7 +206,8 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    flexShrink: 0,
   },
   detailsButton: {
     width: 32,
@@ -220,7 +221,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
+    minWidth: 0,
   },
   strengthIconContainer: {
     width: 36,
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    minWidth: 80,
+    maxWidth: 90,
     justifyContent: 'center',
   },
   intensityText: {
