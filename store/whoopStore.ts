@@ -540,6 +540,7 @@ interface WhoopStore {
   
   // Today's workout method
   getTodaysWorkout: () => TodaysWorkout | null;
+  isWorkoutCompleted: (programId: string, workoutTitle: string, date?: string) => Promise<boolean>;
   
   // Weight tracking methods
   addWeightEntry: (weight: number, date?: string) => void;
@@ -2823,6 +2824,26 @@ Return JSON with implementation and advisory guidance:
         }
         
         return null;
+      },
+      
+      // Check if a workout is completed
+      isWorkoutCompleted: async (programId: string, workoutTitle: string, date?: string): Promise<boolean> => {
+        try {
+          const targetDate = date || new Date().toISOString().split('T')[0];
+          const todayKey = `${programId}-${targetDate}`;
+          const stored = await AsyncStorage.getItem(`completed-workouts-${todayKey}`);
+          
+          if (stored) {
+            const completedWorkouts = JSON.parse(stored);
+            const workoutKey = `${new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long' })}-${workoutTitle}`;
+            return completedWorkouts.includes(workoutKey);
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Error checking workout completion:', error);
+          return false;
+        }
       },
       
       // Weight tracking methods

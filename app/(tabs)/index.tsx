@@ -38,7 +38,8 @@ import {
   Zap,
   Users,
   Flame,
-  Eye
+  Eye,
+  Check
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -49,6 +50,7 @@ export default function DashboardScreen() {
   const [syncAttempted, setSyncAttempted] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
+  const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
   
   const { 
     data, 
@@ -66,7 +68,8 @@ export default function DashboardScreen() {
     userProfile,
     activePrograms,
     getTodaysWorkout,
-    startManualWorkout
+    startManualWorkout,
+    isWorkoutCompleted
   } = useWhoopStore();
   
   // Check if profile is complete
@@ -138,6 +141,25 @@ export default function DashboardScreen() {
   
   // Get today's workout from active programs
   const todaysWorkout = getTodaysWorkout();
+  
+  // Check if today's workout is completed
+  useEffect(() => {
+    const checkWorkoutCompletion = async () => {
+      if (todaysWorkout && todaysWorkout.programId) {
+        try {
+          const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
+          setIsWorkoutCompletedToday(completed);
+        } catch (error) {
+          console.error('Error checking workout completion:', error);
+          setIsWorkoutCompletedToday(false);
+        }
+      } else {
+        setIsWorkoutCompletedToday(false);
+      }
+    };
+    
+    checkWorkoutCompletion();
+  }, [todaysWorkout, isWorkoutCompleted]);
   
   const handleSyncData = async () => {
     setSyncAttempted(true);
@@ -644,14 +666,29 @@ export default function DashboardScreen() {
                 
                 <View style={styles.workoutActions}>
                   <TouchableOpacity 
-                    style={styles.startWorkoutButton}
+                    style={[
+                      styles.startWorkoutButton,
+                      isWorkoutCompletedToday && styles.completedWorkoutButton
+                    ]}
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleStartWorkout(todaysWorkout);
+                      if (!isWorkoutCompletedToday) {
+                        handleStartWorkout(todaysWorkout);
+                      }
                     }}
+                    disabled={isWorkoutCompletedToday}
                   >
-                    <Play size={18} color={colors.text} />
-                    <Text style={styles.startWorkoutText}>Start Workout</Text>
+                    {isWorkoutCompletedToday ? (
+                      <>
+                        <Check size={18} color={colors.text} />
+                        <Text style={styles.startWorkoutText}>Completed</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={18} color={colors.text} />
+                        <Text style={styles.startWorkoutText}>Start Workout</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
@@ -1190,6 +1227,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
     justifyContent: 'center',
+  },
+  completedWorkoutButton: {
+    backgroundColor: colors.success,
   },
   startWorkoutText: {
     color: colors.text,
