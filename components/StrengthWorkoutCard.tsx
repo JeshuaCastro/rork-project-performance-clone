@@ -126,7 +126,7 @@ export default function StrengthWorkoutCard({
                 onDetails();
               }}
             >
-              <Info size={16} color={colors.textSecondary} />
+              <Info size={18} color="#FFFFFF" />
             </TouchableOpacity>
           )}
         </View>
@@ -210,12 +210,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   detailsButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   workoutTitleContainer: {
     flexDirection: 'row',
