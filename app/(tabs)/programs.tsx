@@ -965,95 +965,97 @@ export default function ProgramsScreen() {
                     </View>
                   </View>
                   
-                  {/* Strength Training Section */}
-                  <View style={styles.sectionContainer}>
-                    <TouchableOpacity 
-                      style={styles.sectionHeader}
-                      onPress={() => setStrengthSectionExpanded(!strengthSectionExpanded)}
-                    >
-                      <View style={styles.sectionHeaderLeft}>
-                        <Dumbbell size={20} color={colors.primary} />
-                        <Text style={styles.sectionHeaderTitle}>Strength Training</Text>
-                      </View>
-                      <View style={styles.sectionHeaderRight}>
-                        <Switch
-                          value={strengthTraining.enabled}
-                          onValueChange={(value) => {
-                            setStrengthTraining(prev => ({...prev, enabled: value}));
-                            if (value && !strengthSectionExpanded) {
-                              setStrengthSectionExpanded(true);
-                            }
-                          }}
-                          trackColor={{ false: '#2A2A2A', true: colors.primary }}
-                          thumbColor={colors.text}
-                        />
-                        {strengthSectionExpanded ? 
-                          <ChevronUp size={20} color={colors.text} style={{marginLeft: 8}} /> : 
-                          <ChevronDown size={20} color={colors.text} style={{marginLeft: 8}} />
-                        }
-                      </View>
-                    </TouchableOpacity>
-                    
-                    {strengthSectionExpanded && strengthTraining.enabled && (
-                      <View style={styles.sectionContent}>
-                        <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>Strength Training Days</Text>
-                          <View style={styles.pillContainer}>
-                            {[2, 3, 4, 5].map((days) => (
-                              <TouchableOpacity
-                                key={days}
-                                style={[
-                                  styles.pill,
-                                  strengthTraining.daysPerWeek === days && styles.activePill
-                                ]}
-                                onPress={() => setStrengthTraining({...strengthTraining, daysPerWeek: days})}
-                              >
-                                <Text 
+                  {/* Strength Training Section - Only show for non-strength programs */}
+                  {selectedProgram?.type !== 'powerlifting' && selectedProgram?.type !== 'hypertrophy' && (
+                    <View style={styles.sectionContainer}>
+                      <TouchableOpacity 
+                        style={styles.sectionHeader}
+                        onPress={() => setStrengthSectionExpanded(!strengthSectionExpanded)}
+                      >
+                        <View style={styles.sectionHeaderLeft}>
+                          <Dumbbell size={20} color={colors.primary} />
+                          <Text style={styles.sectionHeaderTitle}>Strength Training</Text>
+                        </View>
+                        <View style={styles.sectionHeaderRight}>
+                          <Switch
+                            value={strengthTraining.enabled}
+                            onValueChange={(value) => {
+                              setStrengthTraining(prev => ({...prev, enabled: value}));
+                              if (value && !strengthSectionExpanded) {
+                                setStrengthSectionExpanded(true);
+                              }
+                            }}
+                            trackColor={{ false: '#2A2A2A', true: colors.primary }}
+                            thumbColor={colors.text}
+                          />
+                          {strengthSectionExpanded ? 
+                            <ChevronUp size={20} color={colors.text} style={{marginLeft: 8}} /> : 
+                            <ChevronDown size={20} color={colors.text} style={{marginLeft: 8}} />
+                          }
+                        </View>
+                      </TouchableOpacity>
+                      
+                      {strengthSectionExpanded && strengthTraining.enabled && (
+                        <View style={styles.sectionContent}>
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Strength Training Days</Text>
+                            <View style={styles.pillContainer}>
+                              {[2, 3, 4, 5].map((days) => (
+                                <TouchableOpacity
+                                  key={days}
                                   style={[
-                                    styles.pillText,
-                                    strengthTraining.daysPerWeek === days && styles.activePillText
+                                    styles.pill,
+                                    strengthTraining.daysPerWeek === days && styles.activePill
                                   ]}
+                                  onPress={() => setStrengthTraining({...strengthTraining, daysPerWeek: days})}
                                 >
-                                  {days} days
-                                </Text>
+                                  <Text 
+                                    style={[
+                                      styles.pillText,
+                                      strengthTraining.daysPerWeek === days && styles.activePillText
+                                    ]}
+                                  >
+                                    {days} days
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                          
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Training Split</Text>
+                            {trainingSplitOptions.map((split) => (
+                              <TouchableOpacity
+                                key={split.id}
+                                style={[
+                                  styles.splitOption,
+                                  strengthTraining.split === split.id && styles.activeSplitOption
+                                ]}
+                                onPress={() => setStrengthTraining({...strengthTraining, split: split.id as any})}
+                              >
+                                <View style={styles.splitOptionHeader}>
+                                  <Text 
+                                    style={[
+                                      styles.splitOptionName,
+                                      strengthTraining.split === split.id && styles.activeSplitOptionText
+                                    ]}
+                                  >
+                                    {split.name}
+                                  </Text>
+                                  {strengthTraining.split === split.id && (
+                                    <View style={styles.checkmarkContainer}>
+                                      <Dumbbell size={16} color={colors.text} />
+                                    </View>
+                                  )}
+                                </View>
+                                <Text style={styles.splitOptionDescription}>{split.description}</Text>
                               </TouchableOpacity>
                             ))}
                           </View>
                         </View>
-                        
-                        <View style={styles.inputGroup}>
-                          <Text style={styles.inputLabel}>Training Split</Text>
-                          {trainingSplitOptions.map((split) => (
-                            <TouchableOpacity
-                              key={split.id}
-                              style={[
-                                styles.splitOption,
-                                strengthTraining.split === split.id && styles.activeSplitOption
-                              ]}
-                              onPress={() => setStrengthTraining({...strengthTraining, split: split.id as any})}
-                            >
-                              <View style={styles.splitOptionHeader}>
-                                <Text 
-                                  style={[
-                                    styles.splitOptionName,
-                                    strengthTraining.split === split.id && styles.activeSplitOptionText
-                                  ]}
-                                >
-                                  {split.name}
-                                </Text>
-                                {strengthTraining.split === split.id && (
-                                  <View style={styles.checkmarkContainer}>
-                                    <Dumbbell size={16} color={colors.text} />
-                                  </View>
-                                )}
-                              </View>
-                              <Text style={styles.splitOptionDescription}>{split.description}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                  </View>
+                      )}
+                    </View>
+                  )}
                   
                   {/* Nutrition Section */}
                   <View style={styles.sectionContainer}>
@@ -1197,7 +1199,8 @@ export default function ProgramsScreen() {
                     <Text style={styles.aiInfoText}>
                       Our AI coach will analyze your profile data and create a completely personalized 
                       training program based on your current fitness level, body metrics, and goals.
-                      {strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split} split) will be integrated into your program.` : ""}
+                      {selectedProgram?.type !== 'powerlifting' && selectedProgram?.type !== 'hypertrophy' && strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split} split) will be integrated into your program.` : ""}
+                      {selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy' ? " This strength-focused program is already optimized for your training goals." : ""}
                       {" A personalized nutrition plan will be created to support your goals."}
                     </Text>
                   </View>
