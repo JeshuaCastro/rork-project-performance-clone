@@ -1072,12 +1072,15 @@ MANDATORY: User has specifically requested strength training integration with th
 - Focus Areas: ${userConfig.strengthTraining.focusAreas?.join(', ') || 'General strength development'}
 
 CRITICAL STRENGTH TRAINING IMPLEMENTATION RULES:
-1. MUST include exactly ${userConfig.strengthTraining.daysPerWeek} strength training sessions per week
+1. MUST include EXACTLY ${userConfig.strengthTraining.daysPerWeek} strength training sessions per week - NO MORE, NO LESS
 2. MUST use the ${userConfig.strengthTraining.split} training split approach
 3. MUST create separate workout entries for each strength training session
 4. MUST balance strength training with the primary ${programType} goal
 5. MUST distribute strength training sessions throughout the week for optimal recovery
 6. MUST ensure strength training complements rather than interferes with primary goal workouts
+7. CRITICAL: Do NOT add any additional strength training beyond the user's specified ${userConfig.strengthTraining.daysPerWeek} sessions
+8. OVERRIDE BASE PROGRAM: If the ${programType} program normally includes strength/resistance work, REPLACE it entirely with the user's manual specification
+9. NO EXTRA STRENGTH: The base ${programType} program should focus ONLY on its primary discipline and NOT include additional strength training
 
 STRENGTH TRAINING SPLIT IMPLEMENTATION:
 ${userConfig.strengthTraining.split === 'fullBody' ? '- Each strength session should target all major muscle groups\n- Focus on compound movements (squat, deadlift, bench press, rows)\n- 6-8 exercises per session covering upper and lower body' : ''}
@@ -1099,6 +1102,21 @@ If primary program has 4 cardio days and user wants 3 strength days:
 NEVER combine strength and cardio into single workout descriptions like "run + strength training"
 ALWAYS create separate, distinct workout entries for each type
 ` : 'User has not requested strength training integration.'}
+
+${userConfig.strengthTraining?.enabled ? `
+BASE PROGRAM MODIFICATION REQUIREMENTS:
+When user has manually specified strength training, the base ${programType} program must be modified as follows:
+1. REMOVE ALL BASE STRENGTH: Remove any strength/resistance training that would normally be included in a ${programType} program
+2. FOCUS ON PRIMARY DISCIPLINE: The ${programType} program should focus ONLY on ${programType}-specific training (running, cycling, etc.)
+3. NO ADDITIONAL STRENGTH: Do not add any strength training beyond the user's ${userConfig.strengthTraining.daysPerWeek} specified sessions
+4. REPLACE, DON'T SUPPLEMENT: The user's manual strength training REPLACES any base program strength work, it doesn't supplement it
+5. PURE DISCIPLINE FOCUS: Keep the ${programType} workouts purely focused on the primary sport/discipline
+
+EXAMPLE: If creating a marathon program and user wants 3 strength days:
+- Base program should have ONLY running workouts (easy runs, tempo runs, intervals, long runs)
+- Do NOT include any "strength training for runners" or "core work" or "resistance training" in the base program
+- The 3 user-specified strength sessions will handle ALL strength training needs
+` : ''}
 
 CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 1. ABSOLUTE RULE: Each workout entry must have EXACTLY ONE type: "cardio", "strength", or "recovery"
@@ -1284,6 +1302,25 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                 throw new Error('Invalid plan JSON structure');
               }
               
+              // Initial validation of AI response for strength training compliance
+              if (userConfig.strengthTraining?.enabled && planJson.phases) {
+                const requiredStrengthSessions = userConfig.strengthTraining.daysPerWeek;
+                console.log(`🔍 Validating AI response for strength training compliance...`);
+                console.log(`Required strength sessions per week: ${requiredStrengthSessions}`);
+                
+                planJson.phases.forEach((phase: any, phaseIndex: number) => {
+                  if (phase.weeklyStructure) {
+                    const strengthWorkouts = phase.weeklyStructure.filter((w: any) => w.type === 'strength');
+                    const totalWorkouts = phase.weeklyStructure.length;
+                    console.log(`Phase ${phaseIndex + 1} "${phase.name}": ${strengthWorkouts.length} strength workouts out of ${totalWorkouts} total workouts`);
+                    
+                    if (strengthWorkouts.length > requiredStrengthSessions) {
+                      console.warn(`⚠️ AI generated ${strengthWorkouts.length} strength sessions but user only requested ${requiredStrengthSessions}. Will be corrected in post-processing.`);
+                    }
+                  }
+                });
+              }
+              
               // Post-process to ensure workout separation and strength training integration
               if (planJson.phases && Array.isArray(planJson.phases)) {
                 planJson.phases = planJson.phases.map((phase: any) => {
@@ -1358,38 +1395,69 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
                       }
                     });
                     
-                    // If strength training was requested but not enough sessions were created, add them
-                    if (requiredStrengthSessions > 0 && strengthSessionsFound < requiredStrengthSessions) {
-                      const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                      const usedDays = new Set(separatedWorkouts.map(w => w.day));
-                      const availableDays = daysOfWeek.filter(day => !usedDays.has(day));
+                    // Enforce EXACT number of strength training sessions
+                    if (requiredStrengthSessions > 0) {
+                      const currentStrengthWorkouts = separatedWorkouts.filter(w => w.type === 'strength');
                       
-                      const sessionsToAdd = requiredStrengthSessions - strengthSessionsFound;
-                      console.log(`Adding ${sessionsToAdd} missing strength training sessions`);
-                      
-                      for (let i = 0; i < sessionsToAdd && i < availableDays.length; i++) {
-                        const day = availableDays[i];
-                        const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining);
-                        separatedWorkouts.push(strengthWorkout);
+                      // If we have too many strength sessions, remove the excess
+                      if (currentStrengthWorkouts.length > requiredStrengthSessions) {
+                        console.log(`Removing ${currentStrengthWorkouts.length - requiredStrengthSessions} excess strength training sessions`);
+                        
+                        // Keep only the required number of strength sessions
+                        const strengthToKeep = currentStrengthWorkouts.slice(0, requiredStrengthSessions);
+                        const strengthToRemove = currentStrengthWorkouts.slice(requiredStrengthSessions);
+                        
+                        // Remove excess strength workouts from separatedWorkouts
+                        separatedWorkouts = separatedWorkouts.filter(w => 
+                          w.type !== 'strength' || strengthToKeep.includes(w)
+                        );
+                        
+                        console.log(`Removed excess strength sessions: ${strengthToRemove.map(w => w.title).join(', ')}`);
                       }
                       
-                      // If we still need more sessions and no available days, add to existing days
-                      if (sessionsToAdd > availableDays.length) {
-                        const remainingSessions = sessionsToAdd - availableDays.length;
-                        for (let i = 0; i < remainingSessions; i++) {
-                          const day = daysOfWeek[i % daysOfWeek.length];
-                          const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining, true);
+                      // If we have too few strength sessions, add them
+                      else if (currentStrengthWorkouts.length < requiredStrengthSessions) {
+                        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                        const usedDays = new Set(separatedWorkouts.map(w => w.day));
+                        const availableDays = daysOfWeek.filter(day => !usedDays.has(day));
+                        
+                        const sessionsToAdd = requiredStrengthSessions - currentStrengthWorkouts.length;
+                        console.log(`Adding ${sessionsToAdd} missing strength training sessions`);
+                        
+                        for (let i = 0; i < sessionsToAdd && i < availableDays.length; i++) {
+                          const day = availableDays[i];
+                          const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining);
                           separatedWorkouts.push(strengthWorkout);
+                        }
+                        
+                        // If we still need more sessions and no available days, add to existing days
+                        if (sessionsToAdd > availableDays.length) {
+                          const remainingSessions = sessionsToAdd - availableDays.length;
+                          for (let i = 0; i < remainingSessions; i++) {
+                            const day = daysOfWeek[i % daysOfWeek.length];
+                            const strengthWorkout = generateStrengthWorkout(day, userConfig.strengthTraining, true);
+                            separatedWorkouts.push(strengthWorkout);
+                          }
                         }
                       }
                     }
                     
                     phase.weeklyStructure = separatedWorkouts;
                     
-                    // Final validation: ensure we have the required number of strength sessions
+                    // Final validation: ensure we have EXACTLY the required number of strength sessions
                     const finalStrengthCount = separatedWorkouts.filter(w => w.type === 'strength').length;
                     if (requiredStrengthSessions > 0) {
                       console.log(`Phase "${phase.name}": Required ${requiredStrengthSessions} strength sessions, found ${finalStrengthCount}`);
+                      
+                      if (finalStrengthCount !== requiredStrengthSessions) {
+                        console.error(`STRENGTH TRAINING MISMATCH: Expected exactly ${requiredStrengthSessions} sessions, but found ${finalStrengthCount}`);
+                      } else {
+                        console.log(`✅ Strength training correctly configured: ${finalStrengthCount} sessions as requested`);
+                        
+                        // Log the specific strength training sessions for verification
+                        const strengthSessions = separatedWorkouts.filter(w => w.type === 'strength');
+                        console.log('Strength training sessions:', strengthSessions.map(s => `${s.day}: ${s.title}`).join(', '));
+                      }
                     }
                   }
                   return phase;
