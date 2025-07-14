@@ -194,7 +194,9 @@ export default function StrengthWorkoutCard({
           ]}
           onPress={(e) => {
             e.stopPropagation();
-            isCompleted ? null : onStart();
+            if (!isCompleted) {
+              onStart();
+            }
           }}
           disabled={isCompleted}
         >

@@ -16,6 +16,7 @@ import {
   SafeAreaView,
   StatusBar as RNStatusBar
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -128,8 +129,45 @@ export default function ProgramDetailScreen() {
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
   
-  // Track completed workouts
+  // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
+  
+  // Create a unique key for today's completed workouts
+  const todayKey = `${programId}-${today}`;
+  
+  // Load completed workouts for today from AsyncStorage on component mount
+  useEffect(() => {
+    const loadCompletedWorkouts = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(`completed-workouts-${todayKey}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setCompletedWorkouts(parsed);
+        }
+      } catch (error) {
+        console.error('Error loading completed workouts:', error);
+      }
+    };
+    
+    if (programId) {
+      loadCompletedWorkouts();
+    }
+  }, [programId, today]);
+  
+  // Save completed workouts to AsyncStorage whenever they change
+  useEffect(() => {
+    const saveCompletedWorkouts = async () => {
+      try {
+        await AsyncStorage.setItem(`completed-workouts-${todayKey}`, JSON.stringify(completedWorkouts));
+      } catch (error) {
+        console.error('Error saving completed workouts:', error);
+      }
+    };
+    
+    if (completedWorkouts.length > 0 && programId) {
+      saveCompletedWorkouts();
+    }
+  }, [completedWorkouts, todayKey, programId]);
   
   // Workout summary state
   const [showSummaryModal, setShowSummaryModal] = useState(false);
@@ -1284,6 +1322,27 @@ export default function ProgramDetailScreen() {
 
   // Handle starting a workout
   const handleStartWorkout = async (workout: Workout) => {
+    // Check if this workout is already completed
+    const workoutKey = `${workout.day}-${workout.title}`;
+    if (completedWorkouts.includes(workoutKey)) {
+      Alert.alert(
+        "Workout Already Completed",
+        "This workout has already been completed today. Would you like to do it again?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Do Again", 
+            onPress: () => {
+              // Remove from completed workouts and start again
+              setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
+              startManualWorkout(workout);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     if (activeWorkout) {
       Alert.alert(
         "Workout in Progress",
@@ -1362,6 +1421,7 @@ export default function ProgramDetailScreen() {
     
     const endTime = new Date();
     const durationSeconds = activeWorkout.elapsedTime;
+    const workoutKey = `${activeWorkout.workout.day}-${activeWorkout.workout.title}`;
     
     // Stop the timer
     setActiveWorkout(prev => prev ? { ...prev, isRunning: false } : null);
@@ -1374,8 +1434,14 @@ export default function ProgramDetailScreen() {
       duration: durationSeconds
     });
     
-    // Mark workout as completed
-    setCompletedWorkouts(prev => [...prev, `${activeWorkout.workout.day}-${activeWorkout.workout.title}`]);
+    // Mark workout as completed - ensure it's not already in the list
+    setCompletedWorkouts(prev => {
+      if (!prev.includes(workoutKey)) {
+        console.log('Marking workout as completed:', workoutKey);
+        return [...prev, workoutKey];
+      }
+      return prev;
+    });
     
     // Hide workout modal and show summary modal
     setShowWorkoutModal(false);
@@ -1579,13 +1645,19 @@ export default function ProgramDetailScreen() {
 
   // Render a single workout card with specialized components
   const renderWorkoutCard = (workout: Workout) => {
-    const isCompleted = completedWorkouts.includes(`${workout.day}-${workout.title}`);
+    const workoutKey = `${workout.day}-${workout.title}`;
+    const isCompleted = completedWorkouts.includes(workoutKey);
+    
+    // Debug log to check completion state
+    if (isCompleted) {
+      console.log('Workout is completed:', workoutKey);
+    }
     
     // Use specialized cards based on workout type
     if (workout.type === 'strength') {
       return (
         <StrengthWorkoutCard
-          key={`${workout.day}-${workout.title}`}
+          key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
           workout={workout as any}
           isCompleted={isCompleted}
           onPress={() => handleWorkoutCardClick(workout)}
@@ -1596,7 +1668,7 @@ export default function ProgramDetailScreen() {
     } else if (workout.type === 'cardio') {
       return (
         <CardioWorkoutCard
-          key={`${workout.day}-${workout.title}`}
+          key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
           workout={workout as any}
           isCompleted={isCompleted}
           onPress={() => handleWorkoutCardClick(workout)}
@@ -1610,7 +1682,7 @@ export default function ProgramDetailScreen() {
     return (
       <TouchableOpacity 
         style={styles.workoutCard} 
-        key={`${workout.day}-${workout.title}`}
+        key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
         onPress={() => handleWorkoutCardClick(workout)}
         activeOpacity={0.7}
       >
