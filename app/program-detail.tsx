@@ -55,7 +55,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useWhoopStore } from '@/store/whoopStore';
-import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback } from '@/types/whoop';
+import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 import NutritionTracker from '@/components/NutritionTracker';
 import StrengthWorkoutCard from '@/components/StrengthWorkoutCard';
 import CardioWorkoutCard from '@/components/CardioWorkoutCard';
@@ -495,7 +495,7 @@ export default function ProgramDetailScreen() {
             
             return enhancedWorkout;
           })
-          .sort((a, b) => {
+          .sort((a: TodaysWorkout, b: TodaysWorkout) => {
             const dayA = dayOrder.indexOf(a.day);
             const dayB = dayOrder.indexOf(b.day);
             
