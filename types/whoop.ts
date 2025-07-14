@@ -63,6 +63,14 @@ export interface StrengthTrainingConfig {
   focusAreas?: string[];
 }
 
+export interface CardioTrainingConfig {
+  enabled: boolean;
+  daysPerWeek: number;
+  type: 'running' | 'cycling' | 'swimming' | 'rowing' | 'mixed';
+  intensity: 'low' | 'moderate' | 'high' | 'mixed';
+  duration?: number; // in minutes
+}
+
 export interface NutritionPreferences {
   goal: 'surplus' | 'maintain' | 'deficit';
   dietaryRestrictions?: string[];
@@ -94,6 +102,7 @@ export interface TrainingProgram {
   experienceLevel: 'beginner' | 'intermediate' | 'advanced';
   active: boolean;
   strengthTraining?: StrengthTrainingConfig;
+  cardioTraining?: CardioTrainingConfig;
   nutritionPreferences?: NutritionPreferences;
   nutritionPlan?: NutritionPlan;
   customRequirements?: string; // Added field for custom training requirements

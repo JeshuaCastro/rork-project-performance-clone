@@ -46,6 +46,7 @@ import { useWhoopStore } from '@/store/whoopStore';
 import { 
   TrainingProgram, 
   StrengthTrainingConfig, 
+  CardioTrainingConfig,
   NutritionPreferences 
 } from '@/types/whoop';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -287,6 +288,15 @@ export default function ProgramsScreen() {
     focusAreas: []
   });
   
+  // New state for cardio training configuration
+  const [cardioTraining, setCardioTraining] = useState<CardioTrainingConfig>({
+    enabled: false,
+    daysPerWeek: 2,
+    type: 'running',
+    intensity: 'moderate',
+    duration: 30
+  });
+  
   // New state for nutrition preferences
   const [nutritionPreferences, setNutritionPreferences] = useState<NutritionPreferences>({
     goal: 'maintain',
@@ -296,6 +306,7 @@ export default function ProgramsScreen() {
   
   // State for expanded sections
   const [strengthSectionExpanded, setStrengthSectionExpanded] = useState(false);
+  const [cardioSectionExpanded, setCardioSectionExpanded] = useState(false);
   const [nutritionSectionExpanded, setNutritionSectionExpanded] = useState(false);
   
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
@@ -360,6 +371,15 @@ export default function ProgramsScreen() {
       focusAreas: []
     });
     
+    // Reset cardio training config
+    setCardioTraining({
+      enabled: false,
+      daysPerWeek: 2,
+      type: 'running',
+      intensity: 'moderate',
+      duration: 30
+    });
+    
     // Set nutrition preferences based on user profile if available
     if (isProfileComplete) {
       let goal: 'surplus' | 'maintain' | 'deficit' = 'maintain';
@@ -385,6 +405,7 @@ export default function ProgramsScreen() {
     
     // Reset expanded sections
     setStrengthSectionExpanded(false);
+    setCardioSectionExpanded(false);
     setNutritionSectionExpanded(false);
     
     setModalVisible(true);
@@ -466,16 +487,18 @@ export default function ProgramsScreen() {
       console.log('Generating program with config:', {
         programType: selectedProgram.type,
         strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+        cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
         nutritionPreferences: nutritionPreferences,
         programConfig
       });
       
-      // Generate AI-tailored program with strength training and nutrition preferences
+      // Generate AI-tailored program with strength/cardio training and nutrition preferences
       const aiPlan = await generatePersonalizedTrainingPlan(
         selectedProgram.type, 
         {
           ...programConfig,
           strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+          cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
           nutritionPreferences: nutritionPreferences
         }
       );
@@ -497,6 +520,19 @@ export default function ProgramsScreen() {
         }
       }
       
+      // Validate cardio training integration
+      if (cardioTraining.enabled && aiPlan?.phases) {
+        const cardioWorkouts = aiPlan.phases.flatMap((phase: any) => 
+          phase.weeklyStructure?.filter((w: any) => w.type === 'cardio') || []
+        );
+        console.log(`Cardio training requested: ${cardioTraining.daysPerWeek} days/week`);
+        console.log(`Cardio workouts found in AI plan: ${cardioWorkouts.length}`);
+        
+        if (cardioWorkouts.length === 0) {
+          console.warn('No cardio training workouts found in AI plan despite being requested!');
+        }
+      }
+      
       // Create the program with AI-generated plan
       const newProgram: Omit<TrainingProgram, 'id' | 'startDate' | 'active'> = {
         name: selectedProgram.name,
@@ -506,6 +542,7 @@ export default function ProgramsScreen() {
         trainingDaysPerWeek: programConfig.trainingDaysPerWeek,
         experienceLevel: programConfig.experienceLevel as 'beginner' | 'intermediate' | 'advanced',
         strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+        cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
         nutritionPreferences: nutritionPreferences,
         nutritionPlan: aiPlan?.nutritionPlan,
         aiPlan: aiPlan
@@ -515,10 +552,13 @@ export default function ProgramsScreen() {
       setModalVisible(false);
       setAiGeneratingPlan(false);
       
-      // Show success message with strength training confirmation
+      // Show success message with training confirmation
       let successMessage = `Your personalized ${selectedProgram.name} program has been created based on your profile data and goals.`;
       if (strengthTraining.enabled) {
         successMessage += ` Strength training (${strengthTraining.daysPerWeek} days/week) has been integrated into your program.`;
+      }
+      if (cardioTraining.enabled) {
+        successMessage += ` Cardio training (${cardioTraining.daysPerWeek} days/week, ${cardioTraining.type}) has been integrated into your program.`;
       }
       
       Alert.alert(
@@ -535,8 +575,8 @@ export default function ProgramsScreen() {
       setAiGeneratingPlan(false);
       
       let errorMessage = "There was an error creating your personalized program. Please try again.";
-      if (strengthTraining.enabled) {
-        errorMessage += " If the issue persists, try creating the program without strength training first, then add it later through program customization.";
+      if (strengthTraining.enabled || cardioTraining.enabled) {
+        errorMessage += " If the issue persists, try creating the program without additional training first, then add it later through program customization.";
       }
       
       Alert.alert(
@@ -1057,6 +1097,154 @@ export default function ProgramsScreen() {
                     </View>
                   )}
                   
+                  {/* Cardio Training Section - Only show for strength programs */}
+                  {(selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy') && (
+                    <View style={styles.sectionContainer}>
+                      <TouchableOpacity 
+                        style={styles.sectionHeader}
+                        onPress={() => setCardioSectionExpanded(!cardioSectionExpanded)}
+                      >
+                        <View style={styles.sectionHeaderLeft}>
+                          <Heart size={20} color={colors.primary} />
+                          <Text style={styles.sectionHeaderTitle}>Optional Cardio</Text>
+                        </View>
+                        <View style={styles.sectionHeaderRight}>
+                          <Switch
+                            value={cardioTraining.enabled}
+                            onValueChange={(value) => {
+                              setCardioTraining(prev => ({...prev, enabled: value}));
+                              if (value && !cardioSectionExpanded) {
+                                setCardioSectionExpanded(true);
+                              }
+                            }}
+                            trackColor={{ false: '#2A2A2A', true: colors.primary }}
+                            thumbColor={colors.text}
+                          />
+                          {cardioSectionExpanded ? 
+                            <ChevronUp size={20} color={colors.text} style={{marginLeft: 8}} /> : 
+                            <ChevronDown size={20} color={colors.text} style={{marginLeft: 8}} />
+                          }
+                        </View>
+                      </TouchableOpacity>
+                      
+                      {cardioSectionExpanded && cardioTraining.enabled && (
+                        <View style={styles.sectionContent}>
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Cardio Days Per Week</Text>
+                            <View style={styles.pillContainer}>
+                              {[1, 2, 3, 4].map((days) => (
+                                <TouchableOpacity
+                                  key={days}
+                                  style={[
+                                    styles.pill,
+                                    cardioTraining.daysPerWeek === days && styles.activePill
+                                  ]}
+                                  onPress={() => setCardioTraining({...cardioTraining, daysPerWeek: days})}
+                                >
+                                  <Text 
+                                    style={[
+                                      styles.pillText,
+                                      cardioTraining.daysPerWeek === days && styles.activePillText
+                                    ]}
+                                  >
+                                    {days} days
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                          
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Cardio Type</Text>
+                            <View style={styles.cardioTypeContainer}>
+                              {[
+                                { id: 'running', name: 'Running', icon: <Activity size={20} color={cardioTraining.type === 'running' ? colors.text : colors.textSecondary} /> },
+                                { id: 'cycling', name: 'Cycling', icon: <Bike size={20} color={cardioTraining.type === 'cycling' ? colors.text : colors.textSecondary} /> },
+                                { id: 'swimming', name: 'Swimming', icon: <Activity size={20} color={cardioTraining.type === 'swimming' ? colors.text : colors.textSecondary} /> },
+                                { id: 'rowing', name: 'Rowing', icon: <Activity size={20} color={cardioTraining.type === 'rowing' ? colors.text : colors.textSecondary} /> },
+                                { id: 'mixed', name: 'Mixed', icon: <Heart size={20} color={cardioTraining.type === 'mixed' ? colors.text : colors.textSecondary} /> }
+                              ].map((type) => (
+                                <TouchableOpacity
+                                  key={type.id}
+                                  style={[
+                                    styles.cardioTypeOption,
+                                    cardioTraining.type === type.id && styles.activeCardioTypeOption
+                                  ]}
+                                  onPress={() => setCardioTraining({...cardioTraining, type: type.id as any})}
+                                >
+                                  {type.icon}
+                                  <Text 
+                                    style={[
+                                      styles.cardioTypeText,
+                                      cardioTraining.type === type.id && styles.activeCardioTypeText
+                                    ]}
+                                  >
+                                    {type.name}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                          
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Intensity Level</Text>
+                            <View style={styles.pillContainer}>
+                              {[
+                                { id: 'low', name: 'Low (Recovery)' },
+                                { id: 'moderate', name: 'Moderate' },
+                                { id: 'high', name: 'High (HIIT)' },
+                                { id: 'mixed', name: 'Mixed' }
+                              ].map((intensity) => (
+                                <TouchableOpacity
+                                  key={intensity.id}
+                                  style={[
+                                    styles.pill,
+                                    cardioTraining.intensity === intensity.id && styles.activePill
+                                  ]}
+                                  onPress={() => setCardioTraining({...cardioTraining, intensity: intensity.id as any})}
+                                >
+                                  <Text 
+                                    style={[
+                                      styles.pillText,
+                                      cardioTraining.intensity === intensity.id && styles.activePillText
+                                    ]}
+                                  >
+                                    {intensity.name}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                          
+                          <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Session Duration (minutes)</Text>
+                            <View style={styles.pillContainer}>
+                              {[20, 30, 45, 60].map((duration) => (
+                                <TouchableOpacity
+                                  key={duration}
+                                  style={[
+                                    styles.pill,
+                                    cardioTraining.duration === duration && styles.activePill
+                                  ]}
+                                  onPress={() => setCardioTraining({...cardioTraining, duration})}
+                                >
+                                  <Text 
+                                    style={[
+                                      styles.pillText,
+                                      cardioTraining.duration === duration && styles.activePillText
+                                    ]}
+                                  >
+                                    {duration} min
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  
                   {/* Nutrition Section */}
                   <View style={styles.sectionContainer}>
                     <TouchableOpacity 
@@ -1200,6 +1388,7 @@ export default function ProgramsScreen() {
                       Our AI coach will analyze your profile data and create a completely personalized 
                       training program based on your current fitness level, body metrics, and goals.
                       {selectedProgram?.type !== 'powerlifting' && selectedProgram?.type !== 'hypertrophy' && strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split} split) will be integrated into your program.` : ""}
+                      {(selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy') && cardioTraining.enabled ? ` Optional cardio training (${cardioTraining.daysPerWeek} days/week, ${cardioTraining.type}, ${cardioTraining.intensity} intensity) will be added to complement your strength training.` : ""}
                       {selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy' ? " This strength-focused program is already optimized for your training goals." : ""}
                       {" A personalized nutrition plan will be created to support your goals."}
                     </Text>
@@ -1887,5 +2076,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  // Cardio training styles
+  cardioTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardioTypeOption: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    marginHorizontal: 2,
+    marginBottom: 8,
+    minWidth: '18%',
+  },
+  activeCardioTypeOption: {
+    backgroundColor: 'rgba(93, 95, 239, 0.2)',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  cardioTypeText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  activeCardioTypeText: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

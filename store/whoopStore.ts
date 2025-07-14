@@ -1056,6 +1056,32 @@ EXAMPLE: For a marathon program with user-specified strength training:
 This ensures the user gets EXACTLY ${userConfig.strengthTraining.daysPerWeek} strength sessions, not more.
 ` : ''}
 
+${userConfig.cardioTraining?.enabled ? `
+🚨 CARDIO TRAINING INTEGRATION REQUIRED 🚨
+The user has manually specified ${userConfig.cardioTraining.daysPerWeek} cardio training sessions per week for this strength-focused program.
+This means:
+1. Add EXACTLY ${userConfig.cardioTraining.daysPerWeek} cardio sessions per week to complement the strength training
+2. Cardio type: ${userConfig.cardioTraining.type}
+3. Intensity level: ${userConfig.cardioTraining.intensity}
+4. Session duration: ${userConfig.cardioTraining.duration} minutes
+5. These cardio sessions should enhance recovery and cardiovascular health without interfering with strength gains
+6. Schedule cardio sessions on separate days from heavy strength training when possible
+7. If same-day scheduling is necessary, separate cardio and strength into different workout entries
+
+CARDIO IMPLEMENTATION GUIDELINES:
+- ${userConfig.cardioTraining.type === 'running' ? 'Focus on running-based cardio: easy runs, tempo runs, intervals' : ''}
+- ${userConfig.cardioTraining.type === 'cycling' ? 'Focus on cycling-based cardio: steady-state rides, interval training' : ''}
+- ${userConfig.cardioTraining.type === 'swimming' ? 'Focus on swimming-based cardio: lap swimming, interval sets' : ''}
+- ${userConfig.cardioTraining.type === 'rowing' ? 'Focus on rowing-based cardio: steady-state rowing, interval training' : ''}
+- ${userConfig.cardioTraining.type === 'mixed' ? 'Vary cardio types: running, cycling, swimming, rowing for variety' : ''}
+- ${userConfig.cardioTraining.intensity === 'low' ? 'Keep intensity low for active recovery (60-70% max HR)' : ''}
+- ${userConfig.cardioTraining.intensity === 'moderate' ? 'Maintain moderate intensity (70-80% max HR)' : ''}
+- ${userConfig.cardioTraining.intensity === 'high' ? 'Include high-intensity intervals (80-90% max HR)' : ''}
+- ${userConfig.cardioTraining.intensity === 'mixed' ? 'Vary intensity: mix low, moderate, and high-intensity sessions' : ''}
+
+This ensures the user gets EXACTLY ${userConfig.cardioTraining.daysPerWeek} cardio sessions to complement their strength training.
+` : ''}
+
 PRIMARY GOAL ANALYSIS:
 - Target: ${userConfig.targetMetric || 'General fitness improvement'}
 - Timeline: ${goalRequirements.daysUntilGoal} days (${goalRequirements.weeksUntilGoal} weeks)
@@ -1080,6 +1106,7 @@ TRAINING CONFIG:
 - Experience: ${userConfig.experienceLevel}
 - Training days: ${userConfig.trainingDaysPerWeek}/week
 - Strength training: ${userConfig.strengthTraining?.enabled ? 'Yes - ' + userConfig.strengthTraining.daysPerWeek + ' days/week, ' + userConfig.strengthTraining.split + ' split' : 'No'}
+- Cardio training: ${userConfig.cardioTraining?.enabled ? 'Yes - ' + userConfig.cardioTraining.daysPerWeek + ' days/week, ' + userConfig.cardioTraining.type + ', ' + userConfig.cardioTraining.intensity + ' intensity' : 'No'}
 - Nutrition goal: ${userConfig.nutritionPreferences?.goal || 'maintain'}
 
 STRENGTH TRAINING INTEGRATION REQUIREMENTS:
@@ -1136,6 +1163,52 @@ EXAMPLE: If creating a marathon program and user wants 3 strength days:
 - The 3 user-specified strength sessions will handle ALL strength training needs
 ` : ''}
 
+CARDIO TRAINING INTEGRATION REQUIREMENTS:
+${userConfig.cardioTraining?.enabled ? `
+MANDATORY: User has specifically requested cardio training integration with the following requirements:
+- Cardio Training Days: ${userConfig.cardioTraining.daysPerWeek} days per week
+- Cardio Type: ${userConfig.cardioTraining.type}
+- Intensity Level: ${userConfig.cardioTraining.intensity}
+- Session Duration: ${userConfig.cardioTraining.duration} minutes
+
+CRITICAL CARDIO TRAINING IMPLEMENTATION RULES:
+1. MUST include EXACTLY ${userConfig.cardioTraining.daysPerWeek} cardio training sessions per week - NO MORE, NO LESS
+2. MUST use the ${userConfig.cardioTraining.type} cardio type as specified
+3. MUST maintain ${userConfig.cardioTraining.intensity} intensity level
+4. MUST create separate workout entries for each cardio training session
+5. MUST balance cardio training with the primary ${programType} goal (strength training)
+6. MUST distribute cardio sessions throughout the week for optimal recovery
+7. MUST ensure cardio training enhances rather than interferes with strength gains
+8. CRITICAL: Do NOT add any additional cardio training beyond the user's specified ${userConfig.cardioTraining.daysPerWeek} sessions
+9. RECOVERY FOCUS: For strength programs, cardio should support recovery and cardiovascular health
+
+CARDIO TYPE IMPLEMENTATION:
+${userConfig.cardioTraining.type === 'running' ? '- Focus on running-based activities: easy runs, tempo runs, intervals\\n- Vary terrain and pace based on intensity level\\n- Include proper warm-up and cool-down' : ''}
+${userConfig.cardioTraining.type === 'cycling' ? '- Focus on cycling activities: steady-state rides, interval training\\n- Vary resistance and cadence based on intensity level\\n- Include proper warm-up and cool-down' : ''}
+${userConfig.cardioTraining.type === 'swimming' ? '- Focus on swimming activities: lap swimming, interval sets\\n- Vary stroke and pace based on intensity level\\n- Include proper warm-up and cool-down' : ''}
+${userConfig.cardioTraining.type === 'rowing' ? '- Focus on rowing activities: steady-state rowing, interval training\\n- Vary resistance and stroke rate based on intensity level\\n- Include proper warm-up and cool-down' : ''}
+${userConfig.cardioTraining.type === 'mixed' ? '- Vary cardio types: running, cycling, swimming, rowing for variety\\n- Rotate different activities throughout the week\\n- Maintain consistent intensity and duration' : ''}
+
+CARDIO INTENSITY IMPLEMENTATION:
+${userConfig.cardioTraining.intensity === 'low' ? '- Keep intensity low for active recovery (60-70% max HR)\\n- Focus on easy, conversational pace\\n- Promote blood flow and recovery' : ''}
+${userConfig.cardioTraining.intensity === 'moderate' ? '- Maintain moderate intensity (70-80% max HR)\\n- Comfortably hard pace, slightly breathless\\n- Build cardiovascular endurance' : ''}
+${userConfig.cardioTraining.intensity === 'high' ? '- Include high-intensity intervals (80-90% max HR)\\n- Short bursts of high effort with recovery periods\\n- Improve VO2 max and anaerobic capacity' : ''}
+${userConfig.cardioTraining.intensity === 'mixed' ? '- Vary intensity: mix low, moderate, and high-intensity sessions\\n- Rotate different intensities throughout the week\\n- Balance stress and recovery' : ''}
+
+EXAMPLE CARDIO TRAINING INTEGRATION:
+If primary program has 4 strength days and user wants 2 cardio days:
+- Monday: Upper body strength training (separate entry)
+- Tuesday: Low-intensity cardio session (separate entry)
+- Wednesday: Lower body strength training (separate entry)
+- Thursday: Moderate-intensity cardio session (separate entry)
+- Friday: Full body strength training (separate entry)
+- Saturday: Upper body strength training (separate entry)
+- Sunday: Rest day
+
+NEVER combine cardio and strength into single workout descriptions like "strength + cardio"
+ALWAYS create separate, distinct workout entries for each type
+` : 'User has not requested cardio training integration.'}
+
 CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 1. ABSOLUTE RULE: Each workout entry must have EXACTLY ONE type: "cardio", "strength", or "recovery"
 2. NEVER COMBINE TYPES: If a day needs both cardio and strength, create TWO separate workout objects
@@ -1144,7 +1217,8 @@ CRITICAL WORKOUT SEPARATION REQUIREMENTS:
 5. DISTINCT TITLES: Each workout must have a title specific to its single type
 6. MANDATORY SEPARATION: Always create separate entries - NEVER combine different exercise types in one workout
 7. STRENGTH TRAINING INTEGRATION: If user requested strength training, MUST include the exact number of strength sessions requested
-8. BALANCED SCHEDULING: Distribute strength and cardio sessions throughout the week for optimal recovery
+8. CARDIO TRAINING INTEGRATION: If user requested cardio training, MUST include the exact number of cardio sessions requested
+9. BALANCED SCHEDULING: Distribute strength and cardio sessions throughout the week for optimal recovery
 
 EXAMPLES OF CORRECT STRUCTURE:
 ✅ CORRECT - Two separate workouts for one day:
