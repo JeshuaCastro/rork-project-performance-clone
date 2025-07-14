@@ -61,6 +61,7 @@ export interface StrengthTrainingConfig {
   daysPerWeek: number;
   split: 'fullBody' | 'upperLower' | 'pushPullLegs' | 'bodyPart' | 'custom';
   focusAreas?: string[];
+  customSplit?: string;
 }
 
 export interface CardioTrainingConfig {

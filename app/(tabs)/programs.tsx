@@ -288,6 +288,9 @@ export default function ProgramsScreen() {
     focusAreas: []
   });
   
+  // State for custom training split
+  const [customSplit, setCustomSplit] = useState('');
+  
   // New state for cardio training configuration
   const [cardioTraining, setCardioTraining] = useState<CardioTrainingConfig>({
     enabled: false,
@@ -370,6 +373,9 @@ export default function ProgramsScreen() {
       split: 'fullBody',
       focusAreas: []
     });
+    
+    // Reset custom split
+    setCustomSplit('');
     
     // Reset cardio training config
     setCardioTraining({
@@ -493,11 +499,16 @@ export default function ProgramsScreen() {
       });
       
       // Generate AI-tailored program with strength/cardio training and nutrition preferences
+      const strengthConfig = strengthTraining.enabled ? {
+        ...strengthTraining,
+        customSplit: strengthTraining.split === 'custom' ? customSplit : undefined
+      } : undefined;
+      
       const aiPlan = await generatePersonalizedTrainingPlan(
         selectedProgram.type, 
         {
           ...programConfig,
-          strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+          strengthTraining: strengthConfig,
           cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
           nutritionPreferences: nutritionPreferences
         }
@@ -541,7 +552,10 @@ export default function ProgramsScreen() {
         targetMetric: programConfig.targetMetric,
         trainingDaysPerWeek: programConfig.trainingDaysPerWeek,
         experienceLevel: programConfig.experienceLevel as 'beginner' | 'intermediate' | 'advanced',
-        strengthTraining: strengthTraining.enabled ? strengthTraining : undefined,
+        strengthTraining: strengthTraining.enabled ? {
+          ...strengthTraining,
+          customSplit: strengthTraining.split === 'custom' ? customSplit : undefined
+        } : undefined,
         cardioTraining: cardioTraining.enabled ? cardioTraining : undefined,
         nutritionPreferences: nutritionPreferences,
         nutritionPlan: aiPlan?.nutritionPlan,
@@ -1091,6 +1105,25 @@ export default function ProgramsScreen() {
                                 <Text style={styles.splitOptionDescription}>{split.description}</Text>
                               </TouchableOpacity>
                             ))}
+                            
+                            {strengthTraining.split === 'custom' && (
+                              <View style={styles.customSplitContainer}>
+                                <Text style={styles.customSplitLabel}>Describe your custom split:</Text>
+                                <View style={styles.inputContainer}>
+                                  <Edit3 size={20} color={colors.textSecondary} />
+                                  <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g., Chest/Triceps, Back/Biceps, Legs/Shoulders, Rest, Repeat"
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={customSplit}
+                                    onChangeText={setCustomSplit}
+                                    multiline={true}
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                  />
+                                </View>
+                              </View>
+                            )}
                           </View>
                         </View>
                       )}
@@ -1387,7 +1420,7 @@ export default function ProgramsScreen() {
                     <Text style={styles.aiInfoText}>
                       Our AI coach will analyze your profile data and create a completely personalized 
                       training program based on your current fitness level, body metrics, and goals.
-                      {selectedProgram?.type !== 'powerlifting' && selectedProgram?.type !== 'hypertrophy' && strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split} split) will be integrated into your program.` : ""}
+                      {selectedProgram?.type !== 'powerlifting' && selectedProgram?.type !== 'hypertrophy' && strengthTraining.enabled ? ` Strength training (${strengthTraining.daysPerWeek} days/week, ${strengthTraining.split === 'custom' ? 'custom' : strengthTraining.split} split${strengthTraining.split === 'custom' && customSplit ? ` - ${customSplit}` : ''}) will be integrated into your program.` : ""}
                       {(selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy') && cardioTraining.enabled ? ` Optional cardio training (${cardioTraining.daysPerWeek} days/week, ${cardioTraining.type}, ${cardioTraining.intensity} intensity) will be added to complement your strength training.` : ""}
                       {selectedProgram?.type === 'powerlifting' || selectedProgram?.type === 'hypertrophy' ? " This strength-focused program is already optimized for your training goals." : ""}
                       {" A personalized nutrition plan will be created to support your goals."}
@@ -2107,5 +2140,18 @@ const styles = StyleSheet.create({
   activeCardioTypeText: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  // Custom split styles
+  customSplitContainer: {
+    marginTop: 16,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+  },
+  customSplitLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
   },
 });
