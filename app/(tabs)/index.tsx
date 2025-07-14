@@ -145,7 +145,7 @@ export default function DashboardScreen() {
   const todaysWorkout = getTodaysWorkout();
   
   // Check if today's workout is completed
-  const checkWorkoutCompletion = async () => {
+  const checkWorkoutCompletion = React.useCallback(async () => {
     if (todaysWorkout && todaysWorkout.programId) {
       try {
         const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
@@ -157,17 +157,22 @@ export default function DashboardScreen() {
     } else {
       setIsWorkoutCompletedToday(false);
     }
-  };
+  }, [todaysWorkout, isWorkoutCompleted]);
 
   useEffect(() => {
     checkWorkoutCompletion();
-  }, [todaysWorkout, isWorkoutCompleted]);
+  }, [checkWorkoutCompletion]);
 
   // Re-check workout completion when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      checkWorkoutCompletion();
-    }, [todaysWorkout, isWorkoutCompleted])
+      // Add a small delay to ensure AsyncStorage has been updated
+      const timeoutId = setTimeout(() => {
+        checkWorkoutCompletion();
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }, [checkWorkoutCompletion])
   );
   
   const handleSyncData = async () => {

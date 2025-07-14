@@ -541,6 +541,7 @@ interface WhoopStore {
   // Today's workout method
   getTodaysWorkout: () => TodaysWorkout | null;
   isWorkoutCompleted: (programId: string, workoutTitle: string, date?: string) => Promise<boolean>;
+  markWorkoutCompleted: (programId: string, workoutTitle: string, workoutDay: string, date?: string) => Promise<void>;
   
   // Weight tracking methods
   addWeightEntry: (weight: number, date?: string) => void;
@@ -2831,7 +2832,8 @@ Return JSON with implementation and advisory guidance:
         try {
           const targetDate = date || new Date().toISOString().split('T')[0];
           const todayKey = `${programId}-${targetDate}`;
-          const stored = await AsyncStorage.getItem(`completed-workouts-${todayKey}`);
+          const storageKey = `completed-workouts-${todayKey}`;
+          const stored = await AsyncStorage.getItem(storageKey);
           
           if (stored) {
             const completedWorkouts = JSON.parse(stored);
