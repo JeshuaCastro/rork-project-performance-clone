@@ -144,11 +144,15 @@ export default function DashboardScreen() {
   // Get today's workout from active programs
   const todaysWorkout = getTodaysWorkout();
   
+
+  
   // Check if today's workout is completed
   const checkWorkoutCompletion = React.useCallback(async () => {
     if (todaysWorkout && todaysWorkout.programId) {
       try {
+        console.log('Dashboard: Checking workout completion for:', todaysWorkout.title, 'programId:', todaysWorkout.programId);
         const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
+        console.log('Dashboard: Workout completion result:', completed);
         setIsWorkoutCompletedToday(completed);
       } catch (error) {
         console.error('Error checking workout completion:', error);
@@ -174,6 +178,20 @@ export default function DashboardScreen() {
       return () => clearTimeout(timeoutId);
     }, [checkWorkoutCompletion])
   );
+
+  // Also check workout completion when activePrograms change (in case completion was updated elsewhere)
+  useEffect(() => {
+    checkWorkoutCompletion();
+  }, [activePrograms, checkWorkoutCompletion]);
+
+  // Set up periodic checking for workout completion while dashboard is active
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkWorkoutCompletion();
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [checkWorkoutCompletion]);
   
   const handleSyncData = async () => {
     setSyncAttempted(true);

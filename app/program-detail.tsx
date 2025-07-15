@@ -139,8 +139,10 @@ export default function ProgramDetailScreen() {
   useEffect(() => {
     const loadCompletedWorkouts = async () => {
       try {
-        console.log('Loading completed workouts from AsyncStorage, key:', `completed-workouts-${todayKey}`);
-        const stored = await AsyncStorage.getItem(`completed-workouts-${todayKey}`);
+        const currentDate = new Date().toISOString().split('T')[0];
+        const currentTodayKey = `${programId}-${currentDate}`;
+        console.log('Loading completed workouts from AsyncStorage, key:', `completed-workouts-${currentTodayKey}`);
+        const stored = await AsyncStorage.getItem(`completed-workouts-${currentTodayKey}`);
         if (stored) {
           const parsed = JSON.parse(stored);
           console.log('Loaded completed workouts:', parsed);
@@ -156,14 +158,16 @@ export default function ProgramDetailScreen() {
     if (programId) {
       loadCompletedWorkouts();
     }
-  }, [programId, today]);
+  }, [programId]);
   
   // Save completed workouts to AsyncStorage whenever they change
   useEffect(() => {
     const saveCompletedWorkouts = async () => {
       try {
-        console.log('Saving completed workouts to AsyncStorage:', completedWorkouts, 'key:', `completed-workouts-${todayKey}`);
-        await AsyncStorage.setItem(`completed-workouts-${todayKey}`, JSON.stringify(completedWorkouts));
+        const currentDate = new Date().toISOString().split('T')[0];
+        const currentTodayKey = `${programId}-${currentDate}`;
+        console.log('Saving completed workouts to AsyncStorage:', completedWorkouts, 'key:', `completed-workouts-${currentTodayKey}`);
+        await AsyncStorage.setItem(`completed-workouts-${currentTodayKey}`, JSON.stringify(completedWorkouts));
         console.log('Successfully saved completed workouts');
       } catch (error) {
         console.error('Error saving completed workouts:', error);
@@ -173,7 +177,7 @@ export default function ProgramDetailScreen() {
     if (completedWorkouts.length > 0 && programId) {
       saveCompletedWorkouts();
     }
-  }, [completedWorkouts, todayKey, programId]);
+  }, [completedWorkouts, programId]);
   
   // Workout summary state
   const [showSummaryModal, setShowSummaryModal] = useState(false);
@@ -1427,6 +1431,7 @@ export default function ProgramDetailScreen() {
     
     const endTime = new Date();
     const durationSeconds = activeWorkout.elapsedTime;
+    const currentDate = new Date().toISOString().split('T')[0]; // Use current date, not the stored 'today'
     const workoutKey = `${activeWorkout.workout.day}-${activeWorkout.workout.title}`;
     
     // Stop the timer
@@ -1445,6 +1450,7 @@ export default function ProgramDetailScreen() {
       if (!prev.includes(workoutKey)) {
         console.log('Marking workout as completed:', workoutKey);
         console.log('Previous completed workouts:', prev);
+        console.log('Using current date for completion:', currentDate);
         const newCompleted = [...prev, workoutKey];
         console.log('New completed workouts:', newCompleted);
         return newCompleted;
