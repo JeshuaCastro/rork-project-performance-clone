@@ -59,9 +59,13 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     getProgramProgress
   } = useWhoopStore();
 
-  // Ensure we have safe defaults for all required data
-  const safeData = data || { recovery: [], sleep: [], strain: [] };
-  const safeUserProfile = userProfile || { 
+  // Use actual data when available, fallback to safe defaults only when needed
+  const hasRealData = data && (data.recovery.length > 0 || data.sleep.length > 0 || data.strain.length > 0);
+  const hasUserProfile = userProfile && userProfile.name && userProfile.name.length > 0;
+  const hasActivePrograms = activePrograms && activePrograms.length > 0;
+  
+  const safeData = hasRealData ? data : { recovery: [], sleep: [], strain: [] };
+  const safeUserProfile = hasUserProfile ? userProfile : { 
     age: 30, 
     gender: 'male' as const, 
     fitnessGoal: 'maintainWeight' as const,
@@ -72,18 +76,39 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     createdAt: new Date(),
     updatedAt: new Date()
   };
-  const safeActivePrograms = activePrograms || [];
+  const safeActivePrograms = hasActivePrograms ? activePrograms : [];
 
   useEffect(() => {
     if (visible) {
-      generateDailyInsights();
+      // Add a small delay to ensure data is loaded
+      const timer = setTimeout(() => {
+        generateDailyInsights();
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [visible, safeData, safeUserProfile, safeActivePrograms]);
+  }, [visible, data, userProfile, activePrograms, isConnectedToWhoop]);
 
   const generateDailyInsights = async () => {
     setIsLoading(true);
     
     try {
+      console.log('=== DAILY INSIGHTS DEBUG ===');
+      console.log('Raw data from store:', data);
+      console.log('User profile from store:', userProfile);
+      console.log('Active programs from store:', activePrograms);
+      console.log('Is connected to WHOOP:', isConnectedToWhoop);
+      
+      console.log('Starting daily insights generation with data:', {
+        hasData: !!data,
+        recoveryCount: data?.recovery?.length || 0,
+        sleepCount: data?.sleep?.length || 0,
+        strainCount: data?.strain?.length || 0,
+        isConnected: isConnectedToWhoop,
+        hasUserProfile: !!userProfile?.name,
+        activeProgramsCount: activePrograms?.length || 0
+      });
+      
       const today = new Date().toISOString().split('T')[0];
       const todaysWorkout = getTodaysWorkout ? getTodaysWorkout() : null;
       const macroProgress = getMacroProgressForDate ? getMacroProgressForDate(today) : null;
@@ -91,10 +116,18 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       const latestSleep = safeData.sleep && safeData.sleep.length > 0 ? safeData.sleep[0] : null;
       const latestStrain = safeData.strain && safeData.strain.length > 0 ? safeData.strain[0] : null;
       
+      console.log('Data for insights:', {
+        todaysWorkout: !!todaysWorkout,
+        latestRecovery: latestRecovery?.score,
+        latestSleep: latestSleep?.efficiency,
+        latestStrain: latestStrain?.score,
+        macroProgress: !!macroProgress
+      });
+      
       const newInsights: DailyInsight[] = [];
       
-      // Recovery Insight
-      if (isConnectedToWhoop && latestRecovery) {
+      // Recovery Insight - prioritize real data over mock data
+      if (latestRecovery && typeof latestRecovery.score === 'number') {
         const recoveryScore = latestRecovery.score;
         let recoveryInsight: DailyInsight;
         
@@ -128,6 +161,9 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         }
         
         newInsights.push(recoveryInsight);
+        console.log('Added recovery insight with score:', recoveryScore);
+      } else {
+        console.log('No recovery data available:', { latestRecovery, isConnectedToWhoop });
       }
 
       // Workout Insight
@@ -166,8 +202,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
 
-      // Sleep Insight
-      if (isConnectedToWhoop && latestSleep) {
+      // Sleep Insight - prioritize real data over mock data
+      if (latestSleep && typeof latestSleep.efficiency === 'number' && typeof latestSleep.duration === 'number') {
         const sleepEfficiency = latestSleep.efficiency;
         const sleepDuration = Math.round(latestSleep.duration / 60); // Convert to hours
         
@@ -202,6 +238,9 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         }
         
         newInsights.push(sleepInsight);
+        console.log('Added sleep insight:', { sleepDuration, sleepEfficiency });
+      } else {
+        console.log('No sleep data available:', { latestSleep });
       }
 
       // Nutrition Insight - safely handle undefined macroProgress
@@ -266,8 +305,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
 
-      // Strain/Activity Insight
-      if (isConnectedToWhoop && latestStrain) {
+      // Strain/Activity Insight - prioritize real data over mock data
+      if (latestStrain && typeof latestStrain.score === 'number') {
         const strainScore = latestStrain.score;
         if (strainScore > 15 && latestRecovery && latestRecovery.score < 50) {
           newInsights.push({
@@ -278,7 +317,10 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
             actionable: true,
             icon: <TrendingUp size={20} color={colors.danger} />
           });
+          console.log('Added strain insight:', { strainScore, recoveryScore: latestRecovery.score });
         }
+      } else {
+        console.log('No strain data available:', { latestStrain });
       }
 
       // General Motivation/Tip
@@ -309,12 +351,15 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         }
       ];
 
+      console.log('Generated insights before adding motivational ones:', newInsights.length);
+      
       // Add motivational insights if we don't have many insights
       if (newInsights.length < 2) {
         // Add multiple insights to ensure we have good content
         const shuffledInsights = [...motivationalInsights].sort(() => Math.random() - 0.5);
         const insightsToAdd = shuffledInsights.slice(0, 3 - newInsights.length);
         newInsights.push(...insightsToAdd);
+        console.log('Added motivational insights:', insightsToAdd.length);
       }
       
       // Ensure we always have at least one insight
@@ -327,7 +372,10 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           actionable: true,
           icon: <Sun size={20} color={colors.primary} />
         });
+        console.log('Added fallback insight');
       }
+      
+      console.log('Final insights count:', newInsights.length);
 
       // Generate AI-powered daily summary
       try {
@@ -339,7 +387,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         const recoveryScore = latestRecovery?.score;
         let fallbackSummary = 'Ready to make today count? ';
         
-        if (hasWorkout && recoveryScore) {
+        if (hasWorkout && recoveryScore && typeof recoveryScore === 'number') {
           if (recoveryScore >= 75) {
             fallbackSummary += `With ${recoveryScore}% recovery, you're primed for today's ${todaysWorkout?.title}. Give it your all!`;
           } else if (recoveryScore >= 50) {
@@ -355,6 +403,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           fallbackSummary += 'Consider starting a training program to get personalized daily guidance.';
         }
         
+        console.log('Using fallback summary:', fallbackSummary);
         setTodaysSummary(fallbackSummary);
       }
 
@@ -362,6 +411,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       newInsights.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
+      console.log('Setting final insights:', newInsights);
       setInsights(newInsights);
     } catch (error) {
       console.error('Error generating daily insights:', error);
@@ -404,6 +454,13 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
 
   const generateDailySummary = async (insights: DailyInsight[], todaysWorkout: any, latestRecovery: any) => {
     try {
+      console.log('Generating daily summary with:', { 
+        insightsCount: insights.length, 
+        hasWorkout: !!todaysWorkout, 
+        recoveryScore: latestRecovery?.score,
+        userProfile: safeUserProfile 
+      });
+      
       const highPriorityInsights = insights.filter(i => i.priority === 'high');
       const hasWorkout = !!todaysWorkout;
       const recoveryScore = latestRecovery?.score || 'unknown';
@@ -441,10 +498,14 @@ Make it personal, actionable, and encouraging.`;
       });
 
       const result = await response.json();
-      setTodaysSummary(result.completion || 'Ready to make today count? Stay focused on your goals and listen to your body.');
+      const summary = result.completion || 'Ready to make today count? Stay focused on your goals and listen to your body.';
+      console.log('Generated AI summary:', summary);
+      setTodaysSummary(summary);
     } catch (error) {
       console.error('Error generating daily summary:', error);
-      setTodaysSummary('Ready to make today count? Stay focused on your goals and listen to your body.');
+      const fallbackSummary = 'Ready to make today count? Stay focused on your goals and listen to your body.';
+      console.log('Using fallback summary due to error:', fallbackSummary);
+      setTodaysSummary(fallbackSummary);
     }
   };
 
@@ -558,7 +619,7 @@ Make it personal, actionable, and encouraging.`;
               <View style={styles.quickStatsContainer}>
                 <Text style={styles.sectionTitle}>Quick Stats</Text>
                 <View style={styles.statsGrid}>
-                  {isConnectedToWhoop && safeData.recovery && safeData.recovery.length > 0 && (
+                  {safeData.recovery && safeData.recovery.length > 0 && (
                     <View style={styles.statCard}>
                       <Heart size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Recovery</Text>
