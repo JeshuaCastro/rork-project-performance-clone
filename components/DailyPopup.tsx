@@ -73,23 +73,6 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     updatedAt: new Date()
   };
   const safeActivePrograms = activePrograms || [];
-  
-  // Check if we have meaningful data to show
-  const hasWhoopData = isConnectedToWhoop && safeData && safeData.recovery && safeData.recovery.length > 0;
-  const hasActiveProgramsData = safeActivePrograms && safeActivePrograms.length > 0;
-  const hasCompleteProfile = Boolean(
-    safeUserProfile && 
-    safeUserProfile.name && 
-    safeUserProfile.age && 
-    safeUserProfile.gender && 
-    safeUserProfile.weight && 
-    safeUserProfile.height && 
-    safeUserProfile.activityLevel && 
-    safeUserProfile.fitnessGoal
-  );
-  
-  // Only show popup if there's meaningful data
-  const shouldShowPopup = hasWhoopData || hasActiveProgramsData || hasCompleteProfile;
 
   useEffect(() => {
     if (visible) {
@@ -110,8 +93,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       
       const newInsights: DailyInsight[] = [];
       
-      // Recovery Insight - only if we have WHOOP data
-      if (hasWhoopData && latestRecovery) {
+      // Recovery Insight
+      if (isConnectedToWhoop && latestRecovery) {
         const recoveryScore = latestRecovery.score;
         let recoveryInsight: DailyInsight;
         
@@ -147,8 +130,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         newInsights.push(recoveryInsight);
       }
 
-      // Workout Insight - only if we have active programs or workouts
-      if (todaysWorkout && hasActiveProgramsData) {
+      // Workout Insight
+      if (todaysWorkout) {
         const programProgress = getProgramProgress ? getProgramProgress(todaysWorkout.programId) : null;
         const workoutDescription = todaysWorkout.description || 'Workout session';
         const progressPercentage = programProgress?.progressPercentage || 0;
@@ -162,7 +145,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           icon: <Target size={20} color={colors.primary} />
         };
         newInsights.push(workoutInsight);
-      } else if (hasActiveProgramsData) {
+      } else if (safeActivePrograms.length > 0) {
         newInsights.push({
           type: 'workout',
           title: 'Rest Day',
@@ -171,10 +154,20 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           actionable: false,
           icon: <Heart size={20} color={colors.primary} />
         });
+      } else {
+        // No active programs
+        newInsights.push({
+          type: 'workout',
+          title: 'Ready to Start?',
+          message: 'Create a training program to get personalized daily workout recommendations.',
+          priority: 'medium',
+          actionable: true,
+          icon: <Target size={20} color={colors.primary} />
+        });
       }
 
-      // Sleep Insight - only if we have WHOOP data
-      if (hasWhoopData && latestSleep) {
+      // Sleep Insight
+      if (isConnectedToWhoop && latestSleep) {
         const sleepEfficiency = latestSleep.efficiency;
         const sleepDuration = Math.round(latestSleep.duration / 60); // Convert to hours
         
@@ -273,8 +266,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
 
-      // Strain/Activity Insight - only if we have WHOOP data
-      if (hasWhoopData && latestStrain) {
+      // Strain/Activity Insight
+      if (isConnectedToWhoop && latestStrain) {
         const strainScore = latestStrain.score;
         if (strainScore > 15 && latestRecovery && latestRecovery.score < 50) {
           newInsights.push({
@@ -336,22 +329,17 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
 
-      // Generate AI-powered daily summary only if we have meaningful data
+      // Generate AI-powered daily summary
       try {
-        if (hasWhoopData || hasActiveProgramsData) {
-          await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
-        } else {
-          // Set a simple summary for users with limited data
-          setTodaysSummary('Welcome! Complete your profile and connect your WHOOP or create a training program to get personalized daily insights.');
-        }
+        await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
       } catch (summaryError) {
         console.error('Error generating daily summary:', summaryError);
-        // Create a more personalized fallback summary based on available data
+        // Create a more personalized fallback summary
         const hasWorkout = todaysWorkout ? true : false;
         const recoveryScore = latestRecovery?.score;
         let fallbackSummary = 'Ready to make today count? ';
         
-        if (hasWhoopData && hasWorkout && recoveryScore) {
+        if (hasWorkout && recoveryScore) {
           if (recoveryScore >= 75) {
             fallbackSummary += `With ${recoveryScore}% recovery, you're primed for today's ${todaysWorkout?.title}. Give it your all!`;
           } else if (recoveryScore >= 50) {
@@ -359,14 +347,12 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           } else {
             fallbackSummary += `Recovery is low at ${recoveryScore}%. Consider taking it easier today or focusing on recovery.`;
           }
-        } else if (hasWorkout && hasActiveProgramsData) {
+        } else if (hasWorkout) {
           fallbackSummary += `Today's focus is ${todaysWorkout?.title}. Stay consistent and trust the process.`;
-        } else if (hasActiveProgramsData) {
+        } else if (safeActivePrograms.length > 0) {
           fallbackSummary += 'Rest day today - perfect time for recovery and preparation for tomorrow.';
-        } else if (hasCompleteProfile) {
-          fallbackSummary += 'Your profile is set up! Consider creating a training program to get personalized daily guidance.';
         } else {
-          fallbackSummary += 'Complete your profile and connect your WHOOP for personalized insights.';
+          fallbackSummary += 'Consider starting a training program to get personalized daily guidance.';
         }
         
         setTodaysSummary(fallbackSummary);
@@ -379,63 +365,38 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       setInsights(newInsights);
     } catch (error) {
       console.error('Error generating daily insights:', error);
-      // Comprehensive fallback insights based on available data
-      const fallbackInsights: DailyInsight[] = [];
-      
-      if (hasCompleteProfile || hasActiveProgramsData || hasWhoopData) {
-        fallbackInsights.push({
+      // Comprehensive fallback insights
+      const fallbackInsights: DailyInsight[] = [
+        {
           type: 'general',
           title: 'Good Morning!',
           message: 'Ready to make today count? Check your workout plan and stay hydrated throughout the day.',
           priority: 'high',
           actionable: true,
           icon: <Sun size={20} color={colors.primary} />
-        });
-      }
-      
-      if (hasActiveProgramsData) {
-        fallbackInsights.push({
+        },
+        {
           type: 'workout',
-          title: 'Training Focus',
-          message: 'Stay consistent with your training program. Every workout brings you closer to your goals.',
+          title: safeActivePrograms.length > 0 ? 'Training Focus' : 'Start Your Journey',
+          message: safeActivePrograms.length > 0 
+            ? 'Stay consistent with your training program. Every workout brings you closer to your goals.'
+            : 'Consider creating a training program to get structured, personalized workouts.',
           priority: 'medium',
           actionable: true,
           icon: <Target size={20} color={colors.primary} />
-        });
-      } else if (hasCompleteProfile) {
-        fallbackInsights.push({
-          type: 'workout',
-          title: 'Start Your Journey',
-          message: 'Your profile is complete! Consider creating a training program to get structured, personalized workouts.',
-          priority: 'medium',
-          actionable: true,
-          icon: <Target size={20} color={colors.primary} />
-        });
-      }
-      
-      if (hasCompleteProfile || hasActiveProgramsData || hasWhoopData) {
-        fallbackInsights.push({
+        },
+        {
           type: 'general',
           title: 'Hydration Reminder',
           message: 'Start your day with water and aim for 2-3 liters throughout the day for optimal performance.',
           priority: 'low',
           actionable: true,
           icon: <Activity size={20} color={colors.primary} />
-        });
-      }
+        }
+      ];
       
       setInsights(fallbackInsights);
-      
-      // Set appropriate fallback summary
-      if (hasWhoopData && hasActiveProgramsData) {
-        setTodaysSummary('Ready to make today count? Stay focused on your goals, listen to your body, and remember that consistency is key to success.');
-      } else if (hasActiveProgramsData) {
-        setTodaysSummary('Stay consistent with your training program. Every workout brings you closer to your goals.');
-      } else if (hasCompleteProfile) {
-        setTodaysSummary('Your profile is set up! Consider creating a training program and connecting your WHOOP for personalized insights.');
-      } else {
-        setTodaysSummary('Welcome! Complete your profile and connect your WHOOP or create a training program to get personalized daily insights.');
-      }
+      setTodaysSummary('Ready to make today count? Stay focused on your goals, listen to your body, and remember that consistency is key to success.');
     } finally {
       setIsLoading(false);
     }
@@ -505,14 +466,9 @@ Make it personal, actionable, and encouraging.`;
     }
   };
 
-  // Don't render the popup if there's no meaningful data
-  if (!shouldShowPopup) {
-    return null;
-  }
-
   return (
     <Modal
-      visible={visible && shouldShowPopup}
+      visible={visible}
       transparent={true}
       animationType="slide"
       onRequestClose={onClose}
@@ -597,12 +553,12 @@ Make it personal, actionable, and encouraging.`;
               )}
             </View>
 
-            {/* Quick Stats - only show if we have meaningful data */}
-            {!isLoading && (hasWhoopData || hasActiveProgramsData || hasCompleteProfile) && (
+            {/* Quick Stats */}
+            {!isLoading && (
               <View style={styles.quickStatsContainer}>
                 <Text style={styles.sectionTitle}>Quick Stats</Text>
                 <View style={styles.statsGrid}>
-                  {hasWhoopData && safeData.recovery && safeData.recovery.length > 0 && (
+                  {isConnectedToWhoop && safeData.recovery && safeData.recovery.length > 0 && (
                     <View style={styles.statCard}>
                       <Heart size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Recovery</Text>
@@ -610,7 +566,7 @@ Make it personal, actionable, and encouraging.`;
                     </View>
                   )}
                   
-                  {hasActiveProgramsData && (
+                  {safeActivePrograms.length > 0 && (
                     <View style={styles.statCard}>
                       <Target size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Programs</Text>
@@ -618,29 +574,27 @@ Make it personal, actionable, and encouraging.`;
                     </View>
                   )}
                   
-                  {hasCompleteProfile && (
-                    <View style={styles.statCard}>
-                      <Flame size={16} color={colors.primary} />
-                      <Text style={styles.statLabel}>Calories</Text>
-                      <Text style={styles.statValue}>
-                        {(() => {
-                          try {
-                            if (!getMacroProgressForDate) return '0%';
-                            const todayMacros = getMacroProgressForDate(new Date().toISOString().split('T')[0]);
-                            if (todayMacros?.calories?.target && todayMacros?.calories?.consumed !== undefined) {
-                              return Math.round((todayMacros.calories.consumed / todayMacros.calories.target) * 100) + '%';
-                            }
-                            return '0%';
-                          } catch (error) {
-                            console.error('Error calculating calorie progress:', error);
-                            return '0%';
+                  <View style={styles.statCard}>
+                    <Flame size={16} color={colors.primary} />
+                    <Text style={styles.statLabel}>Calories</Text>
+                    <Text style={styles.statValue}>
+                      {(() => {
+                        try {
+                          if (!getMacroProgressForDate) return '0';
+                          const todayMacros = getMacroProgressForDate(new Date().toISOString().split('T')[0]);
+                          if (todayMacros?.calories?.target && todayMacros?.calories?.consumed !== undefined) {
+                            return Math.round((todayMacros.calories.consumed / todayMacros.calories.target) * 100) + '%';
                           }
-                        })()}
-                      </Text>
-                    </View>
-                  )}
+                          return '0%';
+                        } catch (error) {
+                          console.error('Error calculating calorie progress:', error);
+                          return '0%';
+                        }
+                      })()}
+                    </Text>
+                  </View>
                   
-                  {!hasWhoopData && hasCompleteProfile && (
+                  {!isConnectedToWhoop && (
                     <View style={styles.statCard}>
                       <Activity size={16} color={colors.textSecondary} />
                       <Text style={styles.statLabel}>WHOOP</Text>
@@ -649,7 +603,7 @@ Make it personal, actionable, and encouraging.`;
                   )}
                   
                   {/* Show user profile stats if available */}
-                  {hasCompleteProfile && safeUserProfile.weight > 0 && (
+                  {safeUserProfile.weight > 0 && (
                     <View style={styles.statCard}>
                       <Target size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Weight</Text>
