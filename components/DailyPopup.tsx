@@ -76,7 +76,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
   
   // Check if we have meaningful data to show
   const hasWhoopData = isConnectedToWhoop && safeData && safeData.recovery && safeData.recovery.length > 0;
-  const hasActiveProgramsData = safeActivePrograms && safeActivePrograms.length > 0;
+  const hasActiveProgramsDataData = safeActivePrograms && safeActivePrograms.length > 0;
   const hasCompleteProfile = Boolean(
     safeUserProfile && 
     safeUserProfile.name && 
@@ -89,7 +89,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
   );
   
   // Only show popup if there's meaningful data
-  const shouldShowPopup = hasWhoopData || hasActiveProgramsData || hasCompleteProfile;
+  const shouldShowPopup = hasWhoopData || hasActiveProgramsDataData || hasCompleteProfile;
 
   useEffect(() => {
     if (visible) {
@@ -148,7 +148,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       }
 
       // Workout Insight - only if we have active programs or workouts
-      if (todaysWorkout && hasActiveProgramsData) {
+      if (todaysWorkout && hasActiveProgramsDataData) {
         const programProgress = getProgramProgress ? getProgramProgress(todaysWorkout.programId) : null;
         const workoutDescription = todaysWorkout.description || 'Workout session';
         const progressPercentage = programProgress?.progressPercentage || 0;
@@ -162,7 +162,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           icon: <Target size={20} color={colors.primary} />
         };
         newInsights.push(workoutInsight);
-      } else if (hasActiveProgramsData) {
+      } else if (hasActiveProgramsDataData) {
         newInsights.push({
           type: 'workout',
           title: 'Rest Day',
@@ -338,7 +338,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
 
       // Generate AI-powered daily summary only if we have meaningful data
       try {
-        if (hasWhoopData || hasActiveProgramsData) {
+        if (hasWhoopData || hasActiveProgramsDataData) {
           await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
         } else {
           // Set a simple summary for users with limited data
@@ -359,9 +359,9 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           } else {
             fallbackSummary += `Recovery is low at ${recoveryScore}%. Consider taking it easier today or focusing on recovery.`;
           }
-        } else if (hasWorkout && hasActiveProgramsData) {
+        } else if (hasWorkout && hasActiveProgramsDataData) {
           fallbackSummary += `Today's focus is ${todaysWorkout?.title}. Stay consistent and trust the process.`;
-        } else if (hasActiveProgramsData) {
+        } else if (hasActiveProgramsDataData) {
           fallbackSummary += 'Rest day today - perfect time for recovery and preparation for tomorrow.';
         } else if (hasCompleteProfile) {
           fallbackSummary += 'Your profile is set up! Consider creating a training program to get personalized daily guidance.';
@@ -382,7 +382,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       // Comprehensive fallback insights based on available data
       const fallbackInsights: DailyInsight[] = [];
       
-      if (hasCompleteProfile || hasActivePrograms || hasWhoopData) {
+      if (hasCompleteProfile || hasActiveProgramsData || hasWhoopData) {
         fallbackInsights.push({
           type: 'general',
           title: 'Good Morning!',
@@ -393,7 +393,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
       
-      if (hasActivePrograms) {
+      if (hasActiveProgramsData) {
         fallbackInsights.push({
           type: 'workout',
           title: 'Training Focus',
@@ -413,7 +413,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         });
       }
       
-      if (hasCompleteProfile || hasActivePrograms || hasWhoopData) {
+      if (hasCompleteProfile || hasActiveProgramsData || hasWhoopData) {
         fallbackInsights.push({
           type: 'general',
           title: 'Hydration Reminder',
@@ -427,9 +427,9 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       setInsights(fallbackInsights);
       
       // Set appropriate fallback summary
-      if (hasWhoopData && hasActivePrograms) {
+      if (hasWhoopData && hasActiveProgramsData) {
         setTodaysSummary('Ready to make today count? Stay focused on your goals, listen to your body, and remember that consistency is key to success.');
-      } else if (hasActivePrograms) {
+      } else if (hasActiveProgramsData) {
         setTodaysSummary('Stay consistent with your training program. Every workout brings you closer to your goals.');
       } else if (hasCompleteProfile) {
         setTodaysSummary('Your profile is set up! Consider creating a training program and connecting your WHOOP for personalized insights.');
@@ -598,7 +598,7 @@ Make it personal, actionable, and encouraging.`;
             </View>
 
             {/* Quick Stats - only show if we have meaningful data */}
-            {!isLoading && (hasWhoopData || hasActivePrograms || hasCompleteProfile) && (
+            {!isLoading && (hasWhoopData || hasActiveProgramsData || hasCompleteProfile) && (
               <View style={styles.quickStatsContainer}>
                 <Text style={styles.sectionTitle}>Quick Stats</Text>
                 <View style={styles.statsGrid}>
@@ -610,7 +610,7 @@ Make it personal, actionable, and encouraging.`;
                     </View>
                   )}
                   
-                  {hasActivePrograms && (
+                  {hasActiveProgramsData && (
                     <View style={styles.statCard}>
                       <Target size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Programs</Text>
