@@ -112,9 +112,16 @@ export default function DashboardScreen() {
       const lastShownDate = await AsyncStorage.getItem('daily-popup-last-shown');
       
       if (lastShownDate !== today) {
-        // Show popup if it hasn't been shown today
-        setShowDailyPopup(true);
-        await AsyncStorage.setItem('daily-popup-last-shown', today);
+        // Only show popup if there's meaningful data available
+        const hasWhoopData = isConnectedToWhoop && data.recovery.length > 0;
+        const hasActivePrograms = activePrograms.length > 0;
+        const hasCompleteProfile = isProfileComplete;
+        
+        // Show popup only if user has WHOOP connected OR has active programs OR has completed profile
+        if (hasWhoopData || hasActivePrograms || hasCompleteProfile) {
+          setShowDailyPopup(true);
+          await AsyncStorage.setItem('daily-popup-last-shown', today);
+        }
       }
     } catch (error) {
       console.error('Error checking daily popup:', error);
