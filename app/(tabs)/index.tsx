@@ -21,6 +21,7 @@ import StrainCard from '@/components/StrainCard';
 import AIInsightCard from '@/components/AIInsightCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
+import DailyPopup from '@/components/DailyPopup';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -41,9 +42,11 @@ import {
   Eye,
   Check,
   CheckCircle,
-  Info
+  Info,
+  Sun
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -53,6 +56,7 @@ export default function DashboardScreen() {
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
+  const [showDailyPopup, setShowDailyPopup] = useState(false);
   
   const { 
     data, 
@@ -101,6 +105,22 @@ export default function DashboardScreen() {
     setAppState(nextAppState);
   };
   
+  // Check if daily popup should be shown
+  const checkDailyPopup = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const lastShownDate = await AsyncStorage.getItem('daily-popup-last-shown');
+      
+      if (lastShownDate !== today) {
+        // Show popup if it hasn't been shown today
+        setShowDailyPopup(true);
+        await AsyncStorage.setItem('daily-popup-last-shown', today);
+      }
+    } catch (error) {
+      console.error('Error checking daily popup:', error);
+    }
+  };
+
   // Check connection status and sync data when the screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
@@ -119,6 +139,11 @@ export default function DashboardScreen() {
               await syncWhoopData();
             }
           }
+          
+          // Check if daily popup should be shown after a short delay
+          setTimeout(() => {
+            checkDailyPopup();
+          }, 1000);
         } catch (error) {
           console.error('Error initializing dashboard:', error);
         } finally {
@@ -571,6 +596,12 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
         <TouchableOpacity 
+          style={styles.dailyBriefingButton}
+          onPress={() => setShowDailyPopup(true)}
+        >
+          <Sun size={18} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={styles.syncButton}
           onPress={handleSyncData}
           disabled={isLoadingWhoopData || !isConnectedToWhoop}
@@ -1000,6 +1031,12 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Daily Popup */}
+      <DailyPopup 
+        visible={showDailyPopup}
+        onClose={() => setShowDailyPopup(false)}
+      />
     </View>
   );
 }
@@ -1046,6 +1083,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: isSmallDevice ? 13 : 14,
     textDecorationLine: 'underline',
+  },
+  dailyBriefingButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2A2A2A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   syncButton: {
     width: 36,
