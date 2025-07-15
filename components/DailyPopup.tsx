@@ -59,11 +59,16 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     getProgramProgress
   } = useWhoopStore();
 
+  // Ensure we have safe defaults for all required data
+  const safeData = data || { recovery: [], sleep: [], strain: [] };
+  const safeUserProfile = userProfile || { age: 30, gender: 'user', fitnessGoal: 'general fitness' };
+  const safeActivePrograms = activePrograms || [];
+
   useEffect(() => {
     if (visible) {
       generateDailyInsights();
     }
-  }, [visible, data, userProfile, activePrograms]);
+  }, [visible, safeData, safeUserProfile, safeActivePrograms]);
 
   const generateDailyInsights = async () => {
     setIsLoading(true);
@@ -71,10 +76,10 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const todaysWorkout = getTodaysWorkout();
-      const macroProgress = getMacroProgressForDate(today);
-      const latestRecovery = data.recovery[0];
-      const latestSleep = data.sleep[0];
-      const latestStrain = data.strain[0];
+      const macroProgress = getMacroProgressForDate ? getMacroProgressForDate(today) : null;
+      const latestRecovery = safeData?.recovery?.[0];
+      const latestSleep = safeData?.sleep?.[0];
+      const latestStrain = safeData?.strain?.[0];
       
       const newInsights: DailyInsight[] = [];
       
@@ -117,17 +122,20 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
 
       // Workout Insight
       if (todaysWorkout) {
-        const programProgress = getProgramProgress(todaysWorkout.programId);
+        const programProgress = getProgramProgress ? getProgramProgress(todaysWorkout.programId) : null;
+        const workoutDescription = todaysWorkout.description || 'Workout session';
+        const progressPercentage = programProgress?.progressPercentage || 0;
+        
         const workoutInsight: DailyInsight = {
           type: 'workout',
           title: `Today's Focus: ${todaysWorkout.title}`,
-          message: `${todaysWorkout.description.substring(0, 80)}... You're ${programProgress.progressPercentage.toFixed(0)}% through your program!`,
+          message: `${workoutDescription.substring(0, 80)}... You're ${progressPercentage.toFixed(0)}% through your program!`,
           priority: 'high',
           actionable: true,
           icon: <Target size={20} color={colors.primary} />
         };
         newInsights.push(workoutInsight);
-      } else if (activePrograms.length > 0) {
+      } else if (safeActivePrograms.length > 0) {
         newInsights.push({
           type: 'workout',
           title: 'Rest Day',
@@ -176,11 +184,24 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         newInsights.push(sleepInsight);
       }
 
-      // Nutrition Insight
-      const calorieProgress = (macroProgress.calories.consumed / macroProgress.calories.target) * 100;
-      const proteinProgress = (macroProgress.protein.consumed / macroProgress.protein.target) * 100;
+      // Nutrition Insight - safely handle undefined macroProgress
+      let calorieProgress = 0;
+      let proteinProgress = 0;
       
-      if (calorieProgress < 30 && new Date().getHours() > 14) {
+      try {
+        if (macroProgress?.calories?.target && macroProgress?.calories?.consumed !== undefined) {
+          calorieProgress = (macroProgress.calories.consumed / macroProgress.calories.target) * 100;
+        }
+        if (macroProgress?.protein?.target && macroProgress?.protein?.consumed !== undefined) {
+          proteinProgress = (macroProgress.protein.consumed / macroProgress.protein.target) * 100;
+        }
+      } catch (nutritionError) {
+        console.error('Error calculating nutrition progress:', nutritionError);
+        calorieProgress = 0;
+        proteinProgress = 0;
+      }
+      
+      if (calorieProgress > 0 && calorieProgress < 30 && new Date().getHours() > 14) {
         newInsights.push({
           type: 'nutrition',
           title: 'Low Calorie Intake',
@@ -189,7 +210,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           actionable: true,
           icon: <Flame size={20} color={colors.warning} />
         });
-      } else if (proteinProgress < 50 && new Date().getHours() > 16) {
+      } else if (proteinProgress > 0 && proteinProgress < 50 && new Date().getHours() > 16) {
         newInsights.push({
           type: 'nutrition',
           title: 'Protein Goal Behind',
@@ -259,7 +280,12 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       }
 
       // Generate AI-powered daily summary
-      await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
+      try {
+        await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
+      } catch (summaryError) {
+        console.error('Error generating daily summary:', summaryError);
+        setTodaysSummary('Ready to make today count? Stay focused on your goals and listen to your body.');
+      }
 
       // Sort insights by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -290,11 +316,16 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       const hasWorkout = !!todaysWorkout;
       const recoveryScore = latestRecovery?.score || 'unknown';
       
+      // Safely access userProfile properties with fallbacks
+      const userAge = safeUserProfile?.age || 30;
+      const userGender = safeUserProfile?.gender || 'user';
+      const userGoal = safeUserProfile?.fitnessGoal || 'general fitness';
+      
       const contextPrompt = `Generate a brief, motivational daily summary (max 60 words) based on:
 - Recovery: ${recoveryScore}%
 - Workout planned: ${hasWorkout ? todaysWorkout.title : 'Rest day'}
 - Key concerns: ${highPriorityInsights.map(i => i.title).join(', ') || 'None'}
-- User: ${userProfile.age}y ${userProfile.gender}, goal: ${userProfile.fitnessGoal}
+- User: ${userAge}y ${userGender}, goal: ${userGoal}
 
 Make it personal, actionable, and encouraging.`;
 
@@ -435,19 +466,19 @@ Make it personal, actionable, and encouraging.`;
               <View style={styles.quickStatsContainer}>
                 <Text style={styles.sectionTitle}>Quick Stats</Text>
                 <View style={styles.statsGrid}>
-                  {isConnectedToWhoop && data.recovery[0] && (
+                  {isConnectedToWhoop && safeData.recovery[0] && (
                     <View style={styles.statCard}>
                       <Heart size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Recovery</Text>
-                      <Text style={styles.statValue}>{data.recovery[0].score}%</Text>
+                      <Text style={styles.statValue}>{safeData.recovery[0].score}%</Text>
                     </View>
                   )}
                   
-                  {activePrograms.length > 0 && (
+                  {safeActivePrograms.length > 0 && (
                     <View style={styles.statCard}>
                       <Target size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Programs</Text>
-                      <Text style={styles.statValue}>{activePrograms.length}</Text>
+                      <Text style={styles.statValue}>{safeActivePrograms.length}</Text>
                     </View>
                   )}
                   
@@ -455,7 +486,19 @@ Make it personal, actionable, and encouraging.`;
                     <Flame size={16} color={colors.primary} />
                     <Text style={styles.statLabel}>Calories</Text>
                     <Text style={styles.statValue}>
-                      {Math.round((getMacroProgressForDate(new Date().toISOString().split('T')[0]).calories.consumed / getMacroProgressForDate(new Date().toISOString().split('T')[0]).calories.target) * 100)}%
+                      {(() => {
+                        try {
+                          if (!getMacroProgressForDate) return 0;
+                          const todayMacros = getMacroProgressForDate(new Date().toISOString().split('T')[0]);
+                          if (todayMacros?.calories?.target && todayMacros?.calories?.consumed !== undefined) {
+                            return Math.round((todayMacros.calories.consumed / todayMacros.calories.target) * 100);
+                          }
+                          return 0;
+                        } catch (error) {
+                          console.error('Error calculating calorie progress:', error);
+                          return 0;
+                        }
+                      })()}%
                     </Text>
                   </View>
                 </View>
