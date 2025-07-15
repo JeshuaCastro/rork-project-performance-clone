@@ -61,7 +61,17 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
 
   // Ensure we have safe defaults for all required data
   const safeData = data || { recovery: [], sleep: [], strain: [] };
-  const safeUserProfile = userProfile || { age: 30, gender: 'user', fitnessGoal: 'general fitness' };
+  const safeUserProfile = userProfile || { 
+    age: 30, 
+    gender: 'male' as const, 
+    fitnessGoal: 'maintainWeight' as const,
+    weight: 70,
+    height: 175,
+    activityLevel: 'moderatelyActive' as const,
+    name: '',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
   const safeActivePrograms = activePrograms || [];
 
   useEffect(() => {
@@ -75,11 +85,11 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
     
     try {
       const today = new Date().toISOString().split('T')[0];
-      const todaysWorkout = getTodaysWorkout();
+      const todaysWorkout = getTodaysWorkout ? getTodaysWorkout() : null;
       const macroProgress = getMacroProgressForDate ? getMacroProgressForDate(today) : null;
-      const latestRecovery = safeData?.recovery?.[0];
-      const latestSleep = safeData?.sleep?.[0];
-      const latestStrain = safeData?.strain?.[0];
+      const latestRecovery = safeData.recovery && safeData.recovery.length > 0 ? safeData.recovery[0] : null;
+      const latestSleep = safeData.sleep && safeData.sleep.length > 0 ? safeData.sleep[0] : null;
+      const latestStrain = safeData.strain && safeData.strain.length > 0 ? safeData.strain[0] : null;
       
       const newInsights: DailyInsight[] = [];
       
@@ -129,7 +139,7 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         const workoutInsight: DailyInsight = {
           type: 'workout',
           title: `Today's Focus: ${todaysWorkout.title}`,
-          message: `${workoutDescription.substring(0, 80)}... You're ${progressPercentage.toFixed(0)}% through your program!`,
+          message: `${workoutDescription.substring(0, 80)}${workoutDescription.length > 80 ? '...' : ''} You're ${progressPercentage.toFixed(0)}% through your program!`,
           priority: 'high',
           actionable: true,
           icon: <Target size={20} color={colors.primary} />
@@ -143,6 +153,16 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
           priority: 'medium',
           actionable: false,
           icon: <Heart size={20} color={colors.primary} />
+        });
+      } else {
+        // No active programs
+        newInsights.push({
+          type: 'workout',
+          title: 'Ready to Start?',
+          message: 'Create a training program to get personalized daily workout recommendations.',
+          priority: 'medium',
+          actionable: true,
+          icon: <Target size={20} color={colors.primary} />
         });
       }
 
@@ -187,46 +207,62 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       // Nutrition Insight - safely handle undefined macroProgress
       let calorieProgress = 0;
       let proteinProgress = 0;
+      let hasNutritionData = false;
       
       try {
         if (macroProgress?.calories?.target && macroProgress?.calories?.consumed !== undefined) {
           calorieProgress = (macroProgress.calories.consumed / macroProgress.calories.target) * 100;
+          hasNutritionData = true;
         }
         if (macroProgress?.protein?.target && macroProgress?.protein?.consumed !== undefined) {
           proteinProgress = (macroProgress.protein.consumed / macroProgress.protein.target) * 100;
+          hasNutritionData = true;
         }
       } catch (nutritionError) {
         console.error('Error calculating nutrition progress:', nutritionError);
         calorieProgress = 0;
         proteinProgress = 0;
+        hasNutritionData = false;
       }
       
-      if (calorieProgress > 0 && calorieProgress < 30 && new Date().getHours() > 14) {
+      if (hasNutritionData) {
+        if (calorieProgress > 0 && calorieProgress < 30 && new Date().getHours() > 14) {
+          newInsights.push({
+            type: 'nutrition',
+            title: 'Low Calorie Intake',
+            message: `You've only consumed ${Math.round(calorieProgress)}% of your daily calories. Make sure to fuel properly for your activities.`,
+            priority: 'medium',
+            actionable: true,
+            icon: <Flame size={20} color={colors.warning} />
+          });
+        } else if (proteinProgress > 0 && proteinProgress < 50 && new Date().getHours() > 16) {
+          newInsights.push({
+            type: 'nutrition',
+            title: 'Protein Goal Behind',
+            message: `You're at ${Math.round(proteinProgress)}% of your protein target. Consider a protein-rich snack or meal.`,
+            priority: 'medium',
+            actionable: true,
+            icon: <Zap size={20} color={colors.primary} />
+          });
+        } else if (calorieProgress > 80 && proteinProgress > 80) {
+          newInsights.push({
+            type: 'nutrition',
+            title: 'Nutrition On Track',
+            message: `Great job! You're meeting your calorie and protein goals for today.`,
+            priority: 'low',
+            actionable: false,
+            icon: <CheckCircle size={20} color={colors.success} />
+          });
+        }
+      } else {
+        // Add nutrition reminder if no data is being tracked
         newInsights.push({
           type: 'nutrition',
-          title: 'Low Calorie Intake',
-          message: `You've only consumed ${Math.round(calorieProgress)}% of your daily calories. Make sure to fuel properly for your activities.`,
-          priority: 'medium',
-          actionable: true,
-          icon: <Flame size={20} color={colors.warning} />
-        });
-      } else if (proteinProgress > 0 && proteinProgress < 50 && new Date().getHours() > 16) {
-        newInsights.push({
-          type: 'nutrition',
-          title: 'Protein Goal Behind',
-          message: `You're at ${Math.round(proteinProgress)}% of your protein target. Consider a protein-rich snack or meal.`,
-          priority: 'medium',
-          actionable: true,
-          icon: <Zap size={20} color={colors.primary} />
-        });
-      } else if (calorieProgress > 80 && proteinProgress > 80) {
-        newInsights.push({
-          type: 'nutrition',
-          title: 'Nutrition On Track',
-          message: `Great job! You're meeting your calorie and protein goals for today.`,
+          title: 'Nutrition Tracking',
+          message: 'Consider tracking your meals to optimize your nutrition and support your fitness goals.',
           priority: 'low',
-          actionable: false,
-          icon: <CheckCircle size={20} color={colors.success} />
+          actionable: true,
+          icon: <Flame size={20} color={colors.primary} />
         });
       }
 
@@ -273,10 +309,24 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         }
       ];
 
-      // Add a random motivational insight if we don't have many insights
-      if (newInsights.length < 3) {
-        const randomInsight = motivationalInsights[Math.floor(Math.random() * motivationalInsights.length)];
-        newInsights.push(randomInsight);
+      // Add motivational insights if we don't have many insights
+      if (newInsights.length < 2) {
+        // Add multiple insights to ensure we have good content
+        const shuffledInsights = [...motivationalInsights].sort(() => Math.random() - 0.5);
+        const insightsToAdd = shuffledInsights.slice(0, 3 - newInsights.length);
+        newInsights.push(...insightsToAdd);
+      }
+      
+      // Ensure we always have at least one insight
+      if (newInsights.length === 0) {
+        newInsights.push({
+          type: 'general',
+          title: 'Good Morning!',
+          message: 'Ready to make today count? Stay consistent with your goals and listen to your body.',
+          priority: 'medium',
+          actionable: true,
+          icon: <Sun size={20} color={colors.primary} />
+        });
       }
 
       // Generate AI-powered daily summary
@@ -284,7 +334,28 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         await generateDailySummary(newInsights, todaysWorkout, latestRecovery);
       } catch (summaryError) {
         console.error('Error generating daily summary:', summaryError);
-        setTodaysSummary('Ready to make today count? Stay focused on your goals and listen to your body.');
+        // Create a more personalized fallback summary
+        const hasWorkout = todaysWorkout ? true : false;
+        const recoveryScore = latestRecovery?.score;
+        let fallbackSummary = 'Ready to make today count? ';
+        
+        if (hasWorkout && recoveryScore) {
+          if (recoveryScore >= 75) {
+            fallbackSummary += `With ${recoveryScore}% recovery, you're primed for today's ${todaysWorkout?.title}. Give it your all!`;
+          } else if (recoveryScore >= 50) {
+            fallbackSummary += `Your recovery is at ${recoveryScore}%. Listen to your body during today's ${todaysWorkout?.title}.`;
+          } else {
+            fallbackSummary += `Recovery is low at ${recoveryScore}%. Consider taking it easier today or focusing on recovery.`;
+          }
+        } else if (hasWorkout) {
+          fallbackSummary += `Today's focus is ${todaysWorkout?.title}. Stay consistent and trust the process.`;
+        } else if (safeActivePrograms.length > 0) {
+          fallbackSummary += 'Rest day today - perfect time for recovery and preparation for tomorrow.';
+        } else {
+          fallbackSummary += 'Consider starting a training program to get personalized daily guidance.';
+        }
+        
+        setTodaysSummary(fallbackSummary);
       }
 
       // Sort insights by priority
@@ -294,17 +365,38 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       setInsights(newInsights);
     } catch (error) {
       console.error('Error generating daily insights:', error);
-      // Fallback insights
-      setInsights([
+      // Comprehensive fallback insights
+      const fallbackInsights: DailyInsight[] = [
         {
           type: 'general',
           title: 'Good Morning!',
-          message: 'Ready to make today count? Check your workout plan and stay hydrated.',
-          priority: 'medium',
+          message: 'Ready to make today count? Check your workout plan and stay hydrated throughout the day.',
+          priority: 'high',
           actionable: true,
           icon: <Sun size={20} color={colors.primary} />
+        },
+        {
+          type: 'workout',
+          title: safeActivePrograms.length > 0 ? 'Training Focus' : 'Start Your Journey',
+          message: safeActivePrograms.length > 0 
+            ? 'Stay consistent with your training program. Every workout brings you closer to your goals.'
+            : 'Consider creating a training program to get structured, personalized workouts.',
+          priority: 'medium',
+          actionable: true,
+          icon: <Target size={20} color={colors.primary} />
+        },
+        {
+          type: 'general',
+          title: 'Hydration Reminder',
+          message: 'Start your day with water and aim for 2-3 liters throughout the day for optimal performance.',
+          priority: 'low',
+          actionable: true,
+          icon: <Activity size={20} color={colors.primary} />
         }
-      ]);
+      ];
+      
+      setInsights(fallbackInsights);
+      setTodaysSummary('Ready to make today count? Stay focused on your goals, listen to your body, and remember that consistency is key to success.');
     } finally {
       setIsLoading(false);
     }
@@ -317,13 +409,13 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       const recoveryScore = latestRecovery?.score || 'unknown';
       
       // Safely access userProfile properties with fallbacks
-      const userAge = safeUserProfile?.age || 30;
-      const userGender = safeUserProfile?.gender || 'user';
-      const userGoal = safeUserProfile?.fitnessGoal || 'general fitness';
+      const userAge = safeUserProfile.age;
+      const userGender = safeUserProfile.gender;
+      const userGoal = safeUserProfile.fitnessGoal;
       
       const contextPrompt = `Generate a brief, motivational daily summary (max 60 words) based on:
 - Recovery: ${recoveryScore}%
-- Workout planned: ${hasWorkout ? todaysWorkout.title : 'Rest day'}
+- Workout planned: ${hasWorkout ? todaysWorkout?.title || 'Training session' : 'Rest day'}
 - Key concerns: ${highPriorityInsights.map(i => i.title).join(', ') || 'None'}
 - User: ${userAge}y ${userGender}, goal: ${userGoal}
 
@@ -466,7 +558,7 @@ Make it personal, actionable, and encouraging.`;
               <View style={styles.quickStatsContainer}>
                 <Text style={styles.sectionTitle}>Quick Stats</Text>
                 <View style={styles.statsGrid}>
-                  {isConnectedToWhoop && safeData.recovery[0] && (
+                  {isConnectedToWhoop && safeData.recovery && safeData.recovery.length > 0 && (
                     <View style={styles.statCard}>
                       <Heart size={16} color={colors.primary} />
                       <Text style={styles.statLabel}>Recovery</Text>
@@ -488,19 +580,36 @@ Make it personal, actionable, and encouraging.`;
                     <Text style={styles.statValue}>
                       {(() => {
                         try {
-                          if (!getMacroProgressForDate) return 0;
+                          if (!getMacroProgressForDate) return '0';
                           const todayMacros = getMacroProgressForDate(new Date().toISOString().split('T')[0]);
                           if (todayMacros?.calories?.target && todayMacros?.calories?.consumed !== undefined) {
-                            return Math.round((todayMacros.calories.consumed / todayMacros.calories.target) * 100);
+                            return Math.round((todayMacros.calories.consumed / todayMacros.calories.target) * 100) + '%';
                           }
-                          return 0;
+                          return '0%';
                         } catch (error) {
                           console.error('Error calculating calorie progress:', error);
-                          return 0;
+                          return '0%';
                         }
-                      })()}%
+                      })()}
                     </Text>
                   </View>
+                  
+                  {!isConnectedToWhoop && (
+                    <View style={styles.statCard}>
+                      <Activity size={16} color={colors.textSecondary} />
+                      <Text style={styles.statLabel}>WHOOP</Text>
+                      <Text style={[styles.statValue, { color: colors.textSecondary, fontSize: 12 }]}>Connect</Text>
+                    </View>
+                  )}
+                  
+                  {/* Show user profile stats if available */}
+                  {safeUserProfile.weight > 0 && (
+                    <View style={styles.statCard}>
+                      <Target size={16} color={colors.primary} />
+                      <Text style={styles.statLabel}>Weight</Text>
+                      <Text style={styles.statValue}>{safeUserProfile.weight}kg</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             )}
