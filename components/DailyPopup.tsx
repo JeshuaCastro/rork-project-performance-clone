@@ -49,6 +49,8 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [todaysSummary, setTodaysSummary] = useState<string>('');
   
+  console.log('DailyPopup render - visible:', visible, 'isLoading:', isLoading, 'insights count:', insights.length, 'summary:', todaysSummary);
+  
   const {
     data,
     userProfile,
@@ -63,6 +65,16 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
   const hasRealData = data && (data.recovery.length > 0 || data.sleep.length > 0 || data.strain.length > 0);
   const hasUserProfile = userProfile && userProfile.name && userProfile.name.length > 0;
   const hasActivePrograms = activePrograms && activePrograms.length > 0;
+  
+  console.log('DailyPopup data check:', {
+    hasData: !!data,
+    hasRealData,
+    hasUserProfile,
+    hasActivePrograms,
+    recoveryCount: data?.recovery?.length || 0,
+    sleepCount: data?.sleep?.length || 0,
+    strainCount: data?.strain?.length || 0
+  });
   
   const safeData = hasRealData ? data : { recovery: [], sleep: [], strain: [] };
   const safeUserProfile = hasUserProfile ? userProfile : { 
@@ -80,10 +92,11 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
 
   useEffect(() => {
     if (visible) {
+      console.log('DailyPopup visible, starting insights generation...');
       // Add a small delay to ensure data is loaded
       const timer = setTimeout(() => {
         generateDailyInsights();
-      }, 500);
+      }, 100); // Reduced delay
       
       return () => clearTimeout(timer);
     }
@@ -364,18 +377,38 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
       
       // Ensure we always have at least one insight
       if (newInsights.length === 0) {
-        newInsights.push({
-          type: 'general',
-          title: 'Good Morning!',
-          message: 'Ready to make today count? Stay consistent with your goals and listen to your body.',
-          priority: 'medium',
-          actionable: true,
-          icon: <Sun size={20} color={colors.primary} />
-        });
-        console.log('Added fallback insight');
+        console.log('No insights generated, adding fallback insights');
+        newInsights.push(
+          {
+            type: 'general',
+            title: 'Good Morning!',
+            message: 'Ready to make today count? Stay consistent with your goals and listen to your body.',
+            priority: 'high',
+            actionable: true,
+            icon: <Sun size={20} color={colors.primary} />
+          },
+          {
+            type: 'workout',
+            title: 'Stay Active',
+            message: 'Movement is medicine. Even a short walk or light stretching can boost your energy and mood.',
+            priority: 'medium',
+            actionable: true,
+            icon: <Activity size={20} color={colors.primary} />
+          },
+          {
+            type: 'general',
+            title: 'Hydration Check',
+            message: 'Start your day with a glass of water and aim for 8-10 glasses throughout the day.',
+            priority: 'low',
+            actionable: true,
+            icon: <Heart size={20} color={colors.primary} />
+          }
+        );
+        console.log('Added fallback insights:', newInsights.length);
       }
       
       console.log('Final insights count:', newInsights.length);
+      console.log('Final insights:', newInsights.map(i => ({ title: i.title, type: i.type, priority: i.priority })));
 
       // Generate AI-powered daily summary
       try {
@@ -406,13 +439,22 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         console.log('Using fallback summary:', fallbackSummary);
         setTodaysSummary(fallbackSummary);
       }
+      
+      // Ensure we always have a summary
+      if (!todaysSummary || todaysSummary.length === 0) {
+        const defaultSummary = 'Ready to make today count? Focus on your goals, stay hydrated, and listen to your body.';
+        console.log('Setting default summary:', defaultSummary);
+        setTodaysSummary(defaultSummary);
+      }
 
       // Sort insights by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       newInsights.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
       console.log('Setting final insights:', newInsights);
+      console.log('About to set insights state with:', newInsights.length, 'items');
       setInsights(newInsights);
+      console.log('Insights state set successfully');
     } catch (error) {
       console.error('Error generating daily insights:', error);
       // Comprehensive fallback insights
@@ -445,8 +487,10 @@ const DailyPopup: React.FC<DailyPopupProps> = ({ visible, onClose }) => {
         }
       ];
       
+      console.log('Setting fallback insights:', fallbackInsights);
       setInsights(fallbackInsights);
       setTodaysSummary('Ready to make today count? Stay focused on your goals, listen to your body, and remember that consistency is key to success.');
+      console.log('Fallback insights and summary set');
     } finally {
       setIsLoading(false);
     }
@@ -561,6 +605,15 @@ Make it personal, actionable, and encouraging.`;
           </View>
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {/* Debug Info */}
+            {__DEV__ && (
+              <View style={{ padding: 10, backgroundColor: '#333', marginBottom: 10 }}>
+                <Text style={{ color: '#fff', fontSize: 12 }}>
+                  Debug: Loading={isLoading.toString()}, Insights={insights.length}, Summary={todaysSummary ? 'Yes' : 'No'}
+                </Text>
+              </View>
+            )}
+            
             {/* Daily Summary */}
             <View style={styles.summaryContainer}>
               <Text style={styles.summaryTitle}>Today's Overview</Text>
@@ -570,7 +623,9 @@ Make it personal, actionable, and encouraging.`;
                   <Text style={styles.loadingText}>Analyzing your metrics...</Text>
                 </View>
               ) : (
-                <Text style={styles.summaryText}>{todaysSummary}</Text>
+                <Text style={styles.summaryText}>
+                  {todaysSummary || 'No summary available'}
+                </Text>
               )}
             </View>
 
@@ -582,8 +637,14 @@ Make it personal, actionable, and encouraging.`;
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
+              ) : insights.length === 0 ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>No insights available</Text>
+                </View>
               ) : (
-                insights.map((insight, index) => (
+                insights.map((insight, index) => {
+                  console.log('Rendering insight:', index, insight.title);
+                  return (
                   <View key={index} style={styles.insightCard}>
                     <View style={styles.insightHeader}>
                       <View style={styles.insightTitleContainer}>
@@ -610,7 +671,8 @@ Make it personal, actionable, and encouraging.`;
                       </View>
                     )}
                   </View>
-                ))
+                  );
+                })
               )}
             </View>
 
