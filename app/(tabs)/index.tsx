@@ -21,6 +21,8 @@ import StrainCard from '@/components/StrainCard';
 import AIInsightCard from '@/components/AIInsightCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
+import DailyOverview from '@/components/DailyOverview';
+import { useDailyOverview } from '@/hooks/useDailyOverview';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -41,7 +43,8 @@ import {
   Eye,
   Check,
   CheckCircle,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -53,6 +56,15 @@ export default function DashboardScreen() {
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
+  
+  // Daily overview hook
+  const {
+    showDailyOverview,
+    hasShownToday,
+    showOverview,
+    hideOverview,
+    markOverviewShown
+  } = useDailyOverview();
   
   const { 
     data, 
@@ -570,11 +582,18 @@ export default function DashboardScreen() {
             <Text style={styles.profileButtonText}>Complete Profile</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity 
-          style={styles.syncButton}
-          onPress={handleSyncData}
-          disabled={isLoadingWhoopData || !isConnectedToWhoop}
-        >
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.dailyOverviewButton}
+            onPress={showOverview}
+          >
+            <Calendar size={18} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.syncButton}
+            onPress={handleSyncData}
+            disabled={isLoadingWhoopData || !isConnectedToWhoop}
+          >
           {isLoadingWhoopData ? (
             <ActivityIndicator size="small" color={colors.text} />
           ) : (
@@ -1000,6 +1019,15 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Daily Overview Modal */}
+      <DailyOverview
+        visible={showDailyOverview}
+        onClose={() => {
+          hideOverview();
+          markOverviewShown();
+        }}
+      />
     </View>
   );
 }
@@ -1020,6 +1048,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingRight: 16,
     paddingVertical: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dailyOverviewButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2A2A2A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
