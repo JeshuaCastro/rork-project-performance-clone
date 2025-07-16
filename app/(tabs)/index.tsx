@@ -22,6 +22,7 @@ import StrainCard from '@/components/StrainCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
 import DailyEvaluationCard from '@/components/DailyEvaluationCard';
+import WeightTracker from '@/components/WeightTracker';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -796,6 +797,9 @@ export default function DashboardScreen() {
           
           {/* Daily Evaluation Card - shows daily insights */}
           <DailyEvaluationCard />
+          
+          {/* Weight Tracking */}
+          <WeightTracker />
           
           {/* Calendar View */}
           <CalendarView 

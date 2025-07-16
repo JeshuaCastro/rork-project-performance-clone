@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { 
   LayoutDashboard, 
-  LineChart, 
   MessageSquare, 
   Dumbbell, 
   Settings 
@@ -137,19 +136,7 @@ export default function TabLayout() {
             headerTitle: 'WHOOP AI Coach',
           }}
         />
-        <Tabs.Screen
-          name="trends"
-          options={{
-            title: 'Trends',
-            tabBarIcon: ({ color, focused }) => (
-              <LineChart 
-                size={isSmallDevice ? 20 : 24} 
-                color={color}
-                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-              />
-            ),
-          }}
-        />
+
         <Tabs.Screen
           name="coach"
           options={{
