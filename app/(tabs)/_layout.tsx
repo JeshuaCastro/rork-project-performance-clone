@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   MessageSquare, 
   Dumbbell, 
+  Apple,
   Settings 
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
@@ -156,6 +157,19 @@ export default function TabLayout() {
             title: 'Programs',
             tabBarIcon: ({ color, focused }) => (
               <Dumbbell 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="nutrition"
+          options={{
+            title: 'Nutrition',
+            tabBarIcon: ({ color, focused }) => (
+              <Apple 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
