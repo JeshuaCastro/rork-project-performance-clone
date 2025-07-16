@@ -378,7 +378,7 @@ Focus on:
           <Text style={[styles.statusTitle, { color: evaluation.color }]}>
             {evaluation.title}
           </Text>
-          {evaluation.confidenceScore && (
+          {'confidenceScore' in evaluation && evaluation.confidenceScore && (
             <View style={styles.confidenceBadge}>
               <Text style={styles.confidenceText}>{evaluation.confidenceScore}%</Text>
             </View>
