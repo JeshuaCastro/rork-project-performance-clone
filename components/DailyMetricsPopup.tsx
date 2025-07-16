@@ -79,14 +79,58 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
 
     if (!isConnectedToWhoop || !data || !data.recovery || !data.recovery.length) {
       console.log('No WHOOP data available for assessment');
-      setError('No WHOOP data available for assessment');
+      
+      // Generate a basic assessment even without WHOOP data
+      const basicAssessment: DailyAssessment = {
+        overallScore: 70,
+        overallStatus: 'good',
+        summary: 'Connect your WHOOP device to get personalized daily assessments based on your recovery, strain, and sleep metrics.',
+        focusArea: 'data connection',
+        keyRecommendations: [
+          'Connect your WHOOP device to start tracking your metrics',
+          'Ensure your WHOOP is charged and syncing properly',
+          'Check your WHOOP app for any connection issues',
+          'Once connected, return here for personalized insights'
+        ],
+        metrics: [
+          {
+            metric: 'Recovery',
+            value: 'N/A',
+            status: 'fair',
+            trend: 'stable',
+            icon: getMetricIcon('Recovery'),
+            color: getStatusColor('fair'),
+            recommendation: 'Connect WHOOP to track your recovery metrics'
+          },
+          {
+            metric: 'Strain',
+            value: 'N/A',
+            status: 'fair',
+            trend: 'stable',
+            icon: getMetricIcon('Strain'),
+            color: getStatusColor('fair'),
+            recommendation: 'Connect WHOOP to track your daily strain'
+          },
+          {
+            metric: 'Sleep',
+            value: 'N/A',
+            status: 'fair',
+            trend: 'stable',
+            icon: getMetricIcon('Sleep'),
+            color: getStatusColor('fair'),
+            recommendation: 'Connect WHOOP to track your sleep quality'
+          }
+        ]
+      };
+      
+      setAssessment(basicAssessment);
+      setError(null);
       return;
     }
 
     if (!userProfile) {
-      console.log('No user profile available for assessment');
-      setError('User profile not available for assessment');
-      return;
+      console.log('No user profile available for assessment, using defaults');
+      // Continue with default profile values instead of stopping
     }
 
     setIsLoading(true);
@@ -224,14 +268,17 @@ Trend: up (improving), down (declining), stable (consistent)`;
 
     } catch (error) {
       console.error('Error generating daily assessment:', error);
-      setError('Unable to generate assessment. Please try again.');
+      console.log('Generating fallback assessment due to error...');
       
-      // Fallback assessment with safe property access
+      // Always generate fallback assessment when AI fails
       const latestRecovery = data?.recovery?.[0] || null;
       const latestStrain = data?.strain?.[0] || null;
       const latestSleep = data?.sleep?.[0] || null;
       const fallbackAssessment = generateFallbackAssessment(latestRecovery, latestStrain, latestSleep);
+      
+      console.log('Fallback assessment generated:', fallbackAssessment);
       setAssessment(fallbackAssessment);
+      setError(null); // Clear error since we have fallback assessment
     } finally {
       setIsLoading(false);
     }
@@ -355,7 +402,11 @@ Trend: up (improving), down (declining), stable (consistent)`;
         isLoading,
         isConnectedToWhoop,
         hasRecoveryData: data?.recovery?.length > 0,
-        hasUserProfile: !!userProfile
+        hasUserProfile: !!userProfile,
+        recoveryDataSample: data?.recovery?.[0],
+        strainDataSample: data?.strain?.[0],
+        sleepDataSample: data?.sleep?.[0],
+        userProfileSample: userProfile
       });
       
       // Always try to generate assessment when popup opens, even if we had an error before
@@ -384,6 +435,13 @@ Trend: up (improving), down (declining), stable (consistent)`;
   };
 
   if (!visible) return null;
+
+  console.log('Rendering DailyMetricsPopup with state:', {
+    isLoading,
+    hasError: !!error,
+    hasAssessment: !!assessment,
+    errorMessage: error
+  });
 
   return (
     <Modal

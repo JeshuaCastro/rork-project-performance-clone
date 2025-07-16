@@ -591,14 +591,15 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
         
-        {isConnectedToWhoop && data.recovery.length > 0 && (
-          <TouchableOpacity 
-            style={styles.assessmentButton}
-            onPress={() => setShowDailyMetricsPopup(true)}
-          >
-            <BarChart3 size={18} color={colors.text} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={styles.assessmentButton}
+          onPress={() => {
+            console.log('Assessment button clicked, showing popup...');
+            setShowDailyMetricsPopup(true);
+          }}
+        >
+          <BarChart3 size={18} color={colors.text} />
+        </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.syncButton}
