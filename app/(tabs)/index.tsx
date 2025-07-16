@@ -18,7 +18,7 @@ import {
 import { useWhoopStore } from '@/store/whoopStore';
 import RecoveryCard from '@/components/RecoveryCard';
 import StrainCard from '@/components/StrainCard';
-import AIInsightCard from '@/components/AIInsightCard';
+
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
 import DailyEvaluationCard from '@/components/DailyEvaluationCard';
@@ -808,9 +808,7 @@ export default function DashboardScreen() {
           {selectedStrain && <StrainCard strain={selectedStrain} />}
           <NutritionTracker />
           
-          {selectedDate === dates[0] && (
-            <AIInsightCard analysis={analysis} />
-          )}
+
         </ScrollView>
       )}
       
