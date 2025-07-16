@@ -315,22 +315,22 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
         actionableSteps: [
           {
-            category: 'training',
+            category: 'training' as const,
             action: 'Take advantage of high recovery with intense training',
             reason: 'Your body is primed for performance',
-            priority: 'high'
+            priority: 'high' as const
           },
           {
-            category: 'nutrition',
+            category: 'nutrition' as const,
             action: calorieProgress < 0.8 ? 'Fuel properly for high-intensity session' : 'Maintain current nutrition',
             reason: 'Support energy demands and recovery',
-            priority: 'medium'
+            priority: 'medium' as const
           },
           {
-            category: 'recovery',
+            category: 'recovery' as const,
             action: 'Maintain current sleep and recovery habits',
             reason: 'Keep what\'s working well',
-            priority: 'low'
+            priority: 'low' as const
           }
         ],
         nutritionAdvice: {
@@ -352,22 +352,22 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
         actionableSteps: [
           {
-            category: 'training',
+            category: 'training' as const,
             action: 'Stick to planned workout intensity',
             reason: 'Balanced recovery supports moderate training',
-            priority: 'high'
+            priority: 'high' as const
           },
           {
-            category: 'sleep',
+            category: 'sleep' as const,
             action: 'Prioritize 8+ hours sleep tonight',
             reason: 'Support tomorrow\'s recovery',
-            priority: 'medium'
+            priority: 'medium' as const
           },
           {
-            category: 'nutrition',
+            category: 'nutrition' as const,
             action: todaysFoodEntries.length < 3 ? 'Log meals to track nutrition' : 'Maintain balanced nutrition',
             reason: 'Proper fueling supports recovery',
-            priority: 'medium'
+            priority: 'medium' as const
           }
         ],
         nutritionAdvice: {
@@ -389,22 +389,22 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         trendAnalysis: `Recovery trending ${recoveryTrend} - needs attention`,
         actionableSteps: [
           {
-            category: 'recovery',
+            category: 'recovery' as const,
             action: 'Reduce training intensity by 30-50%',
             reason: 'Allow body to recover and adapt',
-            priority: 'high'
+            priority: 'high' as const
           },
           {
-            category: 'sleep',
+            category: 'sleep' as const,
             action: 'Aim for 9+ hours sleep tonight',
             reason: 'Sleep is critical for recovery',
-            priority: 'high'
+            priority: 'high' as const
           },
           {
-            category: 'nutrition',
+            category: 'nutrition' as const,
             action: 'Focus on anti-inflammatory foods',
             reason: 'Support recovery and reduce stress',
-            priority: 'medium'
+            priority: 'medium' as const
           }
         ],
         nutritionAdvice: {
