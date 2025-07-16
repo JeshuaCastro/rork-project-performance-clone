@@ -40,17 +40,17 @@ export default function DetailedEvaluationModal({ visible, onClose }: DetailedEv
     isConnectedToWhoop 
   } = useWhoopStore();
 
-  // Get today's data
+  // Get today's data with null checks
   const today = new Date().toISOString().split('T')[0];
-  const todaysRecovery = data.recovery.find(item => item.date === today);
-  const todaysStrain = data.strain.find(item => item.date === today);
-  const todaysSleep = data.sleep.find(item => item.date === today);
+  const todaysRecovery = data?.recovery?.find(item => item.date === today);
+  const todaysStrain = data?.strain?.find(item => item.date === today);
+  const todaysSleep = data?.sleep?.find(item => item.date === today);
   const todaysWorkout = getTodaysWorkout();
 
   // Calculate trends
-  const last7DaysRecovery = data.recovery.slice(0, 7);
-  const last7DaysStrain = data.strain.slice(0, 7);
-  const last7DaysSleep = data.sleep.slice(0, 7);
+  const last7DaysRecovery = data?.recovery?.slice(0, 7) || [];
+  const last7DaysStrain = data?.strain?.slice(0, 7) || [];
+  const last7DaysSleep = data?.sleep?.slice(0, 7) || [];
 
   const getRecoveryTrend = () => {
     if (last7DaysRecovery.length < 7) return { trend: 'stable', change: 0 };

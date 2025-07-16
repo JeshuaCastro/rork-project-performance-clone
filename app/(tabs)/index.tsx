@@ -114,7 +114,7 @@ export default function DashboardScreen() {
           
           // If connected to WHOOP and we haven't synced in the last hour, sync data
           if (connected) {
-            if (!lastSyncTime || Date.now() - lastSyncTime > 60 * 60 * 1000 || data.recovery.length === 0) {
+            if (!lastSyncTime || Date.now() - lastSyncTime > 60 * 60 * 1000 || !data?.recovery || data.recovery.length === 0) {
               console.log('Auto-syncing WHOOP data...');
               setSyncAttempted(true);
               await syncWhoopData();
@@ -136,11 +136,11 @@ export default function DashboardScreen() {
   );
   
   // Get available dates from the data
-  const dates = data.recovery.map(item => item.date);
+  const dates = data?.recovery?.map(item => item.date) || [];
   
   // Find the selected data items
-  const selectedRecovery = data.recovery.find(item => item.date === selectedDate);
-  const selectedStrain = data.strain.find(item => item.date === selectedDate);
+  const selectedRecovery = data?.recovery?.find(item => item.date === selectedDate);
+  const selectedStrain = data?.strain?.find(item => item.date === selectedDate);
   
   // Get today's workout from active programs
   const todaysWorkout = getTodaysWorkout();
@@ -584,12 +584,12 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
       
-      {isConnectedToWhoop && data.recovery.length === 0 && isLoadingWhoopData ? (
+      {isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0) && isLoadingWhoopData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading WHOOP data...</Text>
         </View>
-      ) : isConnectedToWhoop && data.recovery.length === 0 && syncAttempted ? (
+      ) : isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0) && syncAttempted ? (
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -628,7 +628,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      ) : isConnectedToWhoop && data.recovery.length === 0 ? (
+      ) : isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0) ? (
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}

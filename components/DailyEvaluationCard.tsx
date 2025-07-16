@@ -31,16 +31,16 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     isConnectedToWhoop 
   } = useWhoopStore();
 
-  // Get today's data
+  // Get today's data with null checks
   const today = new Date().toISOString().split('T')[0];
-  const todaysRecovery = data.recovery.find(item => item.date === today);
-  const todaysStrain = data.strain.find(item => item.date === today);
-  const todaysSleep = data.sleep.find(item => item.date === today);
+  const todaysRecovery = data?.recovery?.find(item => item.date === today);
+  const todaysStrain = data?.strain?.find(item => item.date === today);
+  const todaysSleep = data?.sleep?.find(item => item.date === today);
   const todaysWorkout = getTodaysWorkout();
 
-  // Calculate 7-day trends
-  const last7DaysRecovery = data.recovery.slice(0, 7);
-  const last7DaysStrain = data.strain.slice(0, 7);
+  // Calculate 7-day trends with null checks
+  const last7DaysRecovery = data?.recovery?.slice(0, 7) || [];
+  const last7DaysStrain = data?.strain?.slice(0, 7) || [];
   
   const avgRecovery = last7DaysRecovery.length > 0 
     ? last7DaysRecovery.reduce((sum, r) => sum + r.score, 0) / last7DaysRecovery.length 
@@ -208,7 +208,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       </View>
 
       {/* Metrics Row */}
-      {isConnectedToWhoop && todaysRecovery && (
+      {isConnectedToWhoop && data?.recovery && todaysRecovery && (
         <View style={styles.metricsRow}>
           <View style={styles.metric}>
             <Battery size={14} color={colors.success} />
@@ -266,7 +266,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       )}
 
       {/* Weekly Trends */}
-      {isConnectedToWhoop && last7DaysRecovery.length > 0 && (
+      {isConnectedToWhoop && data?.recovery && last7DaysRecovery.length > 0 && (
         <View style={styles.trendsContainer}>
           <Text style={styles.trendsTitle}>7-Day Trends</Text>
           <View style={styles.trendsRow}>
