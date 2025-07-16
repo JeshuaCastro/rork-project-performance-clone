@@ -2848,6 +2848,29 @@ Return JSON with implementation and advisory guidance:
         }
       },
       
+      // Mark workout as completed
+      markWorkoutCompleted: async (programId: string, workoutTitle: string, workoutDay: string, date?: string): Promise<void> => {
+        try {
+          const targetDate = date || new Date().toISOString().split('T')[0];
+          const todayKey = `${programId}-${targetDate}`;
+          const storageKey = `completed-workouts-${todayKey}`;
+          const stored = await AsyncStorage.getItem(storageKey);
+          
+          let completedWorkouts: string[] = [];
+          if (stored) {
+            completedWorkouts = JSON.parse(stored);
+          }
+          
+          const workoutKey = `${workoutDay}-${workoutTitle}`;
+          if (!completedWorkouts.includes(workoutKey)) {
+            completedWorkouts.push(workoutKey);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(completedWorkouts));
+          }
+        } catch (error) {
+          console.error('Error marking workout as completed:', error);
+        }
+      },
+      
       // Weight tracking methods
       addWeightEntry: (weight: number, date?: string) => {
         const entryDate = date || new Date().toISOString().split('T')[0];

@@ -1,134 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-  Alert
-} from 'react-native';
-import { useWhoopStore } from '@/store/whoopStore';
-import { dailyStatsService, DailyStats } from '@/services/dailyStatsService';
-import { colors } from '@/constants/colors';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { 
-  X, 
-  Heart, 
-  Activity, 
-  Moon, 
-  Zap, 
+  Calendar, 
+  Clock, 
   Target, 
-  Calendar,
-  TrendingUp,
-  Clock,
-  Dumbbell,
+  Activity, 
+  CheckCircle, 
   Play,
-  CheckCircle,
-  ArrowRight,
-  RefreshCw,
-  TrendingDown,
-  Minus,
-  AlertCircle,
-  Award
+  TrendingUp,
+  Heart,
+  Zap
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { colors } from '@/constants/colors';
+import { useWhoopStore } from '@/store/whoopStore';
+import { useRouter } from 'expo-router';
 
 interface DailyOverviewProps {
-  visible: boolean;
-  onClose: () => void;
+  onStartWorkout?: (workout: any) => void;
 }
 
-const DAILY_OVERVIEW_SHOWN_KEY = 'daily_overview_shown';
-
-export default function DailyOverview({ visible, onClose }: DailyOverviewProps) {
-  const {
-    data,
-    analysis,
-    isConnectedToWhoop,
-    getTodaysWorkout,
-    activePrograms,
+export default function DailyOverview({ onStartWorkout }: DailyOverviewProps) {
+  const router = useRouter();
+  const { 
+    getTodaysWorkout, 
+    activePrograms, 
+    data, 
     isWorkoutCompleted,
-    syncWhoopData,
-    isLoadingWhoopData
+    userProfile 
   } = useWhoopStore();
 
-  const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Get today's date
+  const todaysWorkout = getTodaysWorkout();
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
-  const todayFormatted = today.toLocaleDateString('en-US', { 
-    weekday: 'long', 
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateString = today.toLocaleDateString('en-US', { 
     month: 'long', 
     day: 'numeric' 
   });
 
-  // Get today's data
-  const todaysRecovery = data.recovery.find(item => item.date === todayString);
-  const todaysStrain = data.strain.find(item => item.date === todayString);
-  const todaysSleep = data.sleep.find(item => item.date === todayString);
+  // Get today's recovery data
+  const todaysRecovery = data.recovery.find(r => r.date === todayString);
+  const todaysStrain = data.strain.find(s => s.date === todayString);
 
-  // Load daily stats when modal becomes visible
-  useEffect(() => {
-    const loadDailyStats = async () => {
-      if (!visible) return;
-      
-      setIsLoading(true);
-      try {
-        const stats = await dailyStatsService.getDailyStats();
-        setDailyStats(stats);
-      } catch (error) {
-        console.error('Error loading daily stats:', error);
-      } finally {
-        setIsLoading(false);
+  // Check workout completion
+  const [isCompleted, setIsCompleted] = React.useState(false);
+  
+  React.useEffect(() => {
+    const checkCompletion = async () => {
+      if (todaysWorkout && todaysWorkout.programId) {
+        const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
+        setIsCompleted(completed);
       }
     };
+    checkCompletion();
+  }, [todaysWorkout, isWorkoutCompleted]);
 
-    loadDailyStats();
-  }, [visible, data, activePrograms]);
-
-  // Handle refresh
-  const handleRefresh = async () => {
-    if (!isConnectedToWhoop) return;
-    
-    setIsRefreshing(true);
-    try {
-      await syncWhoopData();
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      Alert.alert('Refresh Error', 'Failed to refresh WHOOP data. Please try again.');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  // Get recovery status color
-  const getRecoveryColor = (score: number) => {
-    if (score >= 75) return colors.success;
-    if (score >= 50) return colors.warning;
-    return colors.danger;
-  };
-
-  // Get strain color
-  const getStrainColor = (score: number) => {
-    if (score >= 15) return colors.danger;
-    if (score >= 10) return colors.warning;
-    return colors.success;
-  };
-
-  // Get workout icon
+  // Get workout icon based on type
   const getWorkoutIcon = (type: string) => {
     switch (type) {
       case 'cardio':
         return <Activity size={20} color={colors.primary} />;
       case 'strength':
-        return <Dumbbell size={20} color={colors.primary} />;
+        return <Target size={20} color={colors.primary} />;
       case 'recovery':
         return <Heart size={20} color={colors.primary} />;
       default:
@@ -138,7 +71,7 @@ export default function DailyOverview({ visible, onClose }: DailyOverviewProps) 
 
   // Get intensity color
   const getIntensityColor = (intensity: string) => {
-    switch (intensity.toLowerCase()) {
+    switch (intensity?.toLowerCase()) {
       case 'high':
         return colors.danger;
       case 'medium-high':
@@ -153,374 +86,249 @@ export default function DailyOverview({ visible, onClose }: DailyOverviewProps) 
     }
   };
 
+  // Get recovery status color
+  const getRecoveryColor = (score: number) => {
+    if (score >= 75) return colors.success;
+    if (score >= 50) return colors.warning;
+    return colors.danger;
+  };
+
+  const handleStartWorkout = () => {
+    if (todaysWorkout && onStartWorkout) {
+      onStartWorkout(todaysWorkout);
+    } else if (todaysWorkout?.programId) {
+      router.push(`/program-detail?id=${todaysWorkout.programId}`);
+    }
+  };
+
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Calendar size={24} color={colors.primary} />
-              <View style={styles.headerText}>
-                <Text style={styles.headerTitle}>Daily Overview</Text>
-                <Text style={styles.headerDate}>{todayFormatted}</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleRefresh}
-                disabled={!isConnectedToWhoop || isRefreshing}
-              >
-                <RefreshCw 
-                  size={20} 
-                  color={isConnectedToWhoop ? colors.text : colors.textSecondary} 
-                />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.dateContainer}>
+          <Calendar size={20} color={colors.primary} />
+          <View style={styles.dateInfo}>
+            <Text style={styles.dayName}>{dayName}</Text>
+            <Text style={styles.dateString}>{dateString}</Text>
           </View>
+        </View>
+        
+        {/* Recovery Score */}
+        {todaysRecovery && (
+          <View style={styles.recoveryContainer}>
+            <View style={[
+              styles.recoveryScore,
+              { backgroundColor: getRecoveryColor(todaysRecovery.score) }
+            ]}>
+              <Text style={styles.recoveryScoreText}>{todaysRecovery.score}%</Text>
+            </View>
+            <Text style={styles.recoveryLabel}>Recovery</Text>
+          </View>
+        )}
+      </View>
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* WHOOP Metrics Section */}
-            {isConnectedToWhoop ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Today's Metrics</Text>
-                
-                <View style={styles.metricsGrid}>
-                  {/* Recovery */}
-                  <View style={styles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <Heart size={18} color={getRecoveryColor(todaysRecovery?.score || 0)} />
-                      <Text style={styles.metricLabel}>Recovery</Text>
-                    </View>
-                    <Text style={[styles.metricValue, { color: getRecoveryColor(todaysRecovery?.score || 0) }]}>
-                      {todaysRecovery?.score || '--'}%
-                    </Text>
-                    <Text style={styles.metricSubtext}>
-                      HRV: {todaysRecovery?.hrvMs || '--'}ms
-                    </Text>
-                  </View>
-
-                  {/* Strain */}
-                  <View style={styles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <Zap size={18} color={getStrainColor(todaysStrain?.score || 0)} />
-                      <Text style={styles.metricLabel}>Strain</Text>
-                    </View>
-                    <Text style={[styles.metricValue, { color: getStrainColor(todaysStrain?.score || 0) }]}>
-                      {todaysStrain?.score || '--'}
-                    </Text>
-                    <Text style={styles.metricSubtext}>
-                      {todaysStrain?.calories || '--'} cal
-                    </Text>
-                  </View>
-
-                  {/* Sleep */}
-                  <View style={styles.metricCard}>
-                    <View style={styles.metricHeader}>
-                      <Moon size={18} color={colors.primary} />
-                      <Text style={styles.metricLabel}>Sleep</Text>
-                    </View>
-                    <Text style={[styles.metricValue, { color: colors.primary }]}>
-                      {todaysSleep?.efficiency || '--'}%
-                    </Text>
-                    <Text style={styles.metricSubtext}>
-                      {todaysSleep ? `${Math.floor(todaysSleep.duration / 60)}h ${todaysSleep.duration % 60}m` : '--'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* AI Insights */}
-                {analysis.recoveryInsight && (
-                  <View style={styles.insightCard}>
-                    <View style={styles.insightHeader}>
-                      <TrendingUp size={18} color={colors.primary} />
-                      <Text style={styles.insightTitle}>Today's Insight</Text>
-                    </View>
-                    <Text style={styles.insightText}>{analysis.recoveryInsight}</Text>
-                  </View>
-                )}
+      {/* Today's Workout */}
+      {todaysWorkout ? (
+        <View style={styles.workoutSection}>
+          <Text style={styles.sectionTitle}>Today's Workout</Text>
+          <View style={styles.workoutCard}>
+            <View style={styles.workoutHeader}>
+              <View style={styles.workoutTitleContainer}>
+                {getWorkoutIcon(todaysWorkout.type)}
+                <Text style={styles.workoutTitle} numberOfLines={1}>
+                  {todaysWorkout.title}
+                </Text>
               </View>
-            ) : (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>WHOOP Metrics</Text>
-                <View style={styles.noDataCard}>
-                  <Heart size={32} color={colors.textSecondary} />
-                  <Text style={styles.noDataTitle}>Connect WHOOP</Text>
-                  <Text style={styles.noDataText}>
-                    Connect your WHOOP band to see your daily recovery, strain, and sleep metrics.
-                  </Text>
-                </View>
+              <View style={[
+                styles.intensityBadge,
+                { backgroundColor: getIntensityColor(todaysWorkout.intensity) }
+              ]}>
+                <Text style={styles.intensityText}>{todaysWorkout.intensity}</Text>
               </View>
-            )}
-
-            {/* Today's Workout Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Today's Training</Text>
+            </View>
+            
+            <Text style={styles.workoutDescription} numberOfLines={2}>
+              {todaysWorkout.description}
+            </Text>
+            
+            {/* Workout Meta Info */}
+            <View style={styles.workoutMeta}>
+              <View style={styles.metaItem}>
+                <Clock size={14} color={colors.textSecondary} />
+                <Text style={styles.metaText}>{todaysWorkout.duration}</Text>
+              </View>
               
-              {todaysWorkout ? (
-                <View style={styles.workoutCard}>
-                  <View style={styles.workoutHeader}>
-                    <View style={styles.workoutTitleContainer}>
-                      {getWorkoutIcon(todaysWorkout.type)}
-                      <Text style={styles.workoutTitle} numberOfLines={1}>
-                        {todaysWorkout.title}
-                      </Text>
-                    </View>
-                    <View style={[
-                      styles.intensityBadge,
-                      { backgroundColor: getIntensityColor(todaysWorkout.intensity) }
-                    ]}>
-                      <Text style={styles.intensityText}>{todaysWorkout.intensity}</Text>
-                    </View>
-                  </View>
-                  
-                  <Text style={styles.workoutDescription} numberOfLines={2}>
-                    {todaysWorkout.description}
-                  </Text>
-                  
-                  <View style={styles.workoutMeta}>
-                    <View style={styles.workoutMetaItem}>
-                      <Clock size={14} color={colors.textSecondary} />
-                      <Text style={styles.workoutMetaText}>{todaysWorkout.duration}</Text>
-                    </View>
-                    
-                    {isWorkoutCompletedToday && (
-                      <View style={styles.completionBadge}>
-                        <CheckCircle size={14} color={colors.success} />
-                        <Text style={styles.completionText}>Completed</Text>
-                      </View>
-                    )}
-                  </View>
-                  
-                  <View style={styles.workoutActions}>
-                    <TouchableOpacity 
-                      style={[
-                        styles.workoutButton,
-                        isWorkoutCompletedToday && styles.completedButton
-                      ]}
-                      disabled={isWorkoutCompletedToday}
-                    >
-                      {isWorkoutCompletedToday ? (
-                        <>
-                          <CheckCircle size={16} color={colors.text} />
-                          <Text style={styles.workoutButtonText}>Completed</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={16} color={colors.text} />
-                          <Text style={styles.workoutButtonText}>Start Workout</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.programButton}>
-                      <Text style={styles.programButtonText}>View Program</Text>
-                      <ArrowRight size={14} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : activePrograms.length > 0 ? (
-                <View style={styles.restDayCard}>
-                  <Heart size={24} color={colors.primary} />
-                  <Text style={styles.restDayTitle}>Rest Day</Text>
-                  <Text style={styles.restDayText}>
-                    No scheduled workout today. Focus on recovery and preparation for tomorrow's training.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.noDataCard}>
-                  <Target size={32} color={colors.textSecondary} />
-                  <Text style={styles.noDataTitle}>No Active Programs</Text>
-                  <Text style={styles.noDataText}>
-                    Create a training program to see your daily workouts here.
-                  </Text>
+              {isCompleted && (
+                <View style={styles.completedBadge}>
+                  <CheckCircle size={14} color={colors.success} />
+                  <Text style={styles.completedText}>Completed</Text>
                 </View>
               )}
             </View>
-
-            {/* Training Recommendation */}
-            {analysis.trainingRecommendation && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Training Recommendation</Text>
-                <View style={styles.recommendationCard}>
-                  <Text style={styles.recommendationText}>
-                    {analysis.trainingRecommendation}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </ScrollView>
+            
+            {/* Action Button */}
+            <TouchableOpacity 
+              style={[
+                styles.actionButton,
+                isCompleted && styles.completedButton
+              ]}
+              onPress={handleStartWorkout}
+              disabled={isCompleted}
+            >
+              {isCompleted ? (
+                <>
+                  <CheckCircle size={18} color={colors.text} />
+                  <Text style={styles.actionButtonText}>Completed</Text>
+                </>
+              ) : (
+                <>
+                  <Play size={18} color={colors.text} />
+                  <Text style={styles.actionButtonText}>Start Workout</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Modal>
+      ) : activePrograms.length > 0 ? (
+        <View style={styles.restDaySection}>
+          <Text style={styles.sectionTitle}>Today's Plan</Text>
+          <View style={styles.restDayCard}>
+            <Heart size={24} color={colors.primary} />
+            <Text style={styles.restDayTitle}>Rest Day</Text>
+            <Text style={styles.restDayText}>
+              No scheduled workout today. Focus on recovery and preparation for tomorrow.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.noProgramSection}>
+          <Text style={styles.sectionTitle}>Ready to Start?</Text>
+          <View style={styles.noProgramCard}>
+            <Target size={24} color={colors.primary} />
+            <Text style={styles.noProgramTitle}>No Active Programs</Text>
+            <Text style={styles.noProgramText}>
+              Create a training program to get personalized daily workouts.
+            </Text>
+            <TouchableOpacity 
+              style={styles.createProgramButton}
+              onPress={() => router.push('/programs')}
+            >
+              <Text style={styles.createProgramText}>Create Program</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Daily Stats */}
+      {(todaysRecovery || todaysStrain) && (
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Today's Stats</Text>
+          <View style={styles.statsGrid}>
+            {todaysRecovery && (
+              <>
+                <View style={styles.statCard}>
+                  <Heart size={16} color={colors.primary} />
+                  <Text style={styles.statValue}>{todaysRecovery.hrvMs}ms</Text>
+                  <Text style={styles.statLabel}>HRV</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Activity size={16} color={colors.primary} />
+                  <Text style={styles.statValue}>{todaysRecovery.restingHeartRate}</Text>
+                  <Text style={styles.statLabel}>RHR</Text>
+                </View>
+              </>
+            )}
+            {todaysStrain && (
+              <>
+                <View style={styles.statCard}>
+                  <Zap size={16} color={colors.primary} />
+                  <Text style={styles.statValue}>{todaysStrain.score.toFixed(1)}</Text>
+                  <Text style={styles.statLabel}>Strain</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <TrendingUp size={16} color={colors.primary} />
+                  <Text style={styles.statValue}>{todaysStrain.calories}</Text>
+                  <Text style={styles.statLabel}>Calories</Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: SCREEN_HEIGHT * 0.9,
-    minHeight: SCREEN_HEIGHT * 0.7,
+  container: {
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    marginBottom: 16,
   },
-  headerLeft: {
+  dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  headerText: {
-    marginLeft: 12,
+  dateInfo: {
+    marginLeft: 8,
   },
-  headerTitle: {
-    fontSize: 20,
+  dayName: {
+    fontSize: 18,
     fontWeight: '700',
     color: colors.text,
   },
-  headerDate: {
+  dateString: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 2,
   },
-  headerRight: {
-    flexDirection: 'row',
+  recoveryContainer: {
     alignItems: 'center',
-    gap: 12,
   },
-  refreshButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2A2A2A',
+  recoveryScore: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2A2A2A',
-    alignItems: 'center',
-    justifyContent: 'center',
+  recoveryScoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
   },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
-    padding: 20,
-    paddingTop: 16,
+  recoveryLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  metricCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 6,
-    fontWeight: '500',
-  },
-  metricValue: {
-    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 4,
-  },
-  metricSubtext: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  insightCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-  },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  insightTitle: {
-    fontSize: 14,
-    fontWeight: '600',
     color: colors.text,
-    marginLeft: 8,
+    marginBottom: 12,
   },
-  insightText: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-  },
-  noDataCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-  },
-  noDataTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  noDataText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
+  workoutSection: {
+    marginBottom: 20,
   },
   workoutCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   workoutHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   workoutTitleContainer: {
     flexDirection: 'row',
@@ -538,11 +346,11 @@ const styles = StyleSheet.create({
   intensityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   intensityText: {
     color: colors.text,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   workoutDescription: {
@@ -555,78 +363,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  workoutMetaItem: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  workoutMetaText: {
-    fontSize: 12,
+  metaText: {
+    fontSize: 14,
     color: colors.textSecondary,
     marginLeft: 4,
   },
-  completionBadge: {
+  completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  completionText: {
-    fontSize: 11,
+  completedText: {
+    fontSize: 12,
     color: colors.success,
     fontWeight: '600',
     marginLeft: 4,
   },
-  workoutActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  workoutButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    flex: 1,
-    marginRight: 12,
     justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
   completedButton: {
     backgroundColor: colors.success,
   },
-  workoutButtonText: {
+  actionButtonText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 8,
   },
-  programButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2A2A2A',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  programButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 6,
+  restDaySection: {
+    marginBottom: 20,
   },
   restDayCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     alignItems: 'center',
   },
   restDayTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
     marginTop: 8,
@@ -638,14 +428,65 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  recommendationCard: {
+  noProgramSection: {
+    marginBottom: 20,
+  },
+  noProgramCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  noProgramTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  noProgramText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  createProgramButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  createProgramText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statsSection: {
+    marginBottom: 20,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
+    alignItems: 'center',
+    width: '48%',
+    marginBottom: 8,
   },
-  recommendationText: {
-    fontSize: 14,
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.text,
-    lineHeight: 20,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });
