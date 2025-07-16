@@ -557,14 +557,16 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: SCREEN_HEIGHT * 0.9,
-    minHeight: SCREEN_HEIGHT * 0.6,
+    borderRadius: 24,
+    maxHeight: SCREEN_HEIGHT * 0.85,
+    width: '100%',
+    maxWidth: 400,
   },
   modalHeader: {
     flexDirection: 'row',
