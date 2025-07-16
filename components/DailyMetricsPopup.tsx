@@ -69,12 +69,22 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
 
   // Generate AI-powered daily assessment
   const generateDailyAssessment = async (): Promise<void> => {
+    console.log('Starting daily assessment generation...');
+    console.log('Data check:', {
+      isConnectedToWhoop,
+      hasData: !!data,
+      hasRecovery: data?.recovery?.length > 0,
+      hasUserProfile: !!userProfile
+    });
+
     if (!isConnectedToWhoop || !data || !data.recovery || !data.recovery.length) {
+      console.log('No WHOOP data available for assessment');
       setError('No WHOOP data available for assessment');
       return;
     }
 
     if (!userProfile) {
+      console.log('No user profile available for assessment');
       setError('User profile not available for assessment');
       return;
     }
@@ -154,6 +164,7 @@ Return JSON with this exact structure:
 Status levels: excellent (90-100), good (70-89), fair (50-69), poor (<50)
 Trend: up (improving), down (declining), stable (consistent)`;
 
+      console.log('Sending assessment request to AI...');
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
         method: 'POST',
         headers: {
@@ -174,6 +185,7 @@ Trend: up (improving), down (declining), stable (consistent)`;
       });
 
       const result = await response.json();
+      console.log('AI response received:', result.completion ? 'Success' : 'No completion');
       
       if (!result.completion) {
         throw new Error('No response from AI service');
@@ -336,8 +348,21 @@ Trend: up (improving), down (declining), stable (consistent)`;
 
   // Generate assessment when popup becomes visible
   useEffect(() => {
-    if (visible && !assessment && !isLoading) {
-      generateDailyAssessment();
+    if (visible) {
+      console.log('Daily metrics popup opened. Current state:', {
+        hasAssessment: !!assessment,
+        hasError: !!error,
+        isLoading,
+        isConnectedToWhoop,
+        hasRecoveryData: data?.recovery?.length > 0,
+        hasUserProfile: !!userProfile
+      });
+      
+      // Always try to generate assessment when popup opens, even if we had an error before
+      if (!assessment || error) {
+        console.log('Generating daily assessment...');
+        generateDailyAssessment();
+      }
     }
   }, [visible]);
 
@@ -349,6 +374,12 @@ Trend: up (improving), down (declining), stable (consistent)`;
     } catch (error) {
       console.error('Error saving popup shown status:', error);
     }
+    
+    // Reset state for next time
+    setAssessment(null);
+    setError(null);
+    setIsLoading(false);
+    
     onClose();
   };
 
@@ -384,7 +415,14 @@ Trend: up (improving), down (declining), stable (consistent)`;
                 <AlertCircle size={48} color={colors.danger} />
                 <Text style={styles.errorTitle}>Assessment Unavailable</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={generateDailyAssessment}>
+                <TouchableOpacity 
+                  style={styles.retryButton} 
+                  onPress={() => {
+                    setError(null);
+                    setAssessment(null);
+                    generateDailyAssessment();
+                  }}
+                >
                   <Text style={styles.retryButtonText}>Try Again</Text>
                 </TouchableOpacity>
               </View>
@@ -463,7 +501,25 @@ Trend: up (improving), down (declining), stable (consistent)`;
                   ))}
                 </View>
               </View>
-            ) : null}
+            ) : (
+              <View style={styles.errorContainer}>
+                <Info size={48} color={colors.primary} />
+                <Text style={styles.errorTitle}>Loading Assessment</Text>
+                <Text style={styles.errorText}>
+                  Your daily metrics assessment is being prepared. If this takes too long, try refreshing.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.retryButton} 
+                  onPress={() => {
+                    setError(null);
+                    setAssessment(null);
+                    generateDailyAssessment();
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
 
           <View style={styles.modalFooter}>
