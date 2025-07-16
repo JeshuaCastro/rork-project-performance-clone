@@ -14,8 +14,6 @@ import {
   ArrowRight,
   Brain,
   Zap,
-  Utensils,
-  Pill,
   RefreshCw
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -79,18 +77,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
   // Calculate 7-day trends with null checks
   const last7DaysRecovery = data?.recovery?.slice(0, 7) || [];
   const last7DaysStrain = data?.strain?.slice(0, 7) || [];
-  
-  const avgRecovery = last7DaysRecovery.length > 0 
-    ? last7DaysRecovery.reduce((sum, r) => sum + r.score, 0) / last7DaysRecovery.length 
-    : 0;
-  
-  const avgStrain = last7DaysStrain.length > 0 
-    ? last7DaysStrain.reduce((sum, s) => sum + s.score, 0) / last7DaysStrain.length 
-    : 0;
 
-  // Get program progress for active programs
-  const activeProgram = activePrograms.find(p => p.active);
-  const programProgress = activeProgram ? getProgramProgress(activeProgram.id) : null;
+
 
   // Calculate recovery trend (comparing last 3 days to previous 4 days)
   const getRecoveryTrend = () => {
@@ -146,6 +134,10 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
         sleep: todaysSleep?.efficiency || 0
       };
 
+      // Get program progress for active programs
+      const activeProgram = activePrograms.find(p => p.active);
+      const programProgress = activeProgram ? getProgramProgress(activeProgram.id) : null;
+      
       const programContext = activeProgram ? {
         name: activeProgram.name,
         type: activeProgram.type,
@@ -431,22 +423,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
 
-  // Program progress insights
-  const getProgramProgressInsight = () => {
-    if (!programProgress || !activeProgram) return null;
-    
-    const { progressPercentage, currentWeek, totalWeeks, daysUntilGoal } = programProgress;
-    
-    if (daysUntilGoal && daysUntilGoal < 14) {
-      return `${daysUntilGoal} days until goal - final preparation phase`;
-    } else if (progressPercentage > 75) {
-      return `Week ${currentWeek}/${totalWeeks} - peak training phase`;
-    } else if (progressPercentage > 50) {
-      return `Week ${currentWeek}/${totalWeeks} - building intensity`;
-    } else {
-      return `Week ${currentWeek}/${totalWeeks} - foundation building`;
-    }
-  };
+
 
   const handleCardPress = () => {
     if (onPress) {
@@ -535,169 +512,60 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         )}
       </View>
 
-      {/* Metrics Row */}
+      {/* Quick Metrics - Only show if connected */}
       {isConnectedToWhoop && data?.recovery && todaysRecovery && (
-        <View style={styles.metricsRow}>
-          <View style={styles.metric}>
-            <Battery size={14} color={colors.success} />
-            <Text style={styles.metricLabel}>Recovery</Text>
-            <Text style={[styles.metricValue, { color: getRecoveryColor(todaysRecovery.score) }]}>
+        <View style={styles.quickMetrics}>
+          <View style={styles.quickMetric}>
+            <Text style={styles.quickMetricValue}>
               {todaysRecovery.score}%
             </Text>
+            <Text style={styles.quickMetricLabel}>Recovery</Text>
           </View>
           
-          <View style={styles.metric}>
-            <Activity size={14} color={colors.warning} />
-            <Text style={styles.metricLabel}>Strain</Text>
-            <Text style={styles.metricValue}>
+          <View style={styles.quickMetric}>
+            <Text style={styles.quickMetricValue}>
               {todaysStrain?.score.toFixed(1) || '0.0'}
             </Text>
+            <Text style={styles.quickMetricLabel}>Strain</Text>
           </View>
           
-          <View style={styles.metric}>
-            <Heart size={14} color={colors.primary} />
-            <Text style={styles.metricLabel}>HRV</Text>
-            <Text style={styles.metricValue}>
+          <View style={styles.quickMetric}>
+            <Text style={styles.quickMetricValue}>
               {todaysRecovery.hrvMs}ms
             </Text>
+            <Text style={styles.quickMetricLabel}>HRV</Text>
           </View>
         </View>
       )}
 
-      {/* Actionable Steps */}
+      {/* Top Priority Action - Only show the most important one */}
       {evaluation.actionableSteps && evaluation.actionableSteps.length > 0 && (
-        <View style={styles.actionableStepsContainer}>
-          <View style={styles.actionableStepsHeader}>
+        <View style={styles.topActionContainer}>
+          <View style={styles.topActionHeader}>
             <Zap size={14} color={colors.primary} />
-            <Text style={styles.actionableStepsTitle}>Today's Action Plan</Text>
+            <Text style={styles.topActionTitle}>Priority Action</Text>
           </View>
-          {evaluation.actionableSteps.slice(0, 3).map((step, index) => (
-            <View key={index} style={styles.actionableStepItem}>
-              <View style={[styles.priorityIndicator, { 
-                backgroundColor: step.priority === 'high' ? colors.danger : 
-                               step.priority === 'medium' ? colors.warning : colors.success 
-              }]} />
-              <View style={styles.stepContent}>
-                <Text style={styles.stepCategory}>{step.category.toUpperCase()}</Text>
-                <Text style={styles.stepAction}>{step.action}</Text>
-                <Text style={styles.stepReason}>{step.reason}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Nutrition Advice */}
-      {evaluation.nutritionAdvice && (
-        <View style={styles.nutritionAdviceContainer}>
-          <View style={styles.nutritionAdviceHeader}>
-            <Utensils size={14} color={colors.success} />
-            <Text style={styles.nutritionAdviceTitle}>Nutrition Focus</Text>
-          </View>
-          <View style={styles.nutritionAdviceGrid}>
-            {evaluation.nutritionAdvice.calorieGuidance && (
-              <View style={styles.nutritionAdviceItem}>
-                <Text style={styles.nutritionAdviceLabel}>Calories</Text>
-                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.calorieGuidance}</Text>
-              </View>
-            )}
-            {evaluation.nutritionAdvice.proteinFocus && (
-              <View style={styles.nutritionAdviceItem}>
-                <Text style={styles.nutritionAdviceLabel}>Protein</Text>
-                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.proteinFocus}</Text>
-              </View>
-            )}
-            {evaluation.nutritionAdvice.hydrationTarget && (
-              <View style={styles.nutritionAdviceItem}>
-                <Text style={styles.nutritionAdviceLabel}>Hydration</Text>
-                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.hydrationTarget}</Text>
-              </View>
-            )}
-            {evaluation.nutritionAdvice.mealTiming && (
-              <View style={styles.nutritionAdviceItem}>
-                <Text style={styles.nutritionAdviceLabel}>Timing</Text>
-                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.mealTiming}</Text>
-              </View>
-            )}
+          <View style={styles.topActionItem}>
+            <View style={[styles.priorityDot, { 
+              backgroundColor: evaluation.actionableSteps[0].priority === 'high' ? colors.danger : 
+                             evaluation.actionableSteps[0].priority === 'medium' ? colors.warning : colors.success 
+            }]} />
+            <Text style={styles.topActionText}>{evaluation.actionableSteps[0].action}</Text>
           </View>
         </View>
       )}
 
-      {/* Supplement Suggestions */}
-      {evaluation.supplementSuggestions && evaluation.supplementSuggestions.length > 0 && (
-        <View style={styles.supplementsContainer}>
-          <View style={styles.supplementsHeader}>
-            <Pill size={14} color={colors.warning} />
-            <Text style={styles.supplementsTitle}>Supplement Support</Text>
-          </View>
-          {evaluation.supplementSuggestions.slice(0, 2).map((supplement, index) => (
-            <View key={index} style={styles.supplementItem}>
-              <View style={styles.supplementDot} />
-              <Text style={styles.supplementText}>{supplement}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Program Integration */}
-      {evaluation.programInsight && (
-        <View style={styles.programInsight}>
-          <Text style={styles.programInsightText}>
-            {evaluation.programInsight}
-          </Text>
-        </View>
-      )}
-
-      {/* Program Progress */}
-      {programProgress && activeProgram && (
-        <View style={styles.programProgress}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.programName}>{activeProgram.name}</Text>
-            <Text style={styles.progressText}>
-              {getProgramProgressInsight()}
-            </Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { width: `${Math.min(programProgress.progressPercentage, 100)}%` }
-              ]} 
-            />
-          </View>
-        </View>
-      )}
-
-      {/* Weekly Trends */}
-      {isConnectedToWhoop && data?.recovery && last7DaysRecovery.length > 0 && (
-        <View style={styles.trendsContainer}>
-          <Text style={styles.trendsTitle}>7-Day Trends</Text>
-          <View style={styles.trendsRow}>
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Avg Recovery</Text>
-              <View style={styles.trendValue}>
-                <Text style={[styles.trendNumber, { color: getRecoveryColor(avgRecovery) }]}>
-                  {avgRecovery.toFixed(0)}%
-                </Text>
-                {getRecoveryTrend() === 'improving' && <TrendingUp size={12} color={colors.success} />}
-                {getRecoveryTrend() === 'declining' && <TrendingDown size={12} color={colors.danger} />}
-              </View>
-            </View>
-            
-            <View style={styles.trendItem}>
-              <Text style={styles.trendLabel}>Avg Strain</Text>
-              <Text style={styles.trendNumber}>
-                {avgStrain.toFixed(1)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* View Details Prompt */}
+      <View style={styles.viewDetailsPrompt}>
+        <Text style={styles.viewDetailsText}>Tap for detailed analysis, trends & recommendations</Text>
+        <ArrowRight size={14} color={colors.textSecondary} />
+      </View>
       </TouchableOpacity>
 
       <DetailedEvaluationModal 
         visible={showDetailedModal}
         onClose={() => setShowDetailedModal(false)}
+        evaluation={evaluation}
       />
     </>
   );
@@ -812,238 +680,83 @@ const styles = StyleSheet.create({
     flex: 1,
     fontStyle: 'italic',
   },
-  metricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingVertical: 12,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  metric: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  programInsight: {
-    backgroundColor: 'rgba(93, 95, 239, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  programInsightText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  programProgress: {
-    marginBottom: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  programName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  progressText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-  },
-  trendsContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
-    paddingTop: 16,
-  },
-  trendsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  trendsRow: {
+  quickMetrics: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-  },
-  trendItem: {
-    alignItems: 'center',
-  },
-  trendLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  trendValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginRight: 4,
-  },
-  // Actionable Steps Styles
-  actionableStepsContainer: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
     marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(93, 95, 239, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 95, 239, 0.1)',
   },
-  actionableStepsHeader: {
-    flexDirection: 'row',
+  quickMetric: {
     alignItems: 'center',
-    marginBottom: 8,
   },
-  actionableStepsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginLeft: 6,
-  },
-  actionableStepItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-    paddingLeft: 4,
-  },
-  priorityIndicator: {
-    width: 3,
-    height: '100%',
-    borderRadius: 2,
-    marginRight: 12,
-    minHeight: 40,
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepCategory: {
-    fontSize: 10,
+  quickMetricValue: {
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 2,
-    letterSpacing: 0.5,
-  },
-  stepAction: {
-    fontSize: 13,
-    fontWeight: '600',
     color: colors.text,
     marginBottom: 2,
-    lineHeight: 18,
   },
-  stepReason: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-    fontStyle: 'italic',
-  },
-  // Nutrition Advice Styles
-  nutritionAdviceContainer: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.2)',
-  },
-  nutritionAdviceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  nutritionAdviceTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.success,
-    marginLeft: 6,
-  },
-  nutritionAdviceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  nutritionAdviceItem: {
-    width: '48%',
-    marginBottom: 8,
-  },
-  nutritionAdviceLabel: {
+  quickMetricLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: colors.success,
-    marginBottom: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
-  nutritionAdviceText: {
-    fontSize: 12,
-    color: colors.text,
-    lineHeight: 16,
-  },
-  // Supplement Styles
-  supplementsContainer: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+
+  // Top Action Styles
+  topActionContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.05)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(34, 197, 94, 0.1)',
   },
-  supplementsHeader: {
+  topActionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  supplementsTitle: {
-    fontSize: 14,
+  topActionTitle: {
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.warning,
+    color: colors.primary,
     marginLeft: 6,
   },
-  supplementItem: {
+  topActionItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
+    alignItems: 'center',
   },
-  supplementDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.warning,
-    marginTop: 6,
-    marginRight: 8,
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 10,
   },
-  supplementText: {
-    fontSize: 13,
+  topActionText: {
+    fontSize: 14,
+    fontWeight: '500',
     color: colors.text,
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 20,
+  },
+  // View Details Prompt
+  viewDetailsPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128, 128, 128, 0.1)',
+    marginTop: 8,
+  },
+  viewDetailsText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginRight: 6,
+    fontStyle: 'italic',
   },
   // AI Prompt Styles
   aiPromptContainer: {

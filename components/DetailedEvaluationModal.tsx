@@ -23,15 +23,47 @@ import {
   Calendar,
   Zap,
   Moon,
-  Flame
+  Flame,
+  Utensils,
+  Pill
 } from 'lucide-react-native';
+
+interface ActionableStep {
+  category: 'recovery' | 'nutrition' | 'training' | 'supplements' | 'sleep';
+  action: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+interface NutritionAdvice {
+  calorieGuidance?: string;
+  proteinFocus?: string;
+  hydrationTarget?: string;
+  mealTiming?: string;
+}
+
+interface AIEvaluation {
+  status: string;
+  title: string;
+  message: string;
+  color: string;
+  icon: any;
+  programInsight?: string;
+  trendAnalysis?: string;
+  recommendations?: string[];
+  actionableSteps?: ActionableStep[];
+  nutritionAdvice?: NutritionAdvice;
+  supplementSuggestions?: string[];
+  confidenceScore?: number;
+}
 
 interface DetailedEvaluationModalProps {
   visible: boolean;
   onClose: () => void;
+  evaluation?: AIEvaluation;
 }
 
-export default function DetailedEvaluationModal({ visible, onClose }: DetailedEvaluationModalProps) {
+export default function DetailedEvaluationModal({ visible, onClose, evaluation }: DetailedEvaluationModalProps) {
   const { 
     data, 
     activePrograms, 
@@ -341,10 +373,126 @@ export default function DetailedEvaluationModal({ visible, onClose }: DetailedEv
               </View>
             )}
 
+            {/* AI Evaluation Details */}
+            {evaluation && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>AI Analysis</Text>
+                <View style={styles.evaluationCard}>
+                  <View style={styles.evaluationHeader}>
+                    <evaluation.icon size={20} color={evaluation.color} />
+                    <Text style={[styles.evaluationTitle, { color: evaluation.color }]}>
+                      {evaluation.title}
+                    </Text>
+                    {evaluation.confidenceScore && (
+                      <View style={styles.confidenceBadge}>
+                        <Text style={styles.confidenceText}>{evaluation.confidenceScore}%</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.evaluationMessage}>{evaluation.message}</Text>
+                  
+                  {evaluation.trendAnalysis && (
+                    <View style={styles.trendAnalysisContainer}>
+                      <TrendingUp size={14} color={colors.primary} />
+                      <Text style={styles.trendAnalysisText}>{evaluation.trendAnalysis}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Actionable Steps */}
+            {evaluation?.actionableSteps && evaluation.actionableSteps.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Action Plan</Text>
+                {evaluation.actionableSteps.map((step, index) => (
+                  <View key={index} style={[styles.actionStepCard, { 
+                    borderLeftColor: step.priority === 'high' ? colors.danger : 
+                                   step.priority === 'medium' ? colors.warning : colors.success 
+                  }]}>
+                    <View style={styles.stepHeader}>
+                      <Text style={styles.stepCategory}>{step.category.toUpperCase()}</Text>
+                      <View style={[styles.priorityBadge, { 
+                        backgroundColor: step.priority === 'high' ? 'rgba(244, 67, 54, 0.2)' : 
+                                       step.priority === 'medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(76, 175, 80, 0.2)' 
+                      }]}>
+                        <Text style={[styles.priorityText, { 
+                          color: step.priority === 'high' ? colors.danger : 
+                               step.priority === 'medium' ? colors.warning : colors.success 
+                        }]}>
+                          {step.priority.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.stepAction}>{step.action}</Text>
+                    <Text style={styles.stepReason}>{step.reason}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Nutrition Advice */}
+            {evaluation?.nutritionAdvice && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Nutrition Guidance</Text>
+                <View style={styles.nutritionCard}>
+                  {evaluation.nutritionAdvice.calorieGuidance && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Calories</Text>
+                      <Text style={styles.nutritionText}>{evaluation.nutritionAdvice.calorieGuidance}</Text>
+                    </View>
+                  )}
+                  {evaluation.nutritionAdvice.proteinFocus && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Protein</Text>
+                      <Text style={styles.nutritionText}>{evaluation.nutritionAdvice.proteinFocus}</Text>
+                    </View>
+                  )}
+                  {evaluation.nutritionAdvice.hydrationTarget && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Hydration</Text>
+                      <Text style={styles.nutritionText}>{evaluation.nutritionAdvice.hydrationTarget}</Text>
+                    </View>
+                  )}
+                  {evaluation.nutritionAdvice.mealTiming && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Meal Timing</Text>
+                      <Text style={styles.nutritionText}>{evaluation.nutritionAdvice.mealTiming}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Supplement Suggestions */}
+            {evaluation?.supplementSuggestions && evaluation.supplementSuggestions.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Supplement Support</Text>
+                <View style={styles.supplementCard}>
+                  {evaluation.supplementSuggestions.map((supplement, index) => (
+                    <View key={index} style={styles.supplementItem}>
+                      <View style={styles.supplementDot} />
+                      <Text style={styles.supplementText}>{supplement}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Program Insight */}
+            {evaluation?.programInsight && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Training Program Insight</Text>
+                <View style={styles.programInsightCard}>
+                  <Text style={styles.programInsightText}>{evaluation.programInsight}</Text>
+                </View>
+              </View>
+            )}
+
             {/* Recommendations */}
             {recommendations.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Personalized Recommendations</Text>
+                <Text style={styles.sectionTitle}>Additional Recommendations</Text>
                 {recommendations.map((rec, index) => (
                   <View key={index} style={[styles.recommendationCard, { 
                     borderLeftColor: rec.priority === 'high' ? colors.danger : 
@@ -596,6 +744,158 @@ const styles = StyleSheet.create({
   noDataText: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  // AI Evaluation Styles
+  evaluationCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  evaluationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  evaluationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  evaluationMessage: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  trendAnalysisContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  trendAnalysisText: {
+    fontSize: 12,
+    color: colors.primary,
+    marginLeft: 6,
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  confidenceBadge: {
+    backgroundColor: 'rgba(93, 95, 239, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  confidenceText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  // Action Steps Styles
+  actionStepCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  stepCategory: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  stepAction: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  stepReason: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  // Nutrition Styles
+  nutritionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  nutritionItem: {
+    marginBottom: 12,
+  },
+  nutritionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  nutritionText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 18,
+  },
+  // Supplement Styles
+  supplementCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  supplementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  supplementDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.warning,
+    marginTop: 6,
+    marginRight: 12,
+  },
+  supplementText: {
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 20,
+  },
+  // Program Insight Styles
+  programInsightCard: {
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 95, 239, 0.2)',
+  },
+  programInsightText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 20,
   },
