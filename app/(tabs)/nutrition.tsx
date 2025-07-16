@@ -331,10 +331,10 @@ export default function NutritionScreen() {
       - Height: ${userProfile.height}cm
       - Activity Level: ${userProfile.activityLevel}
       - Fitness Goal: ${userProfile.fitnessGoal}
-      - Daily Calorie Target: ${macroTargets.calories}
-      - Protein Target: ${macroTargets.protein}g
-      - Carb Target: ${macroTargets.carbs}g
-      - Fat Target: ${macroTargets.fat}g
+      - Daily Calorie Target: ${macroTargets?.calories || 2000}
+      - Protein Target: ${macroTargets?.protein || 150}g
+      - Carb Target: ${macroTargets?.carbs || 200}g
+      - Fat Target: ${macroTargets?.fat || 70}g
       
       Please provide a complete meal plan with breakfast, lunch, dinner, and 2 snacks. Include specific foods, portions, and approximate macros for each meal.`;
       
