@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
 import { 
@@ -11,7 +11,9 @@ import {
   Target,
   AlertTriangle,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  Brain,
+  Zap
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import DetailedEvaluationModal from './DetailedEvaluationModal';
@@ -20,9 +22,25 @@ interface DailyEvaluationCardProps {
   onPress?: () => void;
 }
 
+interface AIEvaluation {
+  status: string;
+  title: string;
+  message: string;
+  color: string;
+  icon: any;
+  programInsight?: string;
+  trendAnalysis?: string;
+  recommendations?: string[];
+  confidenceScore?: number;
+}
+
 export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProps) {
   const router = useRouter();
   const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [aiEvaluation, setAiEvaluation] = useState<AIEvaluation | null>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [lastEvaluationDate, setLastEvaluationDate] = useState<string | null>(null);
+  
   const { 
     data, 
     activePrograms, 
@@ -68,8 +86,159 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     return 'stable';
   };
 
-  // Generate evaluation insights
-  const generateEvaluation = () => {
+  // Generate AI-powered evaluation
+  const generateAIEvaluation = async () => {
+    if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
+      return {
+        status: 'no-data',
+        title: 'Connect WHOOP for AI Insights',
+        message: 'Connect your WHOOP to get AI-powered daily evaluations',
+        color: colors.textSecondary,
+        icon: Activity
+      };
+    }
+
+    setIsLoadingAI(true);
+    
+    try {
+      // Prepare data for AI analysis
+      const last7DaysData = {
+        recovery: data.recovery.slice(0, 7),
+        strain: data.strain.slice(0, 7),
+        sleep: data.sleep?.slice(0, 7) || []
+      };
+
+      const currentMetrics = {
+        recovery: todaysRecovery.score,
+        strain: todaysStrain?.score || 0,
+        hrv: todaysRecovery.hrvMs,
+        rhr: todaysRecovery.restingHeartRate,
+        sleep: todaysSleep?.efficiency || 0
+      };
+
+      const programContext = activeProgram ? {
+        name: activeProgram.name,
+        type: activeProgram.type,
+        progress: programProgress,
+        todaysWorkout: todaysWorkout
+      } : null;
+
+      // Calculate trends
+      const recoveryTrend = getRecoveryTrend();
+      const avgRecovery = last7DaysRecovery.length > 0 
+        ? last7DaysRecovery.reduce((sum, r) => sum + r.score, 0) / last7DaysRecovery.length 
+        : 0;
+      const avgStrain = last7DaysStrain.length > 0 
+        ? last7DaysStrain.reduce((sum, s) => sum + s.score, 0) / last7DaysStrain.length 
+        : 0;
+
+      const prompt = `As a fitness and recovery expert, analyze this athlete's data and provide a comprehensive daily evaluation:
+
+CURRENT METRICS (Today):
+- Recovery: ${currentMetrics.recovery}%
+- Strain: ${currentMetrics.strain}
+- HRV: ${currentMetrics.hrv}ms
+- Resting HR: ${currentMetrics.rhr}bpm
+- Sleep Efficiency: ${currentMetrics.sleep}%
+
+7-DAY TRENDS:
+- Average Recovery: ${avgRecovery.toFixed(1)}%
+- Average Strain: ${avgStrain.toFixed(1)}
+- Recovery Trend: ${recoveryTrend}
+- Recovery Data: ${JSON.stringify(last7DaysData.recovery.map(r => ({ date: r.date, score: r.score, hrv: r.hrvMs })))}
+- Strain Data: ${JSON.stringify(last7DaysData.strain.map(s => ({ date: s.date, score: s.score })))}
+
+${programContext ? `TRAINING PROGRAM:
+- Program: ${programContext.name} (${programContext.type})
+- Today's Workout: ${todaysWorkout?.title || 'Rest Day'}
+- Intensity: ${todaysWorkout?.intensity || 'N/A'}
+- Progress: ${programContext.progress?.progressPercentage || 0}%` : 'No active training program'}
+
+Provide a JSON response with:
+{
+  "status": "optimal|good|caution|warning|recovery",
+  "title": "Brief status title (max 25 chars)",
+  "message": "Main insight (max 80 chars)",
+  "trendAnalysis": "Analysis of 7-day trends (max 120 chars)",
+  "recommendations": ["3 specific actionable recommendations"],
+  "programInsight": "How this relates to training program (max 80 chars)",
+  "confidenceScore": 85
+}
+
+Focus on:
+1. Trend analysis over the past week
+2. Current state vs historical patterns
+3. Training program alignment
+4. Specific actionable recommendations
+5. Recovery optimization strategies`;
+
+      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert fitness and recovery analyst. Provide concise, actionable insights based on biometric data trends.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI evaluation');
+      }
+
+      const result = await response.json();
+      let aiData;
+      
+      try {
+        // Try to parse JSON from the completion
+        const jsonMatch = result.completion.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          aiData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
+        }
+      } catch (parseError) {
+        // Fallback to basic evaluation if AI parsing fails
+        console.warn('AI parsing failed, using fallback:', parseError);
+        return generateBasicEvaluation();
+      }
+
+      // Map status to colors and icons
+      const statusConfig = {
+        optimal: { color: colors.success, icon: CheckCircle },
+        good: { color: colors.primary, icon: TrendingUp },
+        caution: { color: colors.warning, icon: Target },
+        warning: { color: colors.danger, icon: AlertTriangle },
+        recovery: { color: colors.warning, icon: Heart }
+      };
+
+      const config = statusConfig[aiData.status as keyof typeof statusConfig] || statusConfig.good;
+
+      return {
+        ...aiData,
+        color: config.color,
+        icon: config.icon
+      };
+
+    } catch (error) {
+      console.error('AI evaluation error:', error);
+      return generateBasicEvaluation();
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  // Fallback basic evaluation
+  const generateBasicEvaluation = () => {
     if (!isConnectedToWhoop || !todaysRecovery) {
       return {
         status: 'no-data',
@@ -81,80 +250,65 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     }
 
     const recoveryScore = todaysRecovery.score;
-    const strainScore = todaysStrain?.score || 0;
     const recoveryTrend = getRecoveryTrend();
     
-    // High recovery (75+)
     if (recoveryScore >= 75) {
-      if (todaysWorkout && todaysWorkout.intensity === 'High') {
-        return {
-          status: 'optimal',
-          title: 'Perfect Training Day',
-          message: `${recoveryScore}% recovery - ideal for high-intensity training`,
-          color: colors.success,
-          icon: CheckCircle,
-          programInsight: 'Your body is primed for today\'s challenging workout'
-        };
-      } else {
-        return {
-          status: 'opportunity',
-          title: 'High Recovery Opportunity',
-          message: `${recoveryScore}% recovery - consider increasing training intensity`,
-          color: colors.primary,
-          icon: TrendingUp,
-          programInsight: 'You could handle more training load today'
-        };
-      }
-    }
-    
-    // Moderate recovery (50-74)
-    else if (recoveryScore >= 50) {
-      if (todaysWorkout && todaysWorkout.intensity === 'High') {
-        return {
-          status: 'caution',
-          title: 'Moderate Recovery',
-          message: `${recoveryScore}% recovery - proceed with planned training but monitor closely`,
-          color: colors.warning,
-          icon: Target,
-          programInsight: 'Stick to your plan but listen to your body'
-        };
-      } else {
-        return {
-          status: 'balanced',
-          title: 'Balanced Training Day',
-          message: `${recoveryScore}% recovery - good for moderate training`,
-          color: colors.primary,
-          icon: Activity,
-          programInsight: 'Perfect match between recovery and training intensity'
-        };
-      }
-    }
-    
-    // Low recovery (<50)
-    else {
-      if (todaysWorkout && (todaysWorkout.intensity === 'High' || todaysWorkout.intensity === 'Medium-High')) {
-        return {
-          status: 'warning',
-          title: 'Recovery Priority',
-          message: `${recoveryScore}% recovery - consider reducing intensity or taking rest`,
-          color: colors.danger,
-          icon: AlertTriangle,
-          programInsight: 'Your program may need adjustment for better recovery'
-        };
-      } else {
-        return {
-          status: 'recovery',
-          title: 'Active Recovery Day',
-          message: `${recoveryScore}% recovery - focus on light movement and recovery`,
-          color: colors.warning,
-          icon: Heart,
-          programInsight: 'Light training aligns well with your recovery needs'
-        };
-      }
+      return {
+        status: 'optimal',
+        title: 'Excellent Recovery',
+        message: `${recoveryScore}% recovery - ready for high intensity`,
+        color: colors.success,
+        icon: CheckCircle,
+        trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
+        recommendations: ['Consider high-intensity training', 'Maintain current recovery habits', 'Monitor strain accumulation'],
+        programInsight: todaysWorkout ? 'Perfect alignment with training plan' : 'Great day to push harder'
+      };
+    } else if (recoveryScore >= 50) {
+      return {
+        status: 'good',
+        title: 'Moderate Recovery',
+        message: `${recoveryScore}% recovery - proceed with planned training`,
+        color: colors.primary,
+        icon: Activity,
+        trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
+        recommendations: ['Stick to planned intensity', 'Monitor how you feel', 'Focus on sleep quality'],
+        programInsight: 'Good balance between recovery and training'
+      };
+    } else {
+      return {
+        status: 'recovery',
+        title: 'Low Recovery',
+        message: `${recoveryScore}% recovery - prioritize rest and recovery`,
+        color: colors.warning,
+        icon: Heart,
+        trendAnalysis: `Recovery trending ${recoveryTrend} - needs attention`,
+        recommendations: ['Reduce training intensity', 'Focus on sleep and nutrition', 'Consider active recovery'],
+        programInsight: 'Consider adjusting training plan'
+      };
     }
   };
 
-  const evaluation = generateEvaluation();
+  // Load AI evaluation on component mount and when data changes
+  useEffect(() => {
+    const loadEvaluation = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Only generate new evaluation if we haven't done it today
+      if (lastEvaluationDate !== today && isConnectedToWhoop && todaysRecovery) {
+        const evaluation = await generateAIEvaluation();
+        setAiEvaluation(evaluation);
+        setLastEvaluationDate(today);
+      } else if (!aiEvaluation) {
+        // Use basic evaluation as fallback
+        const evaluation = generateBasicEvaluation();
+        setAiEvaluation(evaluation);
+      }
+    };
+
+    loadEvaluation();
+  }, [isConnectedToWhoop, todaysRecovery, data]);
+
+  const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
 
   // Program progress insights
@@ -183,6 +337,14 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     }
   };
 
+  const handleRefreshEvaluation = async () => {
+    if (isLoadingAI) return;
+    
+    const evaluation = await generateAIEvaluation();
+    setAiEvaluation(evaluation);
+    setLastEvaluationDate(new Date().toISOString().split('T')[0]);
+  };
+
   return (
     <>
       <TouchableOpacity 
@@ -192,19 +354,49 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <IconComponent size={20} color={evaluation.color} />
-          <Text style={styles.title}>Daily Evaluation</Text>
+          <Brain size={20} color={colors.primary} />
+          <Text style={styles.title}>AI Daily Evaluation</Text>
+          {isLoadingAI && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />}
         </View>
-        <ArrowRight size={16} color={colors.textSecondary} />
+        <View style={styles.headerActions}>
+          {isConnectedToWhoop && (
+            <TouchableOpacity 
+              onPress={handleRefreshEvaluation}
+              disabled={isLoadingAI}
+              style={styles.refreshButton}
+            >
+              <TrendingUp size={14} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+          <ArrowRight size={16} color={colors.textSecondary} />
+        </View>
       </View>
 
       <View style={styles.statusContainer}>
-        <Text style={[styles.statusTitle, { color: evaluation.color }]}>
-          {evaluation.title}
-        </Text>
+        <View style={styles.statusHeader}>
+          <IconComponent size={18} color={evaluation.color} />
+          <Text style={[styles.statusTitle, { color: evaluation.color }]}>
+            {evaluation.title}
+          </Text>
+          {evaluation.confidenceScore && (
+            <View style={styles.confidenceBadge}>
+              <Text style={styles.confidenceText}>{evaluation.confidenceScore}%</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.statusMessage}>
           {evaluation.message}
         </Text>
+        
+        {/* AI Trend Analysis */}
+        {evaluation.trendAnalysis && (
+          <View style={styles.trendAnalysisContainer}>
+            <TrendingUp size={14} color={colors.primary} />
+            <Text style={styles.trendAnalysisText}>
+              {evaluation.trendAnalysis}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Metrics Row */}
@@ -233,6 +425,22 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
               {todaysRecovery.hrvMs}ms
             </Text>
           </View>
+        </View>
+      )}
+
+      {/* AI Recommendations */}
+      {evaluation.recommendations && evaluation.recommendations.length > 0 && (
+        <View style={styles.recommendationsContainer}>
+          <View style={styles.recommendationsHeader}>
+            <Zap size={14} color={colors.primary} />
+            <Text style={styles.recommendationsTitle}>AI Recommendations</Text>
+          </View>
+          {evaluation.recommendations.slice(0, 2).map((rec, index) => (
+            <View key={index} style={styles.recommendationItem}>
+              <View style={styles.recommendationDot} />
+              <Text style={styles.recommendationText}>{rec}</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -328,6 +536,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   title: {
     fontSize: 18,
@@ -335,18 +544,95 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 8,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    padding: 4,
+    marginRight: 8,
+    borderRadius: 4,
+  },
   statusContainer: {
     marginBottom: 16,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   statusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginLeft: 6,
+    flex: 1,
+  },
+  confidenceBadge: {
+    backgroundColor: 'rgba(93, 95, 239, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  confidenceText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '600',
   },
   statusMessage: {
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
+    marginBottom: 8,
+  },
+  trendAnalysisContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  trendAnalysisText: {
+    fontSize: 12,
+    color: colors.primary,
+    marginLeft: 6,
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  recommendationsContainer: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  recommendationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recommendationsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
+  },
+  recommendationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  recommendationDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 6,
+    marginRight: 8,
+  },
+  recommendationText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
   },
   metricsRow: {
     flexDirection: 'row',
