@@ -21,7 +21,6 @@ import StrainCard from '@/components/StrainCard';
 import AIInsightCard from '@/components/AIInsightCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
-import DailyOverview from '@/components/DailyOverview';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -53,6 +52,7 @@ export default function DashboardScreen() {
   const [syncAttempted, setSyncAttempted] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
+  const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
   
   const { 
     data, 
@@ -146,7 +146,52 @@ export default function DashboardScreen() {
   
 
   
+  // Check if today's workout is completed
+  const checkWorkoutCompletion = React.useCallback(async () => {
+    if (todaysWorkout && todaysWorkout.programId) {
+      try {
+        console.log('Dashboard: Checking workout completion for:', todaysWorkout.title, 'programId:', todaysWorkout.programId);
+        const completed = await isWorkoutCompleted(todaysWorkout.programId, todaysWorkout.title);
+        console.log('Dashboard: Workout completion result:', completed);
+        setIsWorkoutCompletedToday(completed);
+      } catch (error) {
+        console.error('Error checking workout completion:', error);
+        setIsWorkoutCompletedToday(false);
+      }
+    } else {
+      setIsWorkoutCompletedToday(false);
+    }
+  }, [todaysWorkout, isWorkoutCompleted]);
 
+  useEffect(() => {
+    checkWorkoutCompletion();
+  }, [checkWorkoutCompletion]);
+
+  // Re-check workout completion when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Add a small delay to ensure AsyncStorage has been updated
+      const timeoutId = setTimeout(() => {
+        checkWorkoutCompletion();
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }, [checkWorkoutCompletion])
+  );
+
+  // Also check workout completion when activePrograms change (in case completion was updated elsewhere)
+  useEffect(() => {
+    checkWorkoutCompletion();
+  }, [activePrograms, checkWorkoutCompletion]);
+
+  // Set up periodic checking for workout completion while dashboard is active
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkWorkoutCompletion();
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [checkWorkoutCompletion]);
   
   const handleSyncData = async () => {
     setSyncAttempted(true);
@@ -611,8 +656,142 @@ export default function DashboardScreen() {
             />
           }
         >
-          {/* Daily Overview */}
-          <DailyOverview onStartWorkout={handleStartWorkout} />
+          {/* Today's Workout Section */}
+          {todaysWorkout && (
+            <View style={styles.todaysWorkoutSection}>
+              <Text style={styles.sectionTitle}>Today&apos;s Workout</Text>
+              <TouchableOpacity 
+                style={styles.workoutCard}
+                onPress={handleWorkoutCardClick}
+                activeOpacity={0.7}
+              >
+                <View style={styles.workoutHeader}>
+                  <View style={styles.workoutTitleContainer}>
+                    {getWorkoutIcon(todaysWorkout.type)}
+                    <Text style={styles.workoutTitle} numberOfLines={1} ellipsizeMode="tail">
+                      {todaysWorkout.title}
+                    </Text>
+                  </View>
+                  <View style={styles.headerActions}>
+                    <View style={[
+                      styles.intensityBadge,
+                      { backgroundColor: getIntensityColor(todaysWorkout.intensity) }
+                    ]}>
+                      <Text style={styles.intensityText}>{todaysWorkout.intensity}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.detailsButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleWorkoutCardClick();
+                      }}
+                    >
+                      <Info size={16} color={colors.text} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                
+                <Text style={styles.workoutDescription} numberOfLines={2} ellipsizeMode="tail">
+                  {todaysWorkout.description}
+                </Text>
+                
+                {/* Completion Status & Meta Info */}
+                <View style={styles.workoutMetaRow}>
+                  {todaysWorkout.duration && (
+                    <View style={styles.workoutMetaInfo}>
+                      <Clock size={14} color={colors.textSecondary} />
+                      <Text style={styles.workoutMetaText}>{todaysWorkout.duration}</Text>
+                    </View>
+                  )}
+                  
+                  {isWorkoutCompletedToday && (
+                    <View style={styles.completionBadge}>
+                      <CheckCircle size={14} color={colors.success} />
+                      <Text style={styles.completionText}>Completed Today</Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.workoutActions}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.startWorkoutButton,
+                      isWorkoutCompletedToday && styles.completedWorkoutButton
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (!isWorkoutCompletedToday) {
+                        handleStartWorkout(todaysWorkout);
+                      }
+                    }}
+                    disabled={isWorkoutCompletedToday}
+                  >
+                    {isWorkoutCompletedToday ? (
+                      <>
+                        <Check size={18} color={colors.text} />
+                        <Text style={styles.startWorkoutText}>Completed</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={18} color={colors.text} />
+                        <Text style={styles.startWorkoutText}>Start Workout</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.viewProgramButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/program-detail?id=${todaysWorkout.programId}`);
+                    }}
+                  >
+                    <Text style={styles.viewProgramText}>View Program</Text>
+                    <ArrowRight size={16} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* No Active Program Message */}
+          {!todaysWorkout && activePrograms.length === 0 && (
+            <View style={styles.noProgramSection}>
+              <Text style={styles.sectionTitle}>Ready to Start Training?</Text>
+              <View style={styles.noProgramCard}>
+                <Text style={styles.noProgramTitle}>No Active Programs</Text>
+                <Text style={styles.noProgramText}>
+                  Create a personalized training program to get started with your fitness journey.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.createProgramButton}
+                  onPress={() => router.push('/programs')}
+                >
+                  <Text style={styles.createProgramText}>Create Program</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
+          {/* Rest Day Message */}
+          {!todaysWorkout && activePrograms.length > 0 && (
+            <View style={styles.restDaySection}>
+              <Text style={styles.sectionTitle}>Today&apos;s Plan</Text>
+              <View style={styles.restDayCard}>
+                <Heart size={24} color={colors.primary} />
+                <Text style={styles.restDayTitle}>Rest Day</Text>
+                <Text style={styles.restDayText}>
+                  No scheduled workout today. Focus on recovery, hydration, and nutrition.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.viewProgramsButton}
+                  onPress={() => router.push('/programs')}
+                >
+                  <Text style={styles.viewProgramsText}>View Programs</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           
           {/* Calendar View */}
           <CalendarView 
@@ -1001,7 +1180,231 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-
+  // Today's Workout Section Styles
+  todaysWorkoutSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  workoutCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  detailsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  workoutTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  workoutTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
+    flex: 1,
+  },
+  intensityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  intensityText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  workoutDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  workoutMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  workoutMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  workoutMetaText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
+  completionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  completionText: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  clickHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 8,
+  },
+  clickHintText: {
+    fontSize: 12,
+    color: colors.primary,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  workoutActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  startWorkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flex: 1,
+    marginRight: 12,
+    justifyContent: 'center',
+  },
+  completedWorkoutButton: {
+    backgroundColor: colors.success,
+  },
+  startWorkoutText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  viewProgramButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  viewProgramText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  // No Program Section Styles
+  noProgramSection: {
+    marginBottom: 20,
+  },
+  noProgramCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  noProgramTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  noProgramText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  createProgramButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  createProgramText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Rest Day Section Styles
+  restDaySection: {
+    marginBottom: 20,
+  },
+  restDayCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  restDayTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  restDayText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  viewProgramsButton: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  viewProgramsText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
@@ -1237,17 +1640,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginTop: 8,
     marginRight: 8,
-  },
-  intensityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  intensityText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
   },
 });
