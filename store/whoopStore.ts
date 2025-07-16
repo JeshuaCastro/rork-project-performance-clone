@@ -3123,6 +3123,35 @@ Return JSON with implementation and advisory guidance:
         } catch (error) {
           console.error('Error marking daily assessment as shown:', error);
         }
+      },
+
+      // Mark workout as completed
+      markWorkoutCompleted: async (programId: string, workoutTitle: string, workoutDay: string, date?: string): Promise<void> => {
+        try {
+          const targetDate = date || new Date().toISOString().split('T')[0];
+          const todayKey = `${programId}-${targetDate}`;
+          const storageKey = `completed-workouts-${todayKey}`;
+          
+          // Get existing completed workouts for this day
+          const stored = await AsyncStorage.getItem(storageKey);
+          let completedWorkouts: string[] = [];
+          
+          if (stored) {
+            completedWorkouts = JSON.parse(stored);
+          }
+          
+          // Create a unique key for this workout
+          const workoutKey = `${workoutDay}-${workoutTitle}`;
+          
+          // Add to completed workouts if not already there
+          if (!completedWorkouts.includes(workoutKey)) {
+            completedWorkouts.push(workoutKey);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(completedWorkouts));
+            console.log(`Marked workout as completed: ${workoutKey} for ${targetDate}`);
+          }
+        } catch (error) {
+          console.error('Error marking workout as completed:', error);
+        }
       }
     }),
     {
