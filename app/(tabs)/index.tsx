@@ -22,6 +22,7 @@ import AIInsightCard from '@/components/AIInsightCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
 import DailyMetricsPopup from '@/components/DailyMetricsPopup';
+import SimpleMetricsAssessment from '@/components/SimpleMetricsAssessment';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -56,6 +57,7 @@ export default function DashboardScreen() {
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
   const [showDailyMetricsPopup, setShowDailyMetricsPopup] = useState(false);
+  const [showSimpleAssessment, setShowSimpleAssessment] = useState(false);
   
   const { 
     data, 
@@ -594,7 +596,18 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={styles.assessmentButton}
           onPress={() => {
-            console.log('Assessment button clicked, showing popup...');
+            console.log('Assessment button clicked, showing simple assessment...');
+            console.log('Current data state:', {
+              isConnectedToWhoop,
+              hasRecoveryData: data?.recovery?.length > 0,
+              recoveryCount: data?.recovery?.length,
+              latestRecovery: data?.recovery?.[0],
+              hasUserProfile: !!userProfile
+            });
+            setShowSimpleAssessment(true);
+          }}
+          onLongPress={() => {
+            console.log('Assessment button long pressed, showing AI assessment...');
             setShowDailyMetricsPopup(true);
           }}
         >
@@ -1036,6 +1049,12 @@ export default function DashboardScreen() {
       <DailyMetricsPopup
         visible={showDailyMetricsPopup}
         onClose={() => setShowDailyMetricsPopup(false)}
+      />
+
+      {/* Simple Metrics Assessment (Alternative) */}
+      <SimpleMetricsAssessment
+        visible={showSimpleAssessment}
+        onClose={() => setShowSimpleAssessment(false)}
       />
     </View>
   );

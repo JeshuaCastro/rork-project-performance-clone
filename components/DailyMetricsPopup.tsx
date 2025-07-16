@@ -77,10 +77,10 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
       hasUserProfile: !!userProfile
     });
 
+    // Always generate an assessment, even without WHOOP data
     if (!isConnectedToWhoop || !data || !data.recovery || !data.recovery.length) {
-      console.log('No WHOOP data available for assessment');
+      console.log('No WHOOP data available - generating basic assessment');
       
-      // Generate a basic assessment even without WHOOP data
       const basicAssessment: DailyAssessment = {
         overallScore: 70,
         overallStatus: 'good',
@@ -123,6 +123,7 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
         ]
       };
       
+      console.log('Basic assessment generated:', basicAssessment);
       setAssessment(basicAssessment);
       setError(null);
       return;
@@ -209,6 +210,11 @@ Status levels: excellent (90-100), good (70-89), fair (50-69), poor (<50)
 Trend: up (improving), down (declining), stable (consistent)`;
 
       console.log('Sending assessment request to AI...');
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
         method: 'POST',
         headers: {
@@ -226,7 +232,14 @@ Trend: up (improving), down (declining), stable (consistent)`;
             }
           ]
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       console.log('AI response received:', result.completion ? 'Success' : 'No completion');
@@ -393,6 +406,63 @@ Trend: up (improving), down (declining), stable (consistent)`;
     }
   };
 
+  // Simple local assessment generator (fallback method)
+  const generateLocalAssessment = (): DailyAssessment => {
+    console.log('Generating local assessment as fallback...');
+    
+    const latestRecovery = data?.recovery?.[0];
+    const latestStrain = data?.strain?.[0];
+    const latestSleep = data?.sleep?.[0];
+    
+    const recoveryScore = latestRecovery?.score || 65;
+    const strainScore = latestStrain?.score || 12;
+    const sleepScore = latestSleep?.efficiency || 75;
+    
+    const overallScore = Math.round((recoveryScore + (100 - strainScore * 4) + sleepScore) / 3);
+    
+    return {
+      overallScore,
+      overallStatus: overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'fair' : 'poor',
+      summary: `Your overall readiness is ${overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'moderate' : 'low'} based on today's metrics. ${recoveryScore >= 70 ? 'Your recovery looks strong.' : 'Focus on recovery today.'} ${sleepScore >= 80 ? 'Sleep quality is good.' : 'Consider improving sleep habits.'}`,
+      focusArea: recoveryScore < 60 ? 'recovery' : sleepScore < 70 ? 'sleep' : strainScore > 15 ? 'recovery' : 'training',
+      keyRecommendations: [
+        recoveryScore < 60 ? 'Prioritize active recovery and stress management' : 'Your recovery supports moderate to intense training',
+        sleepScore < 70 ? 'Focus on sleep hygiene - aim for 7-9 hours of quality sleep' : 'Maintain your current sleep routine',
+        strainScore > 15 ? 'Consider reducing training intensity to allow recovery' : 'You can handle moderate training load',
+        'Stay hydrated and maintain consistent nutrition timing'
+      ],
+      metrics: [
+        {
+          metric: 'Recovery',
+          value: recoveryScore,
+          status: recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor',
+          trend: 'stable',
+          icon: getMetricIcon('Recovery'),
+          color: getStatusColor(recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor'),
+          recommendation: recoveryScore >= 75 ? 'Excellent recovery! Ready for intense training.' : recoveryScore >= 60 ? 'Good recovery. Moderate training recommended.' : 'Focus on recovery activities and stress management.'
+        },
+        {
+          metric: 'Strain',
+          value: strainScore,
+          status: strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor',
+          trend: 'stable',
+          icon: getMetricIcon('Strain'),
+          color: getStatusColor(strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor'),
+          recommendation: strainScore <= 8 ? 'Low strain - you can increase training intensity.' : strainScore <= 12 ? 'Moderate strain - maintain current training load.' : 'High strain - consider active recovery.'
+        },
+        {
+          metric: 'Sleep',
+          value: sleepScore,
+          status: sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor',
+          trend: 'stable',
+          icon: getMetricIcon('Sleep'),
+          color: getStatusColor(sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor'),
+          recommendation: sleepScore >= 85 ? 'Excellent sleep quality! Keep up the routine.' : sleepScore >= 75 ? 'Good sleep. Minor optimizations could help.' : 'Focus on sleep hygiene and consistent bedtime.'
+        }
+      ]
+    };
+  };
+
   // Generate assessment when popup becomes visible
   useEffect(() => {
     if (visible) {
@@ -409,10 +479,21 @@ Trend: up (improving), down (declining), stable (consistent)`;
         userProfileSample: userProfile
       });
       
-      // Always try to generate assessment when popup opens, even if we had an error before
+      // Always try to generate assessment when popup opens
       if (!assessment || error) {
         console.log('Generating daily assessment...');
-        generateDailyAssessment();
+        
+        // Try local assessment first if we have data
+        if (isConnectedToWhoop && data?.recovery?.length > 0) {
+          console.log('Using local assessment generation...');
+          const localAssessment = generateLocalAssessment();
+          setAssessment(localAssessment);
+          setError(null);
+          setIsLoading(false);
+        } else {
+          // Fall back to AI generation
+          generateDailyAssessment();
+        }
       }
     }
   }, [visible]);
