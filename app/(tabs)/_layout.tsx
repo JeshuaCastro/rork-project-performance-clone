@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { 
   LayoutDashboard, 
-  LineChart, 
+  Utensils, 
   MessageSquare, 
   Dumbbell, 
   Settings 
@@ -140,14 +140,15 @@ export default function TabLayout() {
         <Tabs.Screen
           name="trends"
           options={{
-            title: 'Trends',
+            title: 'Nutrition',
             tabBarIcon: ({ color, focused }) => (
-              <LineChart 
+              <Utensils 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
               />
             ),
+            headerTitle: 'Nutrition Tracker',
           }}
         />
         <Tabs.Screen
