@@ -553,6 +553,10 @@ interface WhoopStore {
   
   // Program progress methods
   getProgramProgress: (programId: string) => ProgramProgress;
+  
+  // Daily metrics assessment
+  shouldShowDailyAssessment: () => Promise<boolean>;
+  markDailyAssessmentShown: () => Promise<void>;
 }
 
 export const useWhoopStore = create<WhoopStore>()(
@@ -3095,6 +3099,30 @@ Return JSON with implementation and advisory guidance:
           completedWorkouts,
           totalWorkouts
         };
+      },
+      
+      // Daily metrics assessment methods
+      shouldShowDailyAssessment: async () => {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const lastShown = await AsyncStorage.getItem('daily_metrics_popup_shown');
+          const { isConnectedToWhoop, data } = get();
+          
+          // Only show if connected to WHOOP, has data, and hasn't been shown today
+          return isConnectedToWhoop && data.recovery.length > 0 && lastShown !== today;
+        } catch (error) {
+          console.error('Error checking daily assessment status:', error);
+          return false;
+        }
+      },
+      
+      markDailyAssessmentShown: async () => {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          await AsyncStorage.setItem('daily_metrics_popup_shown', today);
+        } catch (error) {
+          console.error('Error marking daily assessment as shown:', error);
+        }
       }
     }),
     {
