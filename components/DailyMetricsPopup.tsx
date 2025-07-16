@@ -69,8 +69,13 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
 
   // Generate AI-powered daily assessment
   const generateDailyAssessment = async (): Promise<void> => {
-    if (!isConnectedToWhoop || !data.recovery.length) {
+    if (!isConnectedToWhoop || !data || !data.recovery || !data.recovery.length) {
       setError('No WHOOP data available for assessment');
+      return;
+    }
+
+    if (!userProfile) {
+      setError('User profile not available for assessment');
       return;
     }
 
@@ -79,33 +84,36 @@ export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopu
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      const latestRecovery = data.recovery[0];
-      const latestStrain = data.strain[0];
-      const latestSleep = data.sleep[0];
+      const latestRecovery = data.recovery?.[0] || null;
+      const latestStrain = data.strain?.[0] || null;
+      const latestSleep = data.sleep?.[0] || null;
 
-      // Calculate 7-day averages for trend analysis
-      const last7Recovery = data.recovery.slice(0, 7);
-      const last7Strain = data.strain.slice(0, 7);
-      const last7Sleep = data.sleep.slice(0, 7);
+      // Calculate 7-day averages for trend analysis with null checks
+      const last7Recovery = data.recovery?.slice(0, 7) || [];
+      const last7Strain = data.strain?.slice(0, 7) || [];
+      const last7Sleep = data.sleep?.slice(0, 7) || [];
 
-      const avgRecovery = last7Recovery.reduce((sum, r) => sum + r.score, 0) / last7Recovery.length;
-      const avgStrain = last7Strain.reduce((sum, s) => sum + s.score, 0) / last7Strain.length;
-      const avgSleep = last7Sleep.reduce((sum, s) => sum + s.efficiency, 0) / last7Sleep.length;
+      const avgRecovery = last7Recovery.length > 0 ? 
+        last7Recovery.reduce((sum, r) => sum + (r?.score || 0), 0) / last7Recovery.length : 0;
+      const avgStrain = last7Strain.length > 0 ? 
+        last7Strain.reduce((sum, s) => sum + (s?.score || 0), 0) / last7Strain.length : 0;
+      const avgSleep = last7Sleep.length > 0 ? 
+        last7Sleep.reduce((sum, s) => sum + (s?.efficiency || 0), 0) / last7Sleep.length : 0;
 
-      // Create assessment prompt for AI
+      // Create assessment prompt for AI with safe property access
       const assessmentPrompt = `Analyze today's WHOOP metrics and provide personalized improvement recommendations.
 
-USER PROFILE: ${userProfile.age}y ${userProfile.gender}, ${userProfile.weight}kg, ${userProfile.height}cm, ${userProfile.activityLevel} activity, goal: ${userProfile.fitnessGoal}
+USER PROFILE: ${userProfile?.age || 30}y ${userProfile?.gender || 'unknown'}, ${userProfile?.weight || 70}kg, ${userProfile?.height || 175}cm, ${userProfile?.activityLevel || 'moderate'} activity, goal: ${userProfile?.fitnessGoal || 'general fitness'}
 
 TODAY'S METRICS:
 - Recovery: ${latestRecovery?.score || 'N/A'}% (HRV: ${latestRecovery?.hrvMs || 'N/A'}ms, RHR: ${latestRecovery?.restingHeartRate || 'N/A'}bpm)
 - Strain: ${latestStrain?.score || 'N/A'} (Avg HR: ${latestStrain?.averageHeartRate || 'N/A'}bpm, Max HR: ${latestStrain?.maxHeartRate || 'N/A'}bpm)
-- Sleep: ${latestSleep?.efficiency || 'N/A'}% efficiency, ${latestSleep ? Math.round(latestSleep.duration / 60) : 'N/A'}h duration, ${latestSleep?.disturbances || 'N/A'} disturbances
+- Sleep: ${latestSleep?.efficiency || 'N/A'}% efficiency, ${latestSleep?.duration ? Math.round(latestSleep.duration / 60) : 'N/A'}h duration, ${latestSleep?.disturbances || 'N/A'} disturbances
 
 7-DAY AVERAGES:
-- Recovery: ${avgRecovery.toFixed(1)}%
-- Strain: ${avgStrain.toFixed(1)}
-- Sleep: ${avgSleep.toFixed(1)}%
+- Recovery: ${avgRecovery > 0 ? avgRecovery.toFixed(1) : 'N/A'}%
+- Strain: ${avgStrain > 0 ? avgStrain.toFixed(1) : 'N/A'}
+- Sleep: ${avgSleep > 0 ? avgSleep.toFixed(1) : 'N/A'}%
 
 Return JSON with this exact structure:
 {
@@ -206,10 +214,10 @@ Trend: up (improving), down (declining), stable (consistent)`;
       console.error('Error generating daily assessment:', error);
       setError('Unable to generate assessment. Please try again.');
       
-      // Fallback assessment
-      const latestRecovery = data.recovery[0];
-      const latestStrain = data.strain[0];
-      const latestSleep = data.sleep[0];
+      // Fallback assessment with safe property access
+      const latestRecovery = data?.recovery?.[0] || null;
+      const latestStrain = data?.strain?.[0] || null;
+      const latestSleep = data?.sleep?.[0] || null;
       const fallbackAssessment = generateFallbackAssessment(latestRecovery, latestStrain, latestSleep);
       setAssessment(fallbackAssessment);
     } finally {
@@ -219,9 +227,9 @@ Trend: up (improving), down (declining), stable (consistent)`;
 
   // Generate fallback assessment when AI fails
   const generateFallbackAssessment = (recovery: any, strain: any, sleep: any): DailyAssessment => {
-    const recoveryScore = recovery?.score || 50;
-    const strainScore = strain?.score || 10;
-    const sleepScore = sleep?.efficiency || 75;
+    const recoveryScore = (recovery && typeof recovery.score === 'number') ? recovery.score : 50;
+    const strainScore = (strain && typeof strain.score === 'number') ? strain.score : 10;
+    const sleepScore = (sleep && typeof sleep.efficiency === 'number') ? sleep.efficiency : 75;
 
     const overallScore = Math.round((recoveryScore + (100 - strainScore * 5) + sleepScore) / 3);
     

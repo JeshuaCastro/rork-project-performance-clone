@@ -3152,7 +3152,7 @@ Return JSON with implementation and advisory guidance:
         } catch (error) {
           console.error('Error marking workout as completed:', error);
         }
-      }
+      },
     }),
     {
       name: 'whoop-storage',
