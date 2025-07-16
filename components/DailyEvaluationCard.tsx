@@ -15,7 +15,8 @@ import {
   Brain,
   Zap,
   Utensils,
-  Pill
+  Pill,
+  RefreshCw
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import DetailedEvaluationModal from './DetailedEvaluationModal';
@@ -419,24 +420,12 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
-  // Load AI evaluation on component mount and when data changes
+  // Initialize with basic evaluation only - no automatic AI loading
   useEffect(() => {
-    const loadEvaluation = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Only generate new evaluation if we haven't done it today
-      if (lastEvaluationDate !== today && isConnectedToWhoop && todaysRecovery) {
-        const evaluation = await generateAIEvaluation();
-        setAiEvaluation(evaluation);
-        setLastEvaluationDate(today);
-      } else if (!aiEvaluation) {
-        // Use basic evaluation as fallback
-        const evaluation = generateBasicEvaluation();
-        setAiEvaluation(evaluation);
-      }
-    };
-
-    loadEvaluation();
+    if (!aiEvaluation) {
+      const evaluation = generateBasicEvaluation();
+      setAiEvaluation(evaluation);
+    }
   }, [isConnectedToWhoop, todaysRecovery, data]);
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
@@ -494,9 +483,15 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
             <TouchableOpacity 
               onPress={handleRefreshEvaluation}
               disabled={isLoadingAI}
-              style={styles.refreshButton}
+              style={[styles.refreshButton, isLoadingAI && styles.refreshButtonDisabled]}
             >
-              <TrendingUp size={14} color={colors.primary} />
+              <RefreshCw 
+                size={16} 
+                color={isLoadingAI ? colors.textSecondary : colors.primary} 
+              />
+              <Text style={[styles.refreshButtonText, isLoadingAI && styles.refreshButtonTextDisabled]}>
+                {isLoadingAI ? 'Analyzing...' : 'AI Analysis'}
+              </Text>
             </TouchableOpacity>
           )}
           <ArrowRight size={16} color={colors.textSecondary} />
@@ -525,6 +520,16 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
             <TrendingUp size={14} color={colors.primary} />
             <Text style={styles.trendAnalysisText}>
               {evaluation.trendAnalysis}
+            </Text>
+          </View>
+        )}
+        
+        {/* AI Analysis Prompt */}
+        {isConnectedToWhoop && !evaluation.trendAnalysis && !isLoadingAI && (
+          <View style={styles.aiPromptContainer}>
+            <Brain size={14} color={colors.textSecondary} />
+            <Text style={styles.aiPromptText}>
+              Tap "AI Analysis" for personalized insights and recommendations
             </Text>
           </View>
         )}
@@ -739,9 +744,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   refreshButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     marginRight: 8,
-    borderRadius: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(93, 95, 239, 0.2)',
+  },
+  refreshButtonDisabled: {
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+    borderColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  refreshButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 4,
+  },
+  refreshButtonTextDisabled: {
+    color: colors.textSecondary,
   },
   statusContainer: {
     marginBottom: 16,
@@ -1020,5 +1044,21 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     lineHeight: 18,
+  },
+  // AI Prompt Styles
+  aiPromptContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  aiPromptText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 6,
+    flex: 1,
+    fontStyle: 'italic',
   },
 });
