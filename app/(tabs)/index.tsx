@@ -20,7 +20,7 @@ import RecoveryCard from '@/components/RecoveryCard';
 import StrainCard from '@/components/StrainCard';
 
 import CalendarView from '@/components/CalendarView';
-import NutritionTracker from '@/components/NutritionTracker';
+
 import DailyEvaluationCard from '@/components/DailyEvaluationCard';
 import WeightTracker from '@/components/WeightTracker';
 import { colors } from '@/constants/colors';
@@ -810,7 +810,6 @@ export default function DashboardScreen() {
           
           {selectedRecovery && <RecoveryCard recovery={selectedRecovery} />}
           {selectedStrain && <StrainCard strain={selectedStrain} />}
-          <NutritionTracker />
           
 
         </ScrollView>
