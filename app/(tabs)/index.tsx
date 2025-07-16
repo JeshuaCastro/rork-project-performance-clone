@@ -1238,4 +1238,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginRight: 8,
   },
+  intensityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  intensityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
 });
