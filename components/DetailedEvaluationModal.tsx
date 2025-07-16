@@ -237,7 +237,10 @@ export default function DetailedEvaluationModal({ visible, onClose, evaluation }
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.scrollContent} 
+            contentContainerStyle={styles.scrollContentContainer}
+            showsVerticalScrollIndicator={false}>
             {/* Today's Metrics */}
             {todaysRecovery && (
               <View style={styles.section}>
@@ -564,10 +567,11 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: colors.background,
     borderRadius: 24,
-    maxHeight: SCREEN_HEIGHT * 0.9,
+    height: SCREEN_HEIGHT * 0.85,
     width: '100%',
     maxWidth: 450,
     alignSelf: 'center',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -591,8 +595,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
+  },
+  scrollContentContainer: {
     paddingHorizontal: 24,
     paddingVertical: 16,
+    paddingBottom: 32,
   },
   section: {
     marginBottom: 28,
