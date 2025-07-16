@@ -640,42 +640,66 @@ export default function NutritionScreen() {
             {/* Analysis Tools */}
             <View style={styles.analysisTools}>
               <TouchableOpacity 
-                style={styles.analysisButton}
+                style={styles.analysisRowButton}
                 onPress={handleAnalyzeNutrients}
                 disabled={isAnalyzingNutrients || dayEntries.length === 0}
               >
-                {isAnalyzingNutrients ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Brain size={18} color={colors.text} />
-                )}
-                <Text style={styles.analysisButtonText}>Nutrient Analysis</Text>
+                <View style={styles.analysisRowContent}>
+                  <View style={styles.analysisRowLeft}>
+                    {isAnalyzingNutrients ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Brain size={20} color={colors.primary} />
+                    )}
+                    <View style={styles.analysisRowTextContainer}>
+                      <Text style={styles.analysisRowTitle}>Nutrient Analysis</Text>
+                      <Text style={styles.analysisRowSubtitle}>Analyze your daily nutrition intake</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.analysisRowArrow}>›</Text>
+                </View>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.analysisButton}
+                style={styles.analysisRowButton}
                 onPress={generateWeeklyStats}
                 disabled={isLoadingWeeklyStats}
               >
-                {isLoadingWeeklyStats ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <BarChart3 size={18} color={colors.text} />
-                )}
-                <Text style={styles.analysisButtonText}>Weekly Stats</Text>
+                <View style={styles.analysisRowContent}>
+                  <View style={styles.analysisRowLeft}>
+                    {isLoadingWeeklyStats ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <BarChart3 size={20} color={colors.primary} />
+                    )}
+                    <View style={styles.analysisRowTextContainer}>
+                      <Text style={styles.analysisRowTitle}>Weekly Stats</Text>
+                      <Text style={styles.analysisRowSubtitle}>View your weekly nutrition trends</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.analysisRowArrow}>›</Text>
+                </View>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.analysisButton}
+                style={styles.analysisRowButton}
                 onPress={generateMealPlan}
                 disabled={isGeneratingMealPlan}
               >
-                {isGeneratingMealPlan ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Target size={18} color={colors.text} />
-                )}
-                <Text style={styles.analysisButtonText}>Meal Plan</Text>
+                <View style={styles.analysisRowContent}>
+                  <View style={styles.analysisRowLeft}>
+                    {isGeneratingMealPlan ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Target size={20} color={colors.primary} />
+                    )}
+                    <View style={styles.analysisRowTextContainer}>
+                      <Text style={styles.analysisRowTitle}>AI Meal Plan</Text>
+                      <Text style={styles.analysisRowSubtitle}>Generate personalized meal suggestions</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.analysisRowArrow}>›</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -1377,8 +1401,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   analysisTools: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 20,
   },
   analysisButton: {
@@ -1397,6 +1419,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginLeft: 6,
+  },
+  analysisRowButton: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  analysisRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  analysisRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  analysisRowTextContainer: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  analysisRowTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  analysisRowSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  analysisRowArrow: {
+    fontSize: 20,
+    color: colors.textSecondary,
+    fontWeight: '300',
   },
   sectionTitle: {
     fontSize: 18,
