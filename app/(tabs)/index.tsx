@@ -21,8 +21,6 @@ import StrainCard from '@/components/StrainCard';
 import AIInsightCard from '@/components/AIInsightCard';
 import CalendarView from '@/components/CalendarView';
 import NutritionTracker from '@/components/NutritionTracker';
-import DailyMetricsPopup from '@/components/DailyMetricsPopup';
-import SimpleMetricsAssessment from '@/components/SimpleMetricsAssessment';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -43,8 +41,7 @@ import {
   Eye,
   Check,
   CheckCircle,
-  Info,
-  BarChart3
+  Info
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -56,8 +53,6 @@ export default function DashboardScreen() {
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
-  const [showDailyMetricsPopup, setShowDailyMetricsPopup] = useState(false);
-  const [showSimpleAssessment, setShowSimpleAssessment] = useState(false);
   
   const { 
     data, 
@@ -76,9 +71,7 @@ export default function DashboardScreen() {
     activePrograms,
     getTodaysWorkout,
     startManualWorkout,
-    isWorkoutCompleted,
-    shouldShowDailyAssessment,
-    markDailyAssessmentShown
+    isWorkoutCompleted
   } = useWhoopStore();
   
   // Check if profile is complete
@@ -124,15 +117,6 @@ export default function DashboardScreen() {
               console.log('Auto-syncing WHOOP data...');
               setSyncAttempted(true);
               await syncWhoopData();
-            }
-            
-            // Check if we should show the daily metrics popup
-            const shouldShow = await shouldShowDailyAssessment();
-            if (shouldShow) {
-              // Add a small delay to ensure data is loaded
-              setTimeout(() => {
-                setShowDailyMetricsPopup(true);
-              }, 1000);
             }
           }
         } catch (error) {
@@ -223,13 +207,7 @@ export default function DashboardScreen() {
         Alert.alert(
           "Data Synced",
           "Your WHOOP data has been successfully synced and analyzed.",
-          [
-            { 
-              text: "View Assessment", 
-              onPress: () => setShowDailyMetricsPopup(true)
-            },
-            { text: "Great!" }
-          ]
+          [{ text: "Great!" }]
         );
       } else {
         Alert.alert(
@@ -592,28 +570,6 @@ export default function DashboardScreen() {
             <Text style={styles.profileButtonText}>Complete Profile</Text>
           </TouchableOpacity>
         )}
-        
-        <TouchableOpacity 
-          style={styles.assessmentButton}
-          onPress={() => {
-            console.log('Assessment button clicked, showing simple assessment...');
-            console.log('Current data state:', {
-              isConnectedToWhoop,
-              hasRecoveryData: data?.recovery?.length > 0,
-              recoveryCount: data?.recovery?.length,
-              latestRecovery: data?.recovery?.[0],
-              hasUserProfile: !!userProfile
-            });
-            setShowSimpleAssessment(true);
-          }}
-          onLongPress={() => {
-            console.log('Assessment button long pressed, showing AI assessment...');
-            setShowDailyMetricsPopup(true);
-          }}
-        >
-          <BarChart3 size={18} color={colors.text} />
-        </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.syncButton}
           onPress={handleSyncData}
@@ -1044,18 +1000,6 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Daily Metrics Assessment Popup */}
-      <DailyMetricsPopup
-        visible={showDailyMetricsPopup}
-        onClose={() => setShowDailyMetricsPopup(false)}
-      />
-
-      {/* Simple Metrics Assessment (Alternative) */}
-      <SimpleMetricsAssessment
-        visible={showSimpleAssessment}
-        onClose={() => setShowSimpleAssessment(false)}
-      />
     </View>
   );
 }
@@ -1110,15 +1054,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  assessmentButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
   },
   profileButton: {
     flexDirection: 'row',
