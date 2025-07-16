@@ -13,13 +13,29 @@ import {
   CheckCircle,
   ArrowRight,
   Brain,
-  Zap
+  Zap,
+  Utensils,
+  Pill
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import DetailedEvaluationModal from './DetailedEvaluationModal';
 
 interface DailyEvaluationCardProps {
   onPress?: () => void;
+}
+
+interface ActionableStep {
+  category: 'recovery' | 'nutrition' | 'training' | 'supplements' | 'sleep';
+  action: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+interface NutritionAdvice {
+  calorieGuidance?: string;
+  proteinFocus?: string;
+  hydrationTarget?: string;
+  mealTiming?: string;
 }
 
 interface AIEvaluation {
@@ -31,6 +47,9 @@ interface AIEvaluation {
   programInsight?: string;
   trendAnalysis?: string;
   recommendations?: string[];
+  actionableSteps?: ActionableStep[];
+  nutritionAdvice?: NutritionAdvice;
+  supplementSuggestions?: string[];
   confidenceScore?: number;
 }
 
@@ -86,7 +105,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     return 'stable';
   };
 
-  // Generate AI-powered evaluation
+  // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
     if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
       return {
@@ -101,6 +120,16 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     setIsLoadingAI(true);
     
     try {
+      // Get nutrition data from store
+      const { getFoodLogEntriesByDate, getMacroProgressForDate, userProfile } = useWhoopStore.getState();
+      const todaysFoodEntries = getFoodLogEntriesByDate(today);
+      const macroProgress = getMacroProgressForDate(today);
+      
+      // Calculate nutrition metrics
+      const calorieProgress = macroProgress.calories.consumed / macroProgress.calories.target;
+      const proteinProgress = macroProgress.protein.consumed / macroProgress.protein.target;
+      const nutritionQuality = todaysFoodEntries.length > 0 ? 'logged' : 'not-logged';
+      
       // Prepare data for AI analysis
       const last7DaysData = {
         recovery: data.recovery.slice(0, 7),
@@ -132,7 +161,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
         ? last7DaysStrain.reduce((sum, s) => sum + s.score, 0) / last7DaysStrain.length 
         : 0;
 
-      const prompt = `As a fitness and recovery expert, analyze this athlete's data and provide a comprehensive daily evaluation:
+      const prompt = `As a fitness and recovery expert, analyze this athlete's data and provide actionable daily recommendations:
 
 CURRENT METRICS (Today):
 - Recovery: ${currentMetrics.recovery}%
@@ -141,12 +170,16 @@ CURRENT METRICS (Today):
 - Resting HR: ${currentMetrics.rhr}bpm
 - Sleep Efficiency: ${currentMetrics.sleep}%
 
+NUTRITION STATUS (Today):
+- Calories: ${macroProgress.calories.consumed}/${macroProgress.calories.target} (${(calorieProgress * 100).toFixed(0)}%)
+- Protein: ${macroProgress.protein.consumed}g/${macroProgress.protein.target}g (${(proteinProgress * 100).toFixed(0)}%)
+- Meals Logged: ${todaysFoodEntries.length}
+- Nutrition Quality: ${nutritionQuality}
+
 7-DAY TRENDS:
 - Average Recovery: ${avgRecovery.toFixed(1)}%
 - Average Strain: ${avgStrain.toFixed(1)}
 - Recovery Trend: ${recoveryTrend}
-- Recovery Data: ${JSON.stringify(last7DaysData.recovery.map(r => ({ date: r.date, score: r.score, hrv: r.hrvMs })))}
-- Strain Data: ${JSON.stringify(last7DaysData.strain.map(s => ({ date: s.date, score: s.score })))}
 
 ${programContext ? `TRAINING PROGRAM:
 - Program: ${programContext.name} (${programContext.type})
@@ -154,23 +187,37 @@ ${programContext ? `TRAINING PROGRAM:
 - Intensity: ${todaysWorkout?.intensity || 'N/A'}
 - Progress: ${programContext.progress?.progressPercentage || 0}%` : 'No active training program'}
 
-Provide a JSON response with:
+USER PROFILE:
+- Age: ${userProfile.age}, Gender: ${userProfile.gender}
+- Weight: ${userProfile.weight}kg, Activity: ${userProfile.activityLevel}
+- Goal: ${userProfile.fitnessGoal}
+
+Provide a JSON response with ACTIONABLE recommendations:
 {
   "status": "optimal|good|caution|warning|recovery",
   "title": "Brief status title (max 25 chars)",
   "message": "Main insight (max 80 chars)",
   "trendAnalysis": "Analysis of 7-day trends (max 120 chars)",
-  "recommendations": ["3 specific actionable recommendations"],
+  "actionableSteps": [
+    {
+      "category": "recovery|nutrition|training|supplements|sleep",
+      "action": "Specific actionable step",
+      "reason": "Why this helps today",
+      "priority": "high|medium|low"
+    }
+  ],
+  "nutritionAdvice": {
+    "calorieGuidance": "Specific calorie advice based on current intake",
+    "proteinFocus": "Protein recommendations for recovery/goals",
+    "hydrationTarget": "Water intake recommendation",
+    "mealTiming": "When to eat for optimal performance/recovery"
+  },
+  "supplementSuggestions": ["Specific supplements based on recovery/nutrition gaps"],
   "programInsight": "How this relates to training program (max 80 chars)",
   "confidenceScore": 85
 }
 
-Focus on:
-1. Trend analysis over the past week
-2. Current state vs historical patterns
-3. Training program alignment
-4. Specific actionable recommendations
-5. Recovery optimization strategies`;
+Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performance, and progress toward their goals. Consider their nutrition status, training program, and current recovery state.`;
 
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
         method: 'POST',
@@ -237,7 +284,7 @@ Focus on:
     }
   };
 
-  // Fallback basic evaluation
+  // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
     if (!isConnectedToWhoop || !todaysRecovery) {
       return {
@@ -252,6 +299,12 @@ Focus on:
     const recoveryScore = todaysRecovery.score;
     const recoveryTrend = getRecoveryTrend();
     
+    // Get nutrition data for basic recommendations
+    const { getFoodLogEntriesByDate, getMacroProgressForDate } = useWhoopStore.getState();
+    const todaysFoodEntries = getFoodLogEntriesByDate(today);
+    const macroProgress = getMacroProgressForDate(today);
+    const calorieProgress = macroProgress.calories.consumed / macroProgress.calories.target;
+    
     if (recoveryScore >= 75) {
       return {
         status: 'optimal',
@@ -260,7 +313,33 @@ Focus on:
         color: colors.success,
         icon: CheckCircle,
         trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
-        recommendations: ['Consider high-intensity training', 'Maintain current recovery habits', 'Monitor strain accumulation'],
+        actionableSteps: [
+          {
+            category: 'training',
+            action: 'Take advantage of high recovery with intense training',
+            reason: 'Your body is primed for performance',
+            priority: 'high'
+          },
+          {
+            category: 'nutrition',
+            action: calorieProgress < 0.8 ? 'Fuel properly for high-intensity session' : 'Maintain current nutrition',
+            reason: 'Support energy demands and recovery',
+            priority: 'medium'
+          },
+          {
+            category: 'recovery',
+            action: 'Maintain current sleep and recovery habits',
+            reason: 'Keep what\'s working well',
+            priority: 'low'
+          }
+        ],
+        nutritionAdvice: {
+          calorieGuidance: calorieProgress < 0.8 ? 'Increase intake to support training' : 'On track with calories',
+          proteinFocus: 'Aim for 25-30g protein post-workout',
+          hydrationTarget: '3-4L water today',
+          mealTiming: 'Eat 2-3 hours before training'
+        },
+        supplementSuggestions: ['Consider creatine for power output', 'Electrolytes during training'],
         programInsight: todaysWorkout ? 'Perfect alignment with training plan' : 'Great day to push harder'
       };
     } else if (recoveryScore >= 50) {
@@ -271,7 +350,33 @@ Focus on:
         color: colors.primary,
         icon: Activity,
         trendAnalysis: `Recovery trending ${recoveryTrend} over past week`,
-        recommendations: ['Stick to planned intensity', 'Monitor how you feel', 'Focus on sleep quality'],
+        actionableSteps: [
+          {
+            category: 'training',
+            action: 'Stick to planned workout intensity',
+            reason: 'Balanced recovery supports moderate training',
+            priority: 'high'
+          },
+          {
+            category: 'sleep',
+            action: 'Prioritize 8+ hours sleep tonight',
+            reason: 'Support tomorrow\'s recovery',
+            priority: 'medium'
+          },
+          {
+            category: 'nutrition',
+            action: todaysFoodEntries.length < 3 ? 'Log meals to track nutrition' : 'Maintain balanced nutrition',
+            reason: 'Proper fueling supports recovery',
+            priority: 'medium'
+          }
+        ],
+        nutritionAdvice: {
+          calorieGuidance: 'Stay consistent with calorie targets',
+          proteinFocus: '1.6-2.0g per kg body weight',
+          hydrationTarget: '2.5-3L water today',
+          mealTiming: 'Regular meal timing supports recovery'
+        },
+        supplementSuggestions: ['Magnesium for sleep quality', 'Omega-3 for inflammation'],
         programInsight: 'Good balance between recovery and training'
       };
     } else {
@@ -282,7 +387,33 @@ Focus on:
         color: colors.warning,
         icon: Heart,
         trendAnalysis: `Recovery trending ${recoveryTrend} - needs attention`,
-        recommendations: ['Reduce training intensity', 'Focus on sleep and nutrition', 'Consider active recovery'],
+        actionableSteps: [
+          {
+            category: 'recovery',
+            action: 'Reduce training intensity by 30-50%',
+            reason: 'Allow body to recover and adapt',
+            priority: 'high'
+          },
+          {
+            category: 'sleep',
+            action: 'Aim for 9+ hours sleep tonight',
+            reason: 'Sleep is critical for recovery',
+            priority: 'high'
+          },
+          {
+            category: 'nutrition',
+            action: 'Focus on anti-inflammatory foods',
+            reason: 'Support recovery and reduce stress',
+            priority: 'medium'
+          }
+        ],
+        nutritionAdvice: {
+          calorieGuidance: 'Don\'t restrict calories during recovery',
+          proteinFocus: 'Increase to 2.0-2.2g per kg for repair',
+          hydrationTarget: '3-4L water for recovery',
+          mealTiming: 'Frequent small meals to support healing'
+        },
+        supplementSuggestions: ['Vitamin D for immune function', 'Tart cherry for sleep and inflammation'],
         programInsight: 'Consider adjusting training plan'
       };
     }
@@ -428,17 +559,76 @@ Focus on:
         </View>
       )}
 
-      {/* AI Recommendations */}
-      {evaluation.recommendations && evaluation.recommendations.length > 0 && (
-        <View style={styles.recommendationsContainer}>
-          <View style={styles.recommendationsHeader}>
+      {/* Actionable Steps */}
+      {evaluation.actionableSteps && evaluation.actionableSteps.length > 0 && (
+        <View style={styles.actionableStepsContainer}>
+          <View style={styles.actionableStepsHeader}>
             <Zap size={14} color={colors.primary} />
-            <Text style={styles.recommendationsTitle}>AI Recommendations</Text>
+            <Text style={styles.actionableStepsTitle}>Today's Action Plan</Text>
           </View>
-          {evaluation.recommendations.slice(0, 2).map((rec, index) => (
-            <View key={index} style={styles.recommendationItem}>
-              <View style={styles.recommendationDot} />
-              <Text style={styles.recommendationText}>{rec}</Text>
+          {evaluation.actionableSteps.slice(0, 3).map((step, index) => (
+            <View key={index} style={styles.actionableStepItem}>
+              <View style={[styles.priorityIndicator, { 
+                backgroundColor: step.priority === 'high' ? colors.danger : 
+                               step.priority === 'medium' ? colors.warning : colors.success 
+              }]} />
+              <View style={styles.stepContent}>
+                <Text style={styles.stepCategory}>{step.category.toUpperCase()}</Text>
+                <Text style={styles.stepAction}>{step.action}</Text>
+                <Text style={styles.stepReason}>{step.reason}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Nutrition Advice */}
+      {evaluation.nutritionAdvice && (
+        <View style={styles.nutritionAdviceContainer}>
+          <View style={styles.nutritionAdviceHeader}>
+            <Utensils size={14} color={colors.success} />
+            <Text style={styles.nutritionAdviceTitle}>Nutrition Focus</Text>
+          </View>
+          <View style={styles.nutritionAdviceGrid}>
+            {evaluation.nutritionAdvice.calorieGuidance && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Calories</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.calorieGuidance}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.proteinFocus && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Protein</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.proteinFocus}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.hydrationTarget && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Hydration</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.hydrationTarget}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.mealTiming && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Timing</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.mealTiming}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Supplement Suggestions */}
+      {evaluation.supplementSuggestions && evaluation.supplementSuggestions.length > 0 && (
+        <View style={styles.supplementsContainer}>
+          <View style={styles.supplementsHeader}>
+            <Pill size={14} color={colors.warning} />
+            <Text style={styles.supplementsTitle}>Supplement Support</Text>
+          </View>
+          {evaluation.supplementSuggestions.slice(0, 2).map((supplement, index) => (
+            <View key={index} style={styles.supplementItem}>
+              <View style={styles.supplementDot} />
+              <Text style={styles.supplementText}>{supplement}</Text>
             </View>
           ))}
         </View>
@@ -598,42 +788,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontStyle: 'italic',
   },
-  recommendationsContainer: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  recommendationsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  recommendationsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginLeft: 6,
-  },
-  recommendationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  recommendationDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 6,
-    marginRight: 8,
-  },
-  recommendationText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -731,5 +885,140 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginRight: 4,
+  },
+  // Actionable Steps Styles
+  actionableStepsContainer: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  actionableStepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  actionableStepsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
+  },
+  actionableStepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  priorityIndicator: {
+    width: 3,
+    height: '100%',
+    borderRadius: 2,
+    marginRight: 12,
+    minHeight: 40,
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepCategory: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  stepAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+    lineHeight: 18,
+  },
+  stepReason: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  // Nutrition Advice Styles
+  nutritionAdviceContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  nutritionAdviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  nutritionAdviceTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.success,
+    marginLeft: 6,
+  },
+  nutritionAdviceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  nutritionAdviceItem: {
+    width: '48%',
+    marginBottom: 8,
+  },
+  nutritionAdviceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  nutritionAdviceText: {
+    fontSize: 12,
+    color: colors.text,
+    lineHeight: 16,
+  },
+  // Supplement Styles
+  supplementsContainer: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  supplementsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  supplementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.warning,
+    marginLeft: 6,
+  },
+  supplementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  supplementDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.warning,
+    marginTop: 6,
+    marginRight: 8,
+  },
+  supplementText: {
+    fontSize: 13,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 18,
   },
 });
