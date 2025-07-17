@@ -96,13 +96,25 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
+    // Check connection status first
+    if (!isConnectedToWhoop) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
         message: 'Connect your WHOOP to get AI-powered daily evaluations',
         color: colors.textSecondary,
         icon: Activity
+      };
+    }
+    
+    // If connected but no data, show different message
+    if (!todaysRecovery || !data?.recovery || !data?.strain) {
+      return {
+        status: 'no-data',
+        title: 'Syncing WHOOP Data',
+        message: 'Waiting for WHOOP data to sync for AI analysis',
+        color: colors.textSecondary,
+        icon: RefreshCw
       };
     }
 
@@ -279,13 +291,25 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
-    if (!isConnectedToWhoop || !todaysRecovery) {
+    // Check connection status first
+    if (!isConnectedToWhoop) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
         message: 'Connect your WHOOP to get daily evaluations',
         color: colors.textSecondary,
         icon: Activity
+      };
+    }
+    
+    // If connected but no recovery data, show different message
+    if (!todaysRecovery) {
+      return {
+        status: 'no-data',
+        title: 'Syncing WHOOP Data',
+        message: 'Waiting for today\'s recovery data to sync',
+        color: colors.textSecondary,
+        icon: RefreshCw
       };
     }
 
@@ -414,6 +438,10 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Initialize with basic evaluation only - no automatic AI loading
   useEffect(() => {
+    console.log('DailyEvaluationCard - Connection status:', isConnectedToWhoop);
+    console.log('DailyEvaluationCard - Today\'s recovery:', todaysRecovery?.score);
+    console.log('DailyEvaluationCard - Data available:', !!data?.recovery?.length);
+    
     if (!aiEvaluation) {
       const evaluation = generateBasicEvaluation();
       setAiEvaluation(evaluation);
