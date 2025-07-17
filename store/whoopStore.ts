@@ -553,7 +553,6 @@ interface WhoopStore {
   
   // Program progress methods
   getProgramProgress: (programId: string) => ProgramProgress;
-  markWorkoutCompleted: (programId: string, workoutTitle: string, workoutDay: string, date?: string) => Promise<void>;
 }
 
 export const useWhoopStore = create<WhoopStore>()(

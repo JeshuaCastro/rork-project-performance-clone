@@ -526,12 +526,19 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       if (timeSinceSync < 5 * 60 * 1000 && timeSinceLastAutoRefresh > 2 * 60 * 1000) {
         console.log('DailyEvaluationCard - Fresh data detected, auto-generating AI evaluation');
         setLastAutoRefreshTime(Date.now());
-        setTimeout(() => {
-          handleRefreshEvaluation();
+        // We'll trigger the refresh after the component is fully updated
+        setTimeout(async () => {
+          if (isConnectedToWhoop && data?.recovery?.length && todaysRecovery && !isLoadingAI) {
+            console.log('DailyEvaluationCard - Auto-refreshing AI evaluation with current data');
+            const evaluation = await generateAIEvaluation();
+            console.log('DailyEvaluationCard - Auto-refresh AI evaluation result:', evaluation.title, evaluation.status);
+            setAiEvaluation(evaluation);
+            setLastEvaluationDate(new Date().toISOString().split('T')[0]);
+          }
         }, 1000); // Small delay to ensure UI is ready
       }
     }
-  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, lastSyncTime, lastAutoRefreshTime, generateBasicEvaluation, handleRefreshEvaluation]);
+  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, lastSyncTime, lastAutoRefreshTime, generateBasicEvaluation, isLoadingAI, generateAIEvaluation]);
 
   const handleRefreshEvaluation = React.useCallback(async () => {
     if (isLoadingAI) return;
