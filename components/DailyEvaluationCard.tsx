@@ -484,13 +484,13 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         programInsight: 'Consider adjusting training plan'
       };
     }
-  }, [isConnectedToWhoop, data, todaysRecovery, today]);
+  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, isLoadingWhoopData]);
 
   // Initialize evaluation on mount
   useEffect(() => {
     const initialEvaluation = generateBasicEvaluation();
     setAiEvaluation(initialEvaluation);
-  }, [generateBasicEvaluation]);
+  }, []);
 
   // Check connection status on mount and sync data if needed
   useEffect(() => {
@@ -507,38 +507,14 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     };
     
     checkConnectionAndSync();
-  }, [updateConnectionStatus]);
+  }, []);
 
-
-
-  // Force re-evaluation when key dependencies change with a debounced approach
+  // Update evaluation when key data changes
   useEffect(() => {
-    console.log('DailyEvaluationCard - Dependencies changed, regenerating evaluation');
+    console.log('DailyEvaluationCard - Key data changed, updating evaluation');
     const evaluation = generateBasicEvaluation();
     setAiEvaluation(evaluation);
-    
-    // If we have fresh data and are connected, automatically generate AI evaluation
-    if (isConnectedToWhoop && data?.recovery?.length && todaysRecovery && lastSyncTime) {
-      const timeSinceSync = Date.now() - lastSyncTime;
-      const timeSinceLastAutoRefresh = Date.now() - lastAutoRefreshTime;
-      
-      // If data was synced recently (within 5 minutes) and we haven't auto-refreshed recently (within 2 minutes)
-      if (timeSinceSync < 5 * 60 * 1000 && timeSinceLastAutoRefresh > 2 * 60 * 1000) {
-        console.log('DailyEvaluationCard - Fresh data detected, auto-generating AI evaluation');
-        setLastAutoRefreshTime(Date.now());
-        // We'll trigger the refresh after the component is fully updated
-        setTimeout(async () => {
-          if (isConnectedToWhoop && data?.recovery?.length && todaysRecovery && !isLoadingAI) {
-            console.log('DailyEvaluationCard - Auto-refreshing AI evaluation with current data');
-            const evaluation = await generateAIEvaluation();
-            console.log('DailyEvaluationCard - Auto-refresh AI evaluation result:', evaluation.title, evaluation.status);
-            setAiEvaluation(evaluation);
-            setLastEvaluationDate(new Date().toISOString().split('T')[0]);
-          }
-        }, 1000); // Small delay to ensure UI is ready
-      }
-    }
-  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, lastSyncTime, lastAutoRefreshTime, generateBasicEvaluation, isLoadingAI, generateAIEvaluation]);
+  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score]);
 
   const handleRefreshEvaluation = React.useCallback(async () => {
     if (isLoadingAI) return;
@@ -548,7 +524,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     console.log('DailyEvaluationCard - AI evaluation result:', evaluation.title, evaluation.status);
     setAiEvaluation(evaluation);
     setLastEvaluationDate(new Date().toISOString().split('T')[0]);
-  }, [isLoadingAI, generateAIEvaluation]);
+  }, [isLoadingAI]);
 
   // Ensure we always have an evaluation to display
   const evaluation = React.useMemo(() => {
@@ -560,7 +536,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     const basicEval = generateBasicEvaluation();
     console.log('Using basic evaluation:', basicEval.title);
     return basicEval;
-  }, [aiEvaluation, generateBasicEvaluation]);
+  }, [aiEvaluation]);
   
   const IconComponent = evaluation.icon;
 
