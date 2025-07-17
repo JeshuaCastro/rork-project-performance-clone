@@ -2011,11 +2011,18 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
             calculatedAt: new Date()
           };
           
-          const safePreferences = safeUserInput(preferences);
-          const userContext = getMinimalUserContext(userProfile);
+          // Check if preferences is a detailed prompt (for meal plans) or simple request (for AI suggestions)
+          let finalPrompt: string;
           
-          // Very short prompt
-          const systemPrompt = `Meal for: "${safePreferences}". User: ${userContext}. Targets: ${targets.calories}cal, ${targets.protein}g protein. Provide meal with macros. Max 150 words.`;
+          if (preferences.includes('Create a personalized meal plan') || preferences.length > 200) {
+            // This is a detailed meal plan request - use it as is
+            finalPrompt = preferences;
+          } else {
+            // This is a simple meal suggestion request - enhance it with user context
+            const safePreferences = safeUserInput(preferences);
+            const userContext = getMinimalUserContext(userProfile);
+            finalPrompt = `Meal for: "${safePreferences}". User: ${userContext}. Targets: ${targets.calories}cal, ${targets.protein}g protein. Provide meal with macros. Max 150 words.`;
+          }
           
           const response = await fetch('https://toolkit.rork.com/text/llm/', {
             method: 'POST',
@@ -2026,11 +2033,11 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
               messages: [
                 {
                   role: 'system',
-                  content: "AI nutrition coach. Provide meal suggestions with macros."
+                  content: "You are an AI nutrition coach. Provide personalized meal suggestions and meal plans based on user preferences, dietary restrictions, and nutritional goals. Include specific foods, portions, and approximate macros when possible."
                 },
                 {
                   role: 'user',
-                  content: systemPrompt
+                  content: finalPrompt
                 }
               ]
             }),
