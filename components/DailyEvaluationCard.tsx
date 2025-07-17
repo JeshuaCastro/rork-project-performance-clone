@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
+import { isConnectedToWhoop as checkWhoopConnection } from '@/services/whoopApi';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -64,7 +65,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     activePrograms, 
     getTodaysWorkout, 
     getProgramProgress,
-    isConnectedToWhoop 
+    isConnectedToWhoop,
+    checkWhoopConnection: updateConnectionStatus
   } = useWhoopStore();
 
   // Get today's data with null checks
@@ -96,8 +98,9 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    // Check connection status first
-    if (!isConnectedToWhoop) {
+    // Check connection status first - use a more robust check
+    const connectionStatus = await checkWhoopConnection();
+    if (!connectionStatus) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
@@ -291,8 +294,8 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
-    // Check connection status first
-    if (!isConnectedToWhoop) {
+    // Check connection status first - be more lenient and check for actual data
+    if (!isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0)) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -436,16 +439,25 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
+  // Check connection status on mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      console.log('DailyEvaluationCard - Checking connection status on mount...');
+      await updateConnectionStatus();
+    };
+    
+    checkConnection();
+  }, []);
+
   // Initialize with basic evaluation only - no automatic AI loading
   useEffect(() => {
     console.log('DailyEvaluationCard - Connection status:', isConnectedToWhoop);
     console.log('DailyEvaluationCard - Today\'s recovery:', todaysRecovery?.score);
     console.log('DailyEvaluationCard - Data available:', !!data?.recovery?.length);
     
-    if (!aiEvaluation) {
-      const evaluation = generateBasicEvaluation();
-      setAiEvaluation(evaluation);
-    }
+    // Always regenerate evaluation when dependencies change
+    const evaluation = generateBasicEvaluation();
+    setAiEvaluation(evaluation);
   }, [isConnectedToWhoop, todaysRecovery, data]);
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
