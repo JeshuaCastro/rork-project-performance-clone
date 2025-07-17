@@ -466,7 +466,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         console.log('🔄 Initial AI evaluation for connected WHOOP user');
         setTimeout(() => {
           handleRefreshEvaluation();
-        }, 1000);
+        }, 2000);
       }
     }
   }, []); // Only run on mount
@@ -494,14 +494,14 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
     const hasNewNutritionData = currentFoodLogCount !== previousDataState.foodLogCount;
 
-    // Add cooldown period to prevent too frequent updates (minimum 2 minutes between updates)
+    // Add cooldown period to prevent too frequent updates (minimum 5 minutes between updates)
     const timeSinceLastUpdate = Date.now() - lastUpdateTime;
-    const cooldownPeriod = 2 * 60 * 1000; // 2 minutes
+    const cooldownPeriod = 5 * 60 * 1000; // 5 minutes
     
     // Only update if we have new meaningful input AND haven't updated recently AND haven't updated today
     const shouldUpdate = (hasNewRecoveryData || hasNewNutritionData) && 
                         (!lastEvaluationDate || lastEvaluationDate !== today) &&
-                        (timeSinceLastUpdate > cooldownPeriod || lastUpdateTime === 0);
+                        (timeSinceLastUpdate > cooldownPeriod);
 
     if (shouldUpdate) {
       console.log('📊 New input detected, updating AI evaluation:', {
@@ -517,46 +517,55 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       setTimeout(() => {
         handleRefreshEvaluation();
         setLastUpdateTime(Date.now());
-      }, 1500);
-    } else if ((hasNewRecoveryData || hasNewNutritionData) && timeSinceLastUpdate <= cooldownPeriod) {
-      console.log('⏳ New input detected but in cooldown period, skipping update for', 
-        Math.round((cooldownPeriod - timeSinceLastUpdate) / 1000) + 's');
+      }, 2000);
     }
 
-    // Update previous state
-    setPreviousDataState({
-      recoveryScore: currentRecoveryScore,
-      recoveryDate: currentRecoveryDate,
-      foodLogCount: currentFoodLogCount,
-      lastFoodLogTime: lastFoodLogUpdate || 0
-    });
+    // Update previous state only when there's actual change
+    if (hasNewRecoveryData || hasNewNutritionData) {
+      setPreviousDataState({
+        recoveryScore: currentRecoveryScore,
+        recoveryDate: currentRecoveryDate,
+        foodLogCount: currentFoodLogCount,
+        lastFoodLogTime: lastFoodLogUpdate || 0
+      });
+    }
 
   }, [
     data?.recovery?.[0]?.score, 
-    data?.recovery?.[0]?.date,
-    lastFoodLogUpdate // Listen to food log changes
+    data?.recovery?.[0]?.date
+    // Removed lastFoodLogUpdate from dependencies to prevent constant updates
   ]);
 
   // Listen for fresh data syncs (only when there's actually new data)
   useEffect(() => {
-    if (isConnectedToWhoop && lastSyncTime && data?.recovery && data.recovery.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
-      
-      // Only update if sync happened today and we don't have today's evaluation
-      // This prevents constant updates from the same sync
-      if (syncDate === today && (!lastEvaluationDate || lastEvaluationDate !== today)) {
-        const timeSinceSync = Date.now() - lastSyncTime;
-        // Only trigger if sync was recent (within last 5 minutes) to avoid old sync triggers
-        if (timeSinceSync < 5 * 60 * 1000) {
-          console.log('🔄 Fresh WHOOP data sync detected, updating evaluation');
-          setTimeout(() => {
-            handleRefreshEvaluation();
-          }, 2000);
-        }
-      }
+    if (!isConnectedToWhoop || !lastSyncTime || !data?.recovery || data.recovery.length === 0) {
+      return;
     }
-  }, [lastSyncTime]);
+
+    const today = new Date().toISOString().split('T')[0];
+    const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
+    const timeSinceSync = Date.now() - lastSyncTime;
+    const timeSinceLastUpdate = Date.now() - lastUpdateTime;
+    
+    // Only update if:
+    // 1. Sync happened today
+    // 2. We don't have today's evaluation yet
+    // 3. Sync was recent (within last 3 minutes)
+    // 4. We haven't updated recently (at least 3 minutes ago)
+    const shouldUpdateFromSync = (
+      syncDate === today && 
+      (!lastEvaluationDate || lastEvaluationDate !== today) &&
+      timeSinceSync < 3 * 60 * 1000 &&
+      timeSinceLastUpdate > 3 * 60 * 1000
+    );
+
+    if (shouldUpdateFromSync) {
+      console.log('🔄 Fresh WHOOP data sync detected, updating evaluation');
+      setTimeout(() => {
+        handleRefreshEvaluation();
+      }, 3000);
+    }
+  }, [lastSyncTime, lastEvaluationDate, lastUpdateTime]);
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
