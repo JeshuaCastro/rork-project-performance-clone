@@ -59,6 +59,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [lastEvaluationDate, setLastEvaluationDate] = useState<string | null>(null);
   
+
+  
   const { 
     data, 
     activePrograms, 
@@ -97,8 +99,16 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
+    console.log('generateAIEvaluation called with:', {
+      isConnectedToWhoop,
+      hasRecoveryData: !!data?.recovery?.length,
+      hasTodaysRecovery: !!todaysRecovery,
+      todaysRecoveryScore: todaysRecovery?.score
+    });
+
     // Use store's connection status and data instead of making independent API calls
     if (!isConnectedToWhoop) {
+      console.log('AI Evaluation: Not connected to WHOOP');
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
@@ -110,6 +120,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     
     // If connected but no data available, show syncing message
     if (!data?.recovery || data.recovery.length === 0) {
+      console.log('AI Evaluation: Connected but no recovery data');
       return {
         status: 'no-data',
         title: 'Syncing WHOOP Data',
@@ -121,6 +132,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     
     // If we have data but no today's recovery, show different syncing message
     if (!todaysRecovery) {
+      console.log('AI Evaluation: Have recovery data but no today\'s recovery');
       return {
         status: 'no-data',
         title: 'Syncing Today\'s Data',
@@ -302,9 +314,17 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   };
 
   // Fallback basic evaluation with actionable steps
-  const generateBasicEvaluation = () => {
+  const generateBasicEvaluation = React.useCallback(() => {
+    console.log('generateBasicEvaluation called with:', {
+      isConnectedToWhoop,
+      hasRecoveryData: !!data?.recovery?.length,
+      hasTodaysRecovery: !!todaysRecovery,
+      todaysRecoveryScore: todaysRecovery?.score
+    });
+
     // If not connected to WHOOP at all, show connect message
     if (!isConnectedToWhoop) {
+      console.log('Not connected to WHOOP, showing connect message');
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -316,6 +336,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     
     // If connected but no data available, show syncing message
     if (!data?.recovery || data.recovery.length === 0) {
+      console.log('Connected but no recovery data, showing sync message');
       return {
         status: 'no-data',
         title: 'Syncing WHOOP Data',
@@ -327,6 +348,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     
     // If we have data but no today's recovery, show different syncing message
     if (!todaysRecovery) {
+      console.log('Have recovery data but no today\'s recovery, showing today sync message');
       return {
         status: 'no-data',
         title: 'Syncing Today\'s Data',
@@ -457,31 +479,44 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         programInsight: 'Consider adjusting training plan'
       };
     }
-  };
+  }, [isConnectedToWhoop, data, todaysRecovery, today]);
+
+  // Initialize evaluation on mount
+  useEffect(() => {
+    const initialEvaluation = generateBasicEvaluation();
+    setAiEvaluation(initialEvaluation);
+  }, [generateBasicEvaluation]);
 
   // Check connection status on mount - use store method instead of independent API call
   useEffect(() => {
     const checkConnection = async () => {
-      console.log('DailyEvaluationCard - Checking connection status on mount...');
       await updateConnectionStatus();
     };
     
     checkConnection();
-  }, []);
+  }, [updateConnectionStatus]);
 
-  // Initialize with basic evaluation only - no automatic AI loading
+
+
+  // Force re-evaluation when key dependencies change with a debounced approach
   useEffect(() => {
-    console.log('DailyEvaluationCard - Connection status:', isConnectedToWhoop);
-    console.log('DailyEvaluationCard - Today\'s recovery:', todaysRecovery?.score);
-    console.log('DailyEvaluationCard - Data available:', !!data?.recovery?.length);
-    console.log('DailyEvaluationCard - Recovery data length:', data?.recovery?.length || 0);
-    
-    // Always regenerate evaluation when dependencies change
+    console.log('DailyEvaluationCard - Dependencies changed, regenerating evaluation');
     const evaluation = generateBasicEvaluation();
     setAiEvaluation(evaluation);
-  }, [isConnectedToWhoop, todaysRecovery, data]);
+  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, generateBasicEvaluation]);
 
-  const evaluation = aiEvaluation || generateBasicEvaluation();
+  // Ensure we always have an evaluation to display
+  const evaluation = React.useMemo(() => {
+    if (aiEvaluation) {
+      console.log('Using AI evaluation:', aiEvaluation.title);
+      return aiEvaluation;
+    }
+    
+    const basicEval = generateBasicEvaluation();
+    console.log('Using basic evaluation:', basicEval.title);
+    return basicEval;
+  }, [aiEvaluation, generateBasicEvaluation]);
+  
   const IconComponent = evaluation.icon;
 
 

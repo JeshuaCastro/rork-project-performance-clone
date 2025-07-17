@@ -3112,6 +3112,10 @@ Return JSON with implementation and advisory guidance:
         foodLog: state.foodLog,
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
+        // Persist WHOOP connection status and data
+        isConnectedToWhoop: state.isConnectedToWhoop,
+        data: state.data,
+        selectedDate: state.selectedDate,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
