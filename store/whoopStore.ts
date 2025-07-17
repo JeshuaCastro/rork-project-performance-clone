@@ -839,6 +839,8 @@ export const useWhoopStore = create<WhoopStore>()(
           console.log('Checking WHOOP connection status...');
           const connected = await isConnectedToWhoop();
           console.log('WHOOP connection status:', connected);
+          
+          // Always update the connection state immediately
           set({ isConnectedToWhoop: connected });
           
           if (connected) {
@@ -944,8 +946,12 @@ export const useWhoopStore = create<WhoopStore>()(
           console.log('Checking WHOOP connection before syncing...');
           const connected = await isConnectedToWhoop();
           
+          // Update connection state immediately
+          set({ isConnectedToWhoop: connected });
+          
           if (!connected) {
             console.error('Cannot sync: Not connected to WHOOP');
+            set({ isLoadingWhoopData: false });
             return false;
           }
           
@@ -3112,6 +3118,7 @@ Return JSON with implementation and advisory guidance:
         foodLog: state.foodLog,
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
+        isConnectedToWhoop: state.isConnectedToWhoop, // Persist connection state
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

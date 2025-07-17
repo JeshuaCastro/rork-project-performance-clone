@@ -97,7 +97,9 @@ export default function DashboardScreen() {
   
   const handleAppStateChange = async (nextAppState: AppStateStatus) => {
     if (appState && typeof appState === 'string' && (appState === 'inactive' || appState === 'background') && nextAppState === 'active') {
-      console.log('App has come to the foreground, checking for scheduled syncs');
+      console.log('App has come to the foreground, checking connection and scheduled syncs');
+      // Check connection status when app comes to foreground
+      await checkWhoopConnection();
       await checkAndPerformScheduledSync();
     }
     setAppState(nextAppState);
@@ -111,15 +113,23 @@ export default function DashboardScreen() {
         setIsInitializing(true);
         
         try {
+          // Force a fresh connection check
+          console.log('Dashboard: Performing fresh connection check...');
           const connected = await checkWhoopConnection();
+          console.log('Dashboard: Connection check result:', connected);
           
           // If connected to WHOOP and we haven't synced in the last hour, sync data
           if (connected) {
+            console.log('Dashboard: Connected to WHOOP, checking sync status...');
             if (!lastSyncTime || Date.now() - lastSyncTime > 60 * 60 * 1000 || !data?.recovery || data.recovery.length === 0) {
               console.log('Auto-syncing WHOOP data...');
               setSyncAttempted(true);
               await syncWhoopData();
+            } else {
+              console.log('Dashboard: Recent sync found, skipping auto-sync');
             }
+          } else {
+            console.log('Dashboard: Not connected to WHOOP');
           }
         } catch (error) {
           console.error('Error initializing dashboard:', error);
@@ -133,7 +143,7 @@ export default function DashboardScreen() {
       return () => {
         // Cleanup if needed
       };
-    }, [])
+    }, []) // Remove dependencies to ensure fresh check every time
   );
   
   // Get available dates from the data
@@ -200,6 +210,21 @@ export default function DashboardScreen() {
     setIsLoadingWhoopData(true); // Set loading state manually
     
     try {
+      // First check connection status
+      const connected = await checkWhoopConnection();
+      
+      if (!connected) {
+        Alert.alert(
+          "Not Connected",
+          "Please connect your WHOOP account first to sync data.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Connect", onPress: () => router.push('/connect-whoop') }
+          ]
+        );
+        return;
+      }
+      
       const success = await syncWhoopData();
       
       if (success) {
@@ -241,7 +266,10 @@ export default function DashboardScreen() {
     setRefreshing(true);
     setSyncAttempted(true);
     
-    // Sync WHOOP data which will trigger AI evaluation refresh
+    // First check connection status
+    await checkWhoopConnection();
+    
+    // Then sync WHOOP data which will trigger AI evaluation refresh
     await syncWhoopData();
     
     setRefreshing(false);
@@ -551,6 +579,9 @@ export default function DashboardScreen() {
         <StatusBar style="light" />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Initializing WHOOP AI Coach...</Text>
+        <Text style={[styles.loadingText, { fontSize: 12, marginTop: 8, opacity: 0.7 }]}>
+          Connection Status: {isConnectedToWhoop ? 'Connected' : 'Not Connected'}
+        </Text>
       </View>
     );
   }
@@ -562,7 +593,10 @@ export default function DashboardScreen() {
       {!isConnectedToWhoop && (
         <TouchableOpacity 
           style={styles.connectBanner}
-          onPress={() => router.push('/connect-whoop')}
+          onPress={() => {
+            console.log('Connect banner pressed, current connection state:', isConnectedToWhoop);
+            router.push('/connect-whoop');
+          }}
         >
           <Link size={18} color={colors.text} />
           <Text style={styles.connectBannerText}>
@@ -592,6 +626,19 @@ export default function DashboardScreen() {
           ) : (
             <RefreshCw size={18} color={colors.text} />
           )}
+        </TouchableOpacity>
+        
+        {/* Debug button - remove in production */}
+        <TouchableOpacity 
+          style={[styles.syncButton, { marginLeft: 8, backgroundColor: colors.warning }]}
+          onPress={async () => {
+            console.log('🔍 Debug: Force checking connection...');
+            const connected = await checkWhoopConnection();
+            console.log('🔍 Debug: Connection result:', connected);
+            Alert.alert('Debug', `Connection: ${connected ? 'Connected' : 'Not Connected'}\nStore State: ${isConnectedToWhoop ? 'Connected' : 'Not Connected'}`);
+          }}
+        >
+          <Eye size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
       

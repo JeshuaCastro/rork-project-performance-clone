@@ -415,6 +415,13 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Initialize with basic evaluation and trigger AI analysis for connected users
   useEffect(() => {
+    console.log('🔄 DailyEvaluationCard: Connection state changed', {
+      isConnected: isConnectedToWhoop,
+      hasRecovery: !!todaysRecovery,
+      hasData: !!(data?.recovery && data.recovery.length > 0),
+      recoveryCount: data?.recovery?.length || 0
+    });
+    
     if (!aiEvaluation) {
       const evaluation = generateBasicEvaluation();
       setAiEvaluation(evaluation);
@@ -471,6 +478,18 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       }
     }
   }, [lastSyncTime]);
+
+  // Listen for connection state changes and force refresh when connected
+  useEffect(() => {
+    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+      console.log('🔗 WHOOP connection detected with data, forcing evaluation refresh');
+      // Clear the last evaluation date to force a new evaluation
+      setLastEvaluationDate(null);
+      setTimeout(() => {
+        handleRefreshEvaluation();
+      }, 1500);
+    }
+  }, [isConnectedToWhoop]); // Only listen to connection state changes
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
