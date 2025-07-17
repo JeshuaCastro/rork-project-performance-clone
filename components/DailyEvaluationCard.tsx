@@ -68,12 +68,17 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     lastSyncTime
   } = useWhoopStore();
 
-  // Get today's data with null checks
+  // Get today's data with null checks - use most recent available data
   const today = new Date().toISOString().split('T')[0];
   const todaysRecovery = data?.recovery?.find(item => item.date === today);
   const todaysStrain = data?.strain?.find(item => item.date === today);
   const todaysSleep = data?.sleep?.find(item => item.date === today);
   const todaysWorkout = getTodaysWorkout();
+  
+  // Use most recent available data if today's data isn't available yet
+  const latestRecovery = data?.recovery?.[0];
+  const latestStrain = data?.strain?.[0];
+  const latestSleep = data?.sleep?.[0];
 
   // Calculate 7-day trends with null checks
   const last7DaysRecovery = data?.recovery?.slice(0, 7) || [];
@@ -97,11 +102,24 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
+    // Use the same connection and data state as the dashboard
+    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
         message: 'Connect your WHOOP to get AI-powered daily evaluations',
+        color: colors.textSecondary,
+        icon: Activity
+      };
+    }
+
+    // Use the first available recovery data (most recent)
+    const latestRecovery = data.recovery[0];
+    if (!latestRecovery) {
+      return {
+        status: 'no-data',
+        title: 'No Recovery Data',
+        message: 'Waiting for WHOOP recovery data',
         color: colors.textSecondary,
         icon: Activity
       };
@@ -120,19 +138,20 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       const proteinProgress = macroProgress.protein.consumed / macroProgress.protein.target;
       const nutritionQuality = todaysFoodEntries.length > 0 ? 'logged' : 'not-logged';
       
-      // Prepare data for AI analysis
+      // Prepare data for AI analysis using available data
       const last7DaysData = {
         recovery: data.recovery.slice(0, 7),
-        strain: data.strain.slice(0, 7),
+        strain: data.strain?.slice(0, 7) || [],
         sleep: data.sleep?.slice(0, 7) || []
       };
 
+      // Use the latest recovery data we have
       const currentMetrics = {
-        recovery: todaysRecovery.score,
-        strain: todaysStrain?.score || 0,
-        hrv: todaysRecovery.hrvMs,
-        rhr: todaysRecovery.restingHeartRate,
-        sleep: todaysSleep?.efficiency || 0
+        recovery: latestRecovery.score,
+        strain: todaysStrain?.score || (data.strain && data.strain.length > 0 ? data.strain[0].score : 0),
+        hrv: latestRecovery.hrvMs,
+        rhr: latestRecovery.restingHeartRate,
+        sleep: todaysSleep?.efficiency || (data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency : 0)
       };
 
       // Get program progress for active programs
@@ -280,7 +299,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
-    if (!isConnectedToWhoop || !todaysRecovery) {
+    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -290,7 +309,9 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       };
     }
 
-    const recoveryScore = todaysRecovery.score;
+    // Use the most recent recovery data available
+    const mostRecentRecovery = data.recovery[0];
+    const recoveryScore = mostRecentRecovery.score;
     const recoveryTrend = getRecoveryTrend();
     
     // Get nutrition data for basic recommendations
@@ -417,22 +438,21 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   useEffect(() => {
     console.log('🔄 DailyEvaluationCard: Connection state changed', {
       isConnected: isConnectedToWhoop,
-      hasRecovery: !!todaysRecovery,
       hasData: !!(data?.recovery && data.recovery.length > 0),
-      recoveryCount: data?.recovery?.length || 0
+      recoveryCount: data?.recovery?.length || 0,
+      latestRecoveryDate: data?.recovery?.[0]?.date || 'none'
     });
     
-    if (!aiEvaluation) {
-      const evaluation = generateBasicEvaluation();
-      setAiEvaluation(evaluation);
-    }
+    // Always generate a basic evaluation first
+    const evaluation = generateBasicEvaluation();
+    setAiEvaluation(evaluation);
     
     // Auto-generate AI analysis for connected users if we have data and haven't done it today
-    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       if (!lastEvaluationDate || lastEvaluationDate !== today) {
         console.log('🔄 Auto-generating AI evaluation for connected WHOOP user');
-        console.log('📊 Recovery data available:', todaysRecovery.score + '%');
+        console.log('📊 Recovery data available:', data.recovery[0].score + '%');
         setTimeout(() => {
           handleRefreshEvaluation();
         }, 1000); // Small delay to avoid race conditions
@@ -442,15 +462,14 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     } else {
       console.log('⚠️ Conditions not met for auto AI evaluation:', {
         isConnected: isConnectedToWhoop,
-        hasRecovery: !!todaysRecovery,
         hasData: !!(data?.recovery && data.recovery.length > 0)
       });
     }
-  }, [isConnectedToWhoop, todaysRecovery, data]);
+  }, [isConnectedToWhoop, data]);
 
   // Listen for data changes and regenerate AI evaluation when data is updated
   useEffect(() => {
-    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       // If we have an evaluation from a previous day, or no evaluation yet, regenerate
       if (!lastEvaluationDate || lastEvaluationDate !== today) {
@@ -464,7 +483,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Also listen for lastSyncTime changes to detect fresh data syncs
   useEffect(() => {
-    if (isConnectedToWhoop && lastSyncTime && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+    if (isConnectedToWhoop && lastSyncTime && data?.recovery && data.recovery.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
       
@@ -481,7 +500,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Listen for connection state changes and force refresh when connected
   useEffect(() => {
-    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
       console.log('🔗 WHOOP connection detected with data, forcing evaluation refresh');
       // Clear the last evaluation date to force a new evaluation
       setLastEvaluationDate(null);
@@ -585,26 +604,26 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         )}
       </View>
 
-      {/* Quick Metrics - Only show if connected */}
-      {isConnectedToWhoop && data?.recovery && todaysRecovery && (
+      {/* Quick Metrics - Only show if connected and have data */}
+      {isConnectedToWhoop && data?.recovery && data.recovery.length > 0 && (
         <View style={styles.quickMetrics}>
           <View style={styles.quickMetric}>
             <Text style={styles.quickMetricValue}>
-              {todaysRecovery.score}%
+              {data.recovery[0].score}%
             </Text>
             <Text style={styles.quickMetricLabel}>Recovery</Text>
           </View>
           
           <View style={styles.quickMetric}>
             <Text style={styles.quickMetricValue}>
-              {todaysStrain?.score.toFixed(1) || '0.0'}
+              {data.strain && data.strain.length > 0 ? data.strain[0].score.toFixed(1) : '0.0'}
             </Text>
             <Text style={styles.quickMetricLabel}>Strain</Text>
           </View>
           
           <View style={styles.quickMetric}>
             <Text style={styles.quickMetricValue}>
-              {todaysRecovery.hrvMs}ms
+              {data.recovery[0].hrvMs}ms
             </Text>
             <Text style={styles.quickMetricLabel}>HRV</Text>
           </View>
