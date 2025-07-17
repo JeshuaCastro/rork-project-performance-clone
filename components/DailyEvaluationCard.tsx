@@ -58,19 +58,13 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluation | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [lastEvaluationDate, setLastEvaluationDate] = useState<string | null>(null);
-  const [lastAutoRefreshTime, setLastAutoRefreshTime] = useState<number>(0);
-  
-
   
   const { 
     data, 
     activePrograms, 
     getTodaysWorkout, 
     getProgramProgress,
-    isConnectedToWhoop,
-    checkWhoopConnection: updateConnectionStatus,
-    isLoadingWhoopData,
-    lastSyncTime
+    isConnectedToWhoop 
   } = useWhoopStore();
 
   // Get today's data with null checks
@@ -102,16 +96,7 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    console.log('generateAIEvaluation called with:', {
-      isConnectedToWhoop,
-      hasRecoveryData: !!data?.recovery?.length,
-      hasTodaysRecovery: !!todaysRecovery,
-      todaysRecoveryScore: todaysRecovery?.score
-    });
-
-    // Use store's connection status and data instead of making independent API calls
-    if (!isConnectedToWhoop) {
-      console.log('AI Evaluation: Not connected to WHOOP');
+    if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
@@ -120,51 +105,25 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
         icon: Activity
       };
     }
-    
-    // If connected but no data available, show syncing message
-    if (!data?.recovery || data.recovery.length === 0) {
-      console.log('AI Evaluation: Connected but no recovery data');
-      return {
-        status: 'no-data',
-        title: isLoadingWhoopData ? 'Syncing WHOOP Data' : 'Syncing WHOOP Data',
-        message: isLoadingWhoopData ? 'Syncing your latest WHOOP data...' : 'Waiting for WHOOP data to sync for AI analysis',
-        color: colors.textSecondary,
-        icon: RefreshCw
-      };
-    }
-    
-    // If we have data but no today's recovery, show different syncing message
-    if (!todaysRecovery) {
-      console.log('AI Evaluation: Have recovery data but no today\'s recovery');
-      return {
-        status: 'no-data',
-        title: 'Syncing Today\'s Data',
-        message: 'Waiting for today\'s recovery data for AI analysis',
-        color: colors.textSecondary,
-        icon: RefreshCw
-      };
-    }
 
     setIsLoadingAI(true);
     
     try {
-      // Get nutrition data from store - use the same store instance
-      const store = useWhoopStore.getState();
-      const todaysFoodEntries = store.getFoodLogEntriesByDate(today);
-      const macroProgress = store.getMacroProgressForDate(today);
-      const userProfile = store.userProfile;
+      // Get nutrition data from store
+      const { getFoodLogEntriesByDate, getMacroProgressForDate, userProfile } = useWhoopStore.getState();
+      const todaysFoodEntries = getFoodLogEntriesByDate(today);
+      const macroProgress = getMacroProgressForDate(today);
       
       // Calculate nutrition metrics
       const calorieProgress = macroProgress.calories.consumed / macroProgress.calories.target;
       const proteinProgress = macroProgress.protein.consumed / macroProgress.protein.target;
       const nutritionQuality = todaysFoodEntries.length > 0 ? 'logged' : 'not-logged';
       
-      // Prepare data for AI analysis - use store data directly
-      const storeData = store.data;
+      // Prepare data for AI analysis
       const last7DaysData = {
-        recovery: storeData.recovery.slice(0, 7),
-        strain: storeData.strain.slice(0, 7),
-        sleep: storeData.sleep?.slice(0, 7) || []
+        recovery: data.recovery.slice(0, 7),
+        strain: data.strain.slice(0, 7),
+        sleep: data.sleep?.slice(0, 7) || []
       };
 
       const currentMetrics = {
@@ -176,14 +135,14 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       };
 
       // Get program progress for active programs
-      const activeProgram = store.activePrograms.find(p => p.active);
-      const programProgress = activeProgram ? store.getProgramProgress(activeProgram.id) : null;
+      const activeProgram = activePrograms.find(p => p.active);
+      const programProgress = activeProgram ? getProgramProgress(activeProgram.id) : null;
       
       const programContext = activeProgram ? {
         name: activeProgram.name,
         type: activeProgram.type,
         progress: programProgress,
-        todaysWorkout: store.getTodaysWorkout()
+        todaysWorkout: todaysWorkout
       } : null;
 
       // Calculate trends
@@ -319,17 +278,8 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   };
 
   // Fallback basic evaluation with actionable steps
-  const generateBasicEvaluation = React.useCallback(() => {
-    console.log('generateBasicEvaluation called with:', {
-      isConnectedToWhoop,
-      hasRecoveryData: !!data?.recovery?.length,
-      hasTodaysRecovery: !!todaysRecovery,
-      todaysRecoveryScore: todaysRecovery?.score
-    });
-
-    // If not connected to WHOOP at all, show connect message
-    if (!isConnectedToWhoop) {
-      console.log('Not connected to WHOOP, showing connect message');
+  const generateBasicEvaluation = () => {
+    if (!isConnectedToWhoop || !todaysRecovery) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -338,38 +288,14 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         icon: Activity
       };
     }
-    
-    // If connected but no data available, show syncing message
-    if (!data?.recovery || data.recovery.length === 0) {
-      console.log('Connected but no recovery data, showing sync message');
-      return {
-        status: 'no-data',
-        title: isLoadingWhoopData ? 'Syncing WHOOP Data' : 'Syncing WHOOP Data',
-        message: isLoadingWhoopData ? 'Syncing your latest WHOOP data...' : 'Waiting for WHOOP data to sync',
-        color: colors.textSecondary,
-        icon: RefreshCw
-      };
-    }
-    
-    // If we have data but no today's recovery, show different syncing message
-    if (!todaysRecovery) {
-      console.log('Have recovery data but no today\'s recovery, showing today sync message');
-      return {
-        status: 'no-data',
-        title: 'Syncing Today\'s Data',
-        message: 'Waiting for today\'s recovery data to sync',
-        color: colors.textSecondary,
-        icon: RefreshCw
-      };
-    }
 
     const recoveryScore = todaysRecovery.score;
     const recoveryTrend = getRecoveryTrend();
     
     // Get nutrition data for basic recommendations
-    const store = useWhoopStore.getState();
-    const todaysFoodEntries = store.getFoodLogEntriesByDate(today);
-    const macroProgress = store.getMacroProgressForDate(today);
+    const { getFoodLogEntriesByDate, getMacroProgressForDate } = useWhoopStore.getState();
+    const todaysFoodEntries = getFoodLogEntriesByDate(today);
+    const macroProgress = getMacroProgressForDate(today);
     const calorieProgress = macroProgress.calories.consumed / macroProgress.calories.target;
     
     if (recoveryScore >= 75) {
@@ -484,61 +410,20 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         programInsight: 'Consider adjusting training plan'
       };
     }
-  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score, isLoadingWhoopData]);
+  };
 
-  // Initialize evaluation on mount
+  // Initialize with basic evaluation only - no automatic AI loading
   useEffect(() => {
-    const initialEvaluation = generateBasicEvaluation();
-    setAiEvaluation(initialEvaluation);
-  }, []);
-
-  // Check connection status on mount and sync data if needed
-  useEffect(() => {
-    const checkConnectionAndSync = async () => {
-      console.log('DailyEvaluationCard - Checking WHOOP connection and syncing data');
-      await updateConnectionStatus();
-      
-      // If connected but no recent data, trigger a sync
-      const store = useWhoopStore.getState();
-      if (store.isConnectedToWhoop && (!store.data?.recovery?.length || !store.lastSyncTime)) {
-        console.log('DailyEvaluationCard - Triggering WHOOP data sync');
-        await store.syncWhoopData();
-      }
-    };
-    
-    checkConnectionAndSync();
-  }, []);
-
-  // Update evaluation when key data changes
-  useEffect(() => {
-    console.log('DailyEvaluationCard - Key data changed, updating evaluation');
-    const evaluation = generateBasicEvaluation();
-    setAiEvaluation(evaluation);
-  }, [isConnectedToWhoop, data?.recovery?.length, todaysRecovery?.score]);
-
-  const handleRefreshEvaluation = React.useCallback(async () => {
-    if (isLoadingAI) return;
-    
-    console.log('DailyEvaluationCard - Refreshing AI evaluation with current data');
-    const evaluation = await generateAIEvaluation();
-    console.log('DailyEvaluationCard - AI evaluation result:', evaluation.title, evaluation.status);
-    setAiEvaluation(evaluation);
-    setLastEvaluationDate(new Date().toISOString().split('T')[0]);
-  }, [isLoadingAI]);
-
-  // Ensure we always have an evaluation to display
-  const evaluation = React.useMemo(() => {
-    if (aiEvaluation) {
-      console.log('Using AI evaluation:', aiEvaluation.title);
-      return aiEvaluation;
+    if (!aiEvaluation) {
+      const evaluation = generateBasicEvaluation();
+      setAiEvaluation(evaluation);
     }
-    
-    const basicEval = generateBasicEvaluation();
-    console.log('Using basic evaluation:', basicEval.title);
-    return basicEval;
-  }, [aiEvaluation]);
-  
+  }, [isConnectedToWhoop, todaysRecovery, data]);
+
+  const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
+
+
 
   const handleCardPress = () => {
     if (onPress) {
@@ -547,6 +432,14 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       // Show detailed evaluation modal
       setShowDetailedModal(true);
     }
+  };
+
+  const handleRefreshEvaluation = async () => {
+    if (isLoadingAI) return;
+    
+    const evaluation = await generateAIEvaluation();
+    setAiEvaluation(evaluation);
+    setLastEvaluationDate(new Date().toISOString().split('T')[0]);
   };
 
   return (
@@ -560,7 +453,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         <View style={styles.titleContainer}>
           <Brain size={20} color={colors.primary} />
           <Text style={styles.title}>AI Daily Evaluation</Text>
-          {(isLoadingAI || isLoadingWhoopData) && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />}
+          {isLoadingAI && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />}
         </View>
         <View style={styles.headerActions}>
           {isConnectedToWhoop && (

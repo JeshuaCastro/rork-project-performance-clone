@@ -2848,30 +2848,6 @@ Return JSON with implementation and advisory guidance:
         }
       },
       
-      // Mark a workout as completed
-      markWorkoutCompleted: async (programId: string, workoutTitle: string, workoutDay: string, date?: string): Promise<void> => {
-        try {
-          const targetDate = date || new Date().toISOString().split('T')[0];
-          const todayKey = `${programId}-${targetDate}`;
-          const storageKey = `completed-workouts-${todayKey}`;
-          const workoutKey = `${workoutDay}-${workoutTitle}`;
-          
-          const stored = await AsyncStorage.getItem(storageKey);
-          let completedWorkouts: string[] = [];
-          
-          if (stored) {
-            completedWorkouts = JSON.parse(stored);
-          }
-          
-          if (!completedWorkouts.includes(workoutKey)) {
-            completedWorkouts.push(workoutKey);
-            await AsyncStorage.setItem(storageKey, JSON.stringify(completedWorkouts));
-          }
-        } catch (error) {
-          console.error('Error marking workout as completed:', error);
-        }
-      },
-      
       // Weight tracking methods
       addWeightEntry: (weight: number, date?: string) => {
         const entryDate = date || new Date().toISOString().split('T')[0];
@@ -3136,10 +3112,6 @@ Return JSON with implementation and advisory guidance:
         foodLog: state.foodLog,
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
-        // Persist WHOOP connection status and data
-        isConnectedToWhoop: state.isConnectedToWhoop,
-        data: state.data,
-        selectedDate: state.selectedDate,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
