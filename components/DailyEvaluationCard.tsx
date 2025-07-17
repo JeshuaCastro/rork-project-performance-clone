@@ -65,7 +65,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     getTodaysWorkout, 
     getProgramProgress,
     isConnectedToWhoop,
-    lastSyncTime
+    lastSyncTime,
+    lastFoodLogUpdate
   } = useWhoopStore();
 
   // Get today's data with null checks - use most recent available data
@@ -434,9 +435,20 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
-  // Initialize with basic evaluation and trigger AI analysis for connected users
+  // Track previous data state to detect meaningful changes
+  const [previousDataState, setPreviousDataState] = useState<{
+    recoveryScore?: number;
+    recoveryDate?: string;
+    foodLogCount?: number;
+    lastFoodLogTime?: number;
+  }>({});
+  
+  // Track last update time to prevent too frequent updates
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+
+  // Initialize with basic evaluation on mount
   useEffect(() => {
-    console.log('🔄 DailyEvaluationCard: Connection state changed', {
+    console.log('🔄 DailyEvaluationCard: Initial load', {
       isConnected: isConnectedToWhoop,
       hasData: !!(data?.recovery && data.recovery.length > 0),
       recoveryCount: data?.recovery?.length || 0,
@@ -447,68 +459,104 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     const evaluation = generateBasicEvaluation();
     setAiEvaluation(evaluation);
     
-    // Auto-generate AI analysis for connected users if we have data and haven't done it today
+    // Only auto-generate AI analysis on initial load if we haven't done it today
     if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       if (!lastEvaluationDate || lastEvaluationDate !== today) {
-        console.log('🔄 Auto-generating AI evaluation for connected WHOOP user');
-        console.log('📊 Recovery data available:', data.recovery[0].score + '%');
+        console.log('🔄 Initial AI evaluation for connected WHOOP user');
         setTimeout(() => {
           handleRefreshEvaluation();
-        }, 1000); // Small delay to avoid race conditions
-      } else {
-        console.log('✅ AI evaluation already generated for today');
+        }, 1000);
       }
-    } else {
-      console.log('⚠️ Conditions not met for auto AI evaluation:', {
-        isConnected: isConnectedToWhoop,
-        hasData: !!(data?.recovery && data.recovery.length > 0)
-      });
     }
-  }, [isConnectedToWhoop, data]);
+  }, []); // Only run on mount
 
-  // Listen for data changes and regenerate AI evaluation when data is updated
+  // Smart update logic - only update when there's meaningful new input
   useEffect(() => {
-    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      // If we have an evaluation from a previous day, or no evaluation yet, regenerate
-      if (!lastEvaluationDate || lastEvaluationDate !== today) {
-        console.log('📈 Data updated, regenerating AI evaluation');
-        setTimeout(() => {
-          handleRefreshEvaluation();
-        }, 2000); // Longer delay for data update scenarios
-      }
+    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
+      return;
     }
-  }, [data?.recovery?.[0]?.date, data?.recovery?.[0]?.score]); // Listen to the latest recovery data
 
-  // Also listen for lastSyncTime changes to detect fresh data syncs
+    const today = new Date().toISOString().split('T')[0];
+    const currentRecoveryScore = data.recovery[0]?.score;
+    const currentRecoveryDate = data.recovery[0]?.date;
+    
+    // Get current nutrition data
+    const { getFoodLogEntriesByDate } = useWhoopStore.getState();
+    const todaysFoodEntries = getFoodLogEntriesByDate(today);
+    const currentFoodLogCount = todaysFoodEntries.length;
+
+    // Check if we have meaningful new data
+    const hasNewRecoveryData = (
+      currentRecoveryScore !== previousDataState.recoveryScore ||
+      currentRecoveryDate !== previousDataState.recoveryDate
+    );
+
+    const hasNewNutritionData = currentFoodLogCount !== previousDataState.foodLogCount;
+
+    // Add cooldown period to prevent too frequent updates (minimum 2 minutes between updates)
+    const timeSinceLastUpdate = Date.now() - lastUpdateTime;
+    const cooldownPeriod = 2 * 60 * 1000; // 2 minutes
+    
+    // Only update if we have new meaningful input AND haven't updated recently AND haven't updated today
+    const shouldUpdate = (hasNewRecoveryData || hasNewNutritionData) && 
+                        (!lastEvaluationDate || lastEvaluationDate !== today) &&
+                        (timeSinceLastUpdate > cooldownPeriod || lastUpdateTime === 0);
+
+    if (shouldUpdate) {
+      console.log('📊 New input detected, updating AI evaluation:', {
+        newRecoveryData: hasNewRecoveryData,
+        newNutritionData: hasNewNutritionData,
+        recoveryScore: currentRecoveryScore,
+        foodLogCount: currentFoodLogCount,
+        previousFoodLogCount: previousDataState.foodLogCount,
+        timeSinceLastUpdate: Math.round(timeSinceLastUpdate / 1000) + 's'
+      });
+
+      // Update the evaluation with a slight delay to ensure data is fully processed
+      setTimeout(() => {
+        handleRefreshEvaluation();
+        setLastUpdateTime(Date.now());
+      }, 1500);
+    } else if ((hasNewRecoveryData || hasNewNutritionData) && timeSinceLastUpdate <= cooldownPeriod) {
+      console.log('⏳ New input detected but in cooldown period, skipping update for', 
+        Math.round((cooldownPeriod - timeSinceLastUpdate) / 1000) + 's');
+    }
+
+    // Update previous state
+    setPreviousDataState({
+      recoveryScore: currentRecoveryScore,
+      recoveryDate: currentRecoveryDate,
+      foodLogCount: currentFoodLogCount,
+      lastFoodLogTime: lastFoodLogUpdate || 0
+    });
+
+  }, [
+    data?.recovery?.[0]?.score, 
+    data?.recovery?.[0]?.date,
+    lastFoodLogUpdate // Listen to food log changes
+  ]);
+
+  // Listen for fresh data syncs (only when there's actually new data)
   useEffect(() => {
     if (isConnectedToWhoop && lastSyncTime && data?.recovery && data.recovery.length > 0) {
       const today = new Date().toISOString().split('T')[0];
       const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
       
-      // If data was synced today and we don't have today's evaluation, generate it
+      // Only update if sync happened today and we don't have today's evaluation
+      // This prevents constant updates from the same sync
       if (syncDate === today && (!lastEvaluationDate || lastEvaluationDate !== today)) {
-        console.log('🔄 Fresh data sync detected, generating AI evaluation');
-        console.log('📅 Sync date:', syncDate, 'Today:', today);
-        setTimeout(() => {
-          handleRefreshEvaluation();
-        }, 3000); // Wait a bit longer for sync to fully complete
+        const timeSinceSync = Date.now() - lastSyncTime;
+        // Only trigger if sync was recent (within last 5 minutes) to avoid old sync triggers
+        if (timeSinceSync < 5 * 60 * 1000) {
+          console.log('🔄 Fresh WHOOP data sync detected, updating evaluation');
+          setTimeout(() => {
+            handleRefreshEvaluation();
+          }, 2000);
+        }
       }
     }
   }, [lastSyncTime]);
-
-  // Listen for connection state changes and force refresh when connected
-  useEffect(() => {
-    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
-      console.log('🔗 WHOOP connection detected with data, forcing evaluation refresh');
-      // Clear the last evaluation date to force a new evaluation
-      setLastEvaluationDate(null);
-      setTimeout(() => {
-        handleRefreshEvaluation();
-      }, 1500);
-    }
-  }, [isConnectedToWhoop]); // Only listen to connection state changes
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
@@ -531,6 +579,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     const evaluation = await generateAIEvaluation();
     setAiEvaluation(evaluation);
     setLastEvaluationDate(new Date().toISOString().split('T')[0]);
+    setLastUpdateTime(Date.now()); // Update the last update time
     console.log('✅ AI evaluation completed');
   };
 

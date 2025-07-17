@@ -489,6 +489,7 @@ interface WhoopStore {
   foodLog: FoodLogEntry[];
   weightHistory: WeightEntry[];
   programIntroductionsShown: string[]; // Array of program IDs that have shown introduction
+  lastFoodLogUpdate: number | null; // Timestamp of last food log change
   
   setSelectedDate: (date: string) => void;
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -576,6 +577,7 @@ export const useWhoopStore = create<WhoopStore>()(
       foodLog: [],
       weightHistory: [],
       programIntroductionsShown: [],
+      lastFoodLogUpdate: null,
       
       setIsLoadingWhoopData: (isLoading) => set({ isLoadingWhoopData: isLoading }),
       
@@ -1945,13 +1947,15 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
         };
         
         set((state) => ({
-          foodLog: [...state.foodLog, newEntry]
+          foodLog: [...state.foodLog, newEntry],
+          lastFoodLogUpdate: Date.now()
         }));
       },
       
       removeFoodLogEntry: (id) => {
         set((state) => ({
-          foodLog: state.foodLog.filter(entry => entry.id !== id)
+          foodLog: state.foodLog.filter(entry => entry.id !== id),
+          lastFoodLogUpdate: Date.now()
         }));
       },
       
@@ -3119,6 +3123,7 @@ Return JSON with implementation and advisory guidance:
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
         isConnectedToWhoop: state.isConnectedToWhoop, // Persist connection state
+        lastFoodLogUpdate: state.lastFoodLogUpdate,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
