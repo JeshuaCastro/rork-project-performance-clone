@@ -12,6 +12,7 @@ import {
   Platform,
   Dimensions
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { colors } from '@/constants/colors';
 import {
   Plus,
@@ -39,7 +40,9 @@ import {
   Search,
   Camera,
   Scan,
-  Settings
+  Settings,
+  Copy,
+  Check
 } from 'lucide-react-native';
 import { useWhoopStore } from '@/store/whoopStore';
 import { FoodLogEntry, NutrientAnalysis } from '@/types/whoop';
@@ -93,6 +96,7 @@ export default function NutritionScreen() {
   // Meal planner states
   const [mealPlan, setMealPlan] = useState<any>(null);
   const [isGeneratingMealPlan, setIsGeneratingMealPlan] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [mealPlanPreferencesVisible, setMealPlanPreferencesVisible] = useState(false);
   const [mealPlanPreferences, setMealPlanPreferences] = useState({
     favoriteFoods: '',
@@ -387,11 +391,29 @@ export default function NutritionScreen() {
       setMealPlan(plan);
       setMealPlannerVisible(true);
       setMealPlanPreferencesVisible(false);
+      setIsCopied(false); // Reset copy state when new plan is generated
     } catch (error) {
       console.error('Error generating meal plan:', error);
       Alert.alert('Error', 'Failed to generate meal plan.');
     } finally {
       setIsGeneratingMealPlan(false);
+    }
+  };
+
+  const copyMealPlan = async () => {
+    if (!mealPlan) return;
+    
+    try {
+      await Clipboard.setStringAsync(mealPlan);
+      setIsCopied(true);
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Error copying meal plan:', error);
+      Alert.alert('Error', 'Failed to copy meal plan to clipboard.');
     }
   };
 
@@ -1481,12 +1503,26 @@ export default function NutritionScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>AI Meal Plan</Text>
-                <TouchableOpacity 
-                  onPress={() => setMealPlannerVisible(false)}
-                  style={styles.closeButton}
-                >
-                  <X size={24} color={colors.text} />
-                </TouchableOpacity>
+                <View style={styles.modalHeaderButtons}>
+                  {mealPlan && (
+                    <TouchableOpacity 
+                      onPress={copyMealPlan}
+                      style={styles.copyButton}
+                    >
+                      {isCopied ? (
+                        <Check size={20} color={colors.success || '#4CAF50'} />
+                      ) : (
+                        <Copy size={20} color={colors.text} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity 
+                    onPress={() => setMealPlannerVisible(false)}
+                    style={styles.closeButton}
+                  >
+                    <X size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
               </View>
               
               <ScrollView style={styles.modalScroll}>
@@ -1494,6 +1530,25 @@ export default function NutritionScreen() {
                   <View style={styles.mealPlanContainer}>
                     <Text style={styles.mealPlanTitle}>Tomorrow's Meal Plan</Text>
                     <Text style={styles.mealPlanText}>{mealPlan}</Text>
+                    
+                    <TouchableOpacity 
+                      style={styles.copyMealPlanButton}
+                      onPress={copyMealPlan}
+                    >
+                      <View style={styles.copyButtonContent}>
+                        {isCopied ? (
+                          <>
+                            <Check size={20} color={colors.text} />
+                            <Text style={styles.copyButtonText}>Copied!</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={20} color={colors.text} />
+                            <Text style={styles.copyButtonText}>Copy Meal Plan</Text>
+                          </>
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.loadingContainer}>
@@ -2322,5 +2377,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '500',
+  },
+  modalHeaderButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  copyButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: '#2A2A2A',
+  },
+  copyMealPlanButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  copyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  copyButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
