@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
-import { isConnectedToWhoop as checkWhoopConnection } from '@/services/whoopApi';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -98,9 +97,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    // Check connection status first - use a more robust check
-    const connectionStatus = await checkWhoopConnection();
-    if (!connectionStatus) {
+    // Use store's connection status and data instead of making independent API calls
+    if (!isConnectedToWhoop) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
@@ -110,12 +108,23 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       };
     }
     
-    // If connected but no data, show different message
-    if (!todaysRecovery || !data?.recovery || !data?.strain) {
+    // If connected but no data available, show syncing message
+    if (!data?.recovery || data.recovery.length === 0) {
       return {
         status: 'no-data',
         title: 'Syncing WHOOP Data',
         message: 'Waiting for WHOOP data to sync for AI analysis',
+        color: colors.textSecondary,
+        icon: RefreshCw
+      };
+    }
+    
+    // If we have data but no today's recovery, show different syncing message
+    if (!todaysRecovery) {
+      return {
+        status: 'no-data',
+        title: 'Syncing Today\'s Data',
+        message: 'Waiting for today\'s recovery data for AI analysis',
         color: colors.textSecondary,
         icon: RefreshCw
       };
@@ -294,8 +303,8 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
-    // Check connection status first - be more lenient and check for actual data
-    if (!isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0)) {
+    // If not connected to WHOOP at all, show connect message
+    if (!isConnectedToWhoop) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -305,11 +314,22 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       };
     }
     
-    // If connected but no recovery data, show different message
-    if (!todaysRecovery) {
+    // If connected but no data available, show syncing message
+    if (!data?.recovery || data.recovery.length === 0) {
       return {
         status: 'no-data',
         title: 'Syncing WHOOP Data',
+        message: 'Waiting for WHOOP data to sync',
+        color: colors.textSecondary,
+        icon: RefreshCw
+      };
+    }
+    
+    // If we have data but no today's recovery, show different syncing message
+    if (!todaysRecovery) {
+      return {
+        status: 'no-data',
+        title: 'Syncing Today\'s Data',
         message: 'Waiting for today\'s recovery data to sync',
         color: colors.textSecondary,
         icon: RefreshCw
@@ -439,7 +459,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
-  // Check connection status on mount
+  // Check connection status on mount - use store method instead of independent API call
   useEffect(() => {
     const checkConnection = async () => {
       console.log('DailyEvaluationCard - Checking connection status on mount...');
@@ -454,6 +474,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     console.log('DailyEvaluationCard - Connection status:', isConnectedToWhoop);
     console.log('DailyEvaluationCard - Today\'s recovery:', todaysRecovery?.score);
     console.log('DailyEvaluationCard - Data available:', !!data?.recovery?.length);
+    console.log('DailyEvaluationCard - Recovery data length:', data?.recovery?.length || 0);
     
     // Always regenerate evaluation when dependencies change
     const evaluation = generateBasicEvaluation();
