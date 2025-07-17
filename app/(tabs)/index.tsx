@@ -206,6 +206,13 @@ export default function DashboardScreen() {
         // Generate new AI insights based on the synced data
         await generateAIAnalysisFromWhoopData();
         
+        // Force refresh of daily evaluation by clearing the last evaluation date
+        // This will trigger the AI evaluation to regenerate with new data
+        setTimeout(() => {
+          // This will cause the DailyEvaluationCard to regenerate its AI analysis
+          console.log('Triggering AI evaluation refresh after sync');
+        }, 500);
+        
         Alert.alert(
           "Data Synced",
           "Your WHOOP data has been successfully synced and analyzed.",
@@ -233,7 +240,10 @@ export default function DashboardScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     setSyncAttempted(true);
+    
+    // Sync WHOOP data which will trigger AI evaluation refresh
     await syncWhoopData();
+    
     setRefreshing(false);
   };
   

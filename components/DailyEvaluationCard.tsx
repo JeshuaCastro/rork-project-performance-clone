@@ -64,7 +64,8 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     activePrograms, 
     getTodaysWorkout, 
     getProgramProgress,
-    isConnectedToWhoop 
+    isConnectedToWhoop,
+    lastSyncTime
   } = useWhoopStore();
 
   // Get today's data with null checks
@@ -412,13 +413,64 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
-  // Initialize with basic evaluation only - no automatic AI loading
+  // Initialize with basic evaluation and trigger AI analysis for connected users
   useEffect(() => {
     if (!aiEvaluation) {
       const evaluation = generateBasicEvaluation();
       setAiEvaluation(evaluation);
     }
+    
+    // Auto-generate AI analysis for connected users if we have data and haven't done it today
+    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      if (!lastEvaluationDate || lastEvaluationDate !== today) {
+        console.log('🔄 Auto-generating AI evaluation for connected WHOOP user');
+        console.log('📊 Recovery data available:', todaysRecovery.score + '%');
+        setTimeout(() => {
+          handleRefreshEvaluation();
+        }, 1000); // Small delay to avoid race conditions
+      } else {
+        console.log('✅ AI evaluation already generated for today');
+      }
+    } else {
+      console.log('⚠️ Conditions not met for auto AI evaluation:', {
+        isConnected: isConnectedToWhoop,
+        hasRecovery: !!todaysRecovery,
+        hasData: !!(data?.recovery && data.recovery.length > 0)
+      });
+    }
   }, [isConnectedToWhoop, todaysRecovery, data]);
+
+  // Listen for data changes and regenerate AI evaluation when data is updated
+  useEffect(() => {
+    if (isConnectedToWhoop && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      // If we have an evaluation from a previous day, or no evaluation yet, regenerate
+      if (!lastEvaluationDate || lastEvaluationDate !== today) {
+        console.log('📈 Data updated, regenerating AI evaluation');
+        setTimeout(() => {
+          handleRefreshEvaluation();
+        }, 2000); // Longer delay for data update scenarios
+      }
+    }
+  }, [data?.recovery?.[0]?.date, data?.recovery?.[0]?.score]); // Listen to the latest recovery data
+
+  // Also listen for lastSyncTime changes to detect fresh data syncs
+  useEffect(() => {
+    if (isConnectedToWhoop && lastSyncTime && todaysRecovery && data?.recovery && data.recovery.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
+      
+      // If data was synced today and we don't have today's evaluation, generate it
+      if (syncDate === today && (!lastEvaluationDate || lastEvaluationDate !== today)) {
+        console.log('🔄 Fresh data sync detected, generating AI evaluation');
+        console.log('📅 Sync date:', syncDate, 'Today:', today);
+        setTimeout(() => {
+          handleRefreshEvaluation();
+        }, 3000); // Wait a bit longer for sync to fully complete
+      }
+    }
+  }, [lastSyncTime]);
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
@@ -437,9 +489,11 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   const handleRefreshEvaluation = async () => {
     if (isLoadingAI) return;
     
+    console.log('🤖 Generating AI evaluation...');
     const evaluation = await generateAIEvaluation();
     setAiEvaluation(evaluation);
     setLastEvaluationDate(new Date().toISOString().split('T')[0]);
+    console.log('✅ AI evaluation completed');
   };
 
   return (
