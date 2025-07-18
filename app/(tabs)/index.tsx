@@ -628,18 +628,7 @@ export default function DashboardScreen() {
           )}
         </TouchableOpacity>
         
-        {/* Debug button - remove in production */}
-        <TouchableOpacity 
-          style={[styles.syncButton, { marginLeft: 8, backgroundColor: colors.warning }]}
-          onPress={async () => {
-            console.log('🔍 Debug: Force checking connection...');
-            const connected = await checkWhoopConnection();
-            console.log('🔍 Debug: Connection result:', connected);
-            Alert.alert('Debug', `Connection: ${connected ? 'Connected' : 'Not Connected'}\nStore State: ${isConnectedToWhoop ? 'Connected' : 'Not Connected'}`);
-          }}
-        >
-          <Eye size={18} color={colors.text} />
-        </TouchableOpacity>
+
       </View>
       
       {isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0) && isLoadingWhoopData ? (
