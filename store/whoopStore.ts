@@ -489,7 +489,6 @@ interface WhoopStore {
   foodLog: FoodLogEntry[];
   weightHistory: WeightEntry[];
   programIntroductionsShown: string[]; // Array of program IDs that have shown introduction
-  lastFoodLogUpdate: number | null; // Timestamp of last food log change
   
   setSelectedDate: (date: string) => void;
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -577,7 +576,6 @@ export const useWhoopStore = create<WhoopStore>()(
       foodLog: [],
       weightHistory: [],
       programIntroductionsShown: [],
-      lastFoodLogUpdate: null,
       
       setIsLoadingWhoopData: (isLoading) => set({ isLoadingWhoopData: isLoading }),
       
@@ -841,8 +839,6 @@ export const useWhoopStore = create<WhoopStore>()(
           console.log('Checking WHOOP connection status...');
           const connected = await isConnectedToWhoop();
           console.log('WHOOP connection status:', connected);
-          
-          // Always update the connection state immediately
           set({ isConnectedToWhoop: connected });
           
           if (connected) {
@@ -948,12 +944,8 @@ export const useWhoopStore = create<WhoopStore>()(
           console.log('Checking WHOOP connection before syncing...');
           const connected = await isConnectedToWhoop();
           
-          // Update connection state immediately
-          set({ isConnectedToWhoop: connected });
-          
           if (!connected) {
             console.error('Cannot sync: Not connected to WHOOP');
-            set({ isLoadingWhoopData: false });
             return false;
           }
           
@@ -1947,15 +1939,13 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
         };
         
         set((state) => ({
-          foodLog: [...state.foodLog, newEntry],
-          lastFoodLogUpdate: Date.now()
+          foodLog: [...state.foodLog, newEntry]
         }));
       },
       
       removeFoodLogEntry: (id) => {
         set((state) => ({
-          foodLog: state.foodLog.filter(entry => entry.id !== id),
-          lastFoodLogUpdate: Date.now()
+          foodLog: state.foodLog.filter(entry => entry.id !== id)
         }));
       },
       
@@ -2011,18 +2001,11 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
             calculatedAt: new Date()
           };
           
-          // Check if preferences is a detailed prompt (for meal plans) or simple request (for AI suggestions)
-          let finalPrompt: string;
+          const safePreferences = safeUserInput(preferences);
+          const userContext = getMinimalUserContext(userProfile);
           
-          if (preferences.includes('Create a personalized meal plan') || preferences.length > 200) {
-            // This is a detailed meal plan request - use it as is
-            finalPrompt = preferences;
-          } else {
-            // This is a simple meal suggestion request - enhance it with user context
-            const safePreferences = safeUserInput(preferences);
-            const userContext = getMinimalUserContext(userProfile);
-            finalPrompt = `Meal for: "${safePreferences}". User: ${userContext}. Targets: ${targets.calories}cal, ${targets.protein}g protein. Provide meal with macros. Max 150 words.`;
-          }
+          // Very short prompt
+          const systemPrompt = `Meal for: "${safePreferences}". User: ${userContext}. Targets: ${targets.calories}cal, ${targets.protein}g protein. Provide meal with macros. Max 150 words.`;
           
           const response = await fetch('https://toolkit.rork.com/text/llm/', {
             method: 'POST',
@@ -2033,11 +2016,11 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
               messages: [
                 {
                   role: 'system',
-                  content: "You are an AI nutrition coach. Provide personalized meal suggestions and meal plans based on user preferences, dietary restrictions, and nutritional goals. Include specific foods, portions, and approximate macros when possible."
+                  content: "AI nutrition coach. Provide meal suggestions with macros."
                 },
                 {
                   role: 'user',
-                  content: finalPrompt
+                  content: systemPrompt
                 }
               ]
             }),
@@ -2865,30 +2848,6 @@ Return JSON with implementation and advisory guidance:
         }
       },
       
-      // Mark a workout as completed
-      markWorkoutCompleted: async (programId: string, workoutTitle: string, workoutDay: string, date?: string): Promise<void> => {
-        try {
-          const targetDate = date || new Date().toISOString().split('T')[0];
-          const todayKey = `${programId}-${targetDate}`;
-          const storageKey = `completed-workouts-${todayKey}`;
-          const workoutKey = `${workoutDay}-${workoutTitle}`;
-          
-          const stored = await AsyncStorage.getItem(storageKey);
-          let completedWorkouts: string[] = [];
-          
-          if (stored) {
-            completedWorkouts = JSON.parse(stored);
-          }
-          
-          if (!completedWorkouts.includes(workoutKey)) {
-            completedWorkouts.push(workoutKey);
-            await AsyncStorage.setItem(storageKey, JSON.stringify(completedWorkouts));
-          }
-        } catch (error) {
-          console.error('Error marking workout as completed:', error);
-        }
-      },
-      
       // Weight tracking methods
       addWeightEntry: (weight: number, date?: string) => {
         const entryDate = date || new Date().toISOString().split('T')[0];
@@ -3153,8 +3112,6 @@ Return JSON with implementation and advisory guidance:
         foodLog: state.foodLog,
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
-        isConnectedToWhoop: state.isConnectedToWhoop, // Persist connection state
-        lastFoodLogUpdate: state.lastFoodLogUpdate,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

@@ -22,13 +22,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.projectperformance-xpzd4h1h",
-      "permissions": [
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "INTERNET",
-        "android.permission.VIBRATE"
-      ]
+      "package": "app.rork.projectperformance-xpzd4h1h"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

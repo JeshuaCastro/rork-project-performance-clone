@@ -109,14 +109,10 @@ export default function ConnectWhoopScreen() {
           if (tokens) {
             await storeWhoopTokens(tokens);
             await AsyncStorage.setItem('whoop_connection_successful', 'true');
-            
-            // Force update the connection state in the store
             await checkWhoopConnection();
             
             // Sync data immediately after connecting
             await syncWhoopData();
-            
-            setIsConnecting(false);
             
             // Show success notification and redirect to dashboard
             Alert.alert(

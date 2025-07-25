@@ -21,7 +21,7 @@ import StrainCard from '@/components/StrainCard';
 
 import CalendarView from '@/components/CalendarView';
 
-
+import DailyEvaluationCard from '@/components/DailyEvaluationCard';
 import WeightTracker from '@/components/WeightTracker';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
@@ -97,9 +97,7 @@ export default function DashboardScreen() {
   
   const handleAppStateChange = async (nextAppState: AppStateStatus) => {
     if (appState && typeof appState === 'string' && (appState === 'inactive' || appState === 'background') && nextAppState === 'active') {
-      console.log('App has come to the foreground, checking connection and scheduled syncs');
-      // Check connection status when app comes to foreground
-      await checkWhoopConnection();
+      console.log('App has come to the foreground, checking for scheduled syncs');
       await checkAndPerformScheduledSync();
     }
     setAppState(nextAppState);
@@ -113,23 +111,15 @@ export default function DashboardScreen() {
         setIsInitializing(true);
         
         try {
-          // Force a fresh connection check
-          console.log('Dashboard: Performing fresh connection check...');
           const connected = await checkWhoopConnection();
-          console.log('Dashboard: Connection check result:', connected);
           
           // If connected to WHOOP and we haven't synced in the last hour, sync data
           if (connected) {
-            console.log('Dashboard: Connected to WHOOP, checking sync status...');
             if (!lastSyncTime || Date.now() - lastSyncTime > 60 * 60 * 1000 || !data?.recovery || data.recovery.length === 0) {
               console.log('Auto-syncing WHOOP data...');
               setSyncAttempted(true);
               await syncWhoopData();
-            } else {
-              console.log('Dashboard: Recent sync found, skipping auto-sync');
             }
-          } else {
-            console.log('Dashboard: Not connected to WHOOP');
           }
         } catch (error) {
           console.error('Error initializing dashboard:', error);
@@ -143,7 +133,7 @@ export default function DashboardScreen() {
       return () => {
         // Cleanup if needed
       };
-    }, []) // Remove dependencies to ensure fresh check every time
+    }, [])
   );
   
   // Get available dates from the data
@@ -210,33 +200,11 @@ export default function DashboardScreen() {
     setIsLoadingWhoopData(true); // Set loading state manually
     
     try {
-      // First check connection status
-      const connected = await checkWhoopConnection();
-      
-      if (!connected) {
-        Alert.alert(
-          "Not Connected",
-          "Please connect your WHOOP account first to sync data.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Connect", onPress: () => router.push('/connect-whoop') }
-          ]
-        );
-        return;
-      }
-      
       const success = await syncWhoopData();
       
       if (success) {
         // Generate new AI insights based on the synced data
         await generateAIAnalysisFromWhoopData();
-        
-        // Force refresh of daily evaluation by clearing the last evaluation date
-        // This will trigger the AI evaluation to regenerate with new data
-        setTimeout(() => {
-          // This will cause the DailyEvaluationCard to regenerate its AI analysis
-          console.log('Triggering AI evaluation refresh after sync');
-        }, 500);
         
         Alert.alert(
           "Data Synced",
@@ -265,13 +233,7 @@ export default function DashboardScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     setSyncAttempted(true);
-    
-    // First check connection status
-    await checkWhoopConnection();
-    
-    // Then sync WHOOP data which will trigger AI evaluation refresh
     await syncWhoopData();
-    
     setRefreshing(false);
   };
   
@@ -579,9 +541,6 @@ export default function DashboardScreen() {
         <StatusBar style="light" />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Initializing WHOOP AI Coach...</Text>
-        <Text style={[styles.loadingText, { fontSize: 12, marginTop: 8, opacity: 0.7 }]}>
-          Connection Status: {isConnectedToWhoop ? 'Connected' : 'Not Connected'}
-        </Text>
       </View>
     );
   }
@@ -593,10 +552,7 @@ export default function DashboardScreen() {
       {!isConnectedToWhoop && (
         <TouchableOpacity 
           style={styles.connectBanner}
-          onPress={() => {
-            console.log('Connect banner pressed, current connection state:', isConnectedToWhoop);
-            router.push('/connect-whoop');
-          }}
+          onPress={() => router.push('/connect-whoop')}
         >
           <Link size={18} color={colors.text} />
           <Text style={styles.connectBannerText}>
@@ -627,8 +583,6 @@ export default function DashboardScreen() {
             <RefreshCw size={18} color={colors.text} />
           )}
         </TouchableOpacity>
-        
-
       </View>
       
       {isConnectedToWhoop && (!data?.recovery || data.recovery.length === 0) && isLoadingWhoopData ? (
@@ -841,7 +795,8 @@ export default function DashboardScreen() {
             </View>
           )}
           
-
+          {/* Daily Evaluation Card - shows daily insights */}
+          <DailyEvaluationCard />
           
           {/* Weight Tracking */}
           <WeightTracker />

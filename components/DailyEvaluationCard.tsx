@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Brain,
   Zap,
+  Utensils,
+  Pill,
   RefreshCw
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -64,28 +66,31 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
     activePrograms, 
     getTodaysWorkout, 
     getProgramProgress,
-    isConnectedToWhoop,
-    lastSyncTime,
-    lastFoodLogUpdate
+    isConnectedToWhoop 
   } = useWhoopStore();
 
-  // Get today's data with null checks - use most recent available data
+  // Get today's data with null checks
   const today = new Date().toISOString().split('T')[0];
   const todaysRecovery = data?.recovery?.find(item => item.date === today);
   const todaysStrain = data?.strain?.find(item => item.date === today);
   const todaysSleep = data?.sleep?.find(item => item.date === today);
   const todaysWorkout = getTodaysWorkout();
-  
-  // Use most recent available data if today's data isn't available yet
-  const latestRecovery = data?.recovery?.[0];
-  const latestStrain = data?.strain?.[0];
-  const latestSleep = data?.sleep?.[0];
 
   // Calculate 7-day trends with null checks
   const last7DaysRecovery = data?.recovery?.slice(0, 7) || [];
   const last7DaysStrain = data?.strain?.slice(0, 7) || [];
+  
+  const avgRecovery = last7DaysRecovery.length > 0 
+    ? last7DaysRecovery.reduce((sum, r) => sum + r.score, 0) / last7DaysRecovery.length 
+    : 0;
+  
+  const avgStrain = last7DaysStrain.length > 0 
+    ? last7DaysStrain.reduce((sum, s) => sum + s.score, 0) / last7DaysStrain.length 
+    : 0;
 
-
+  // Get program progress for active programs
+  const activeProgram = activePrograms.find(p => p.active);
+  const programProgress = activeProgram ? getProgramProgress(activeProgram.id) : null;
 
   // Calculate recovery trend (comparing last 3 days to previous 4 days)
   const getRecoveryTrend = () => {
@@ -103,24 +108,11 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
 
   // Generate AI-powered evaluation with nutrition integration
   const generateAIEvaluation = async () => {
-    // Use the same connection and data state as the dashboard
-    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
+    if (!isConnectedToWhoop || !todaysRecovery || !data?.recovery || !data?.strain) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for AI Insights',
         message: 'Connect your WHOOP to get AI-powered daily evaluations',
-        color: colors.textSecondary,
-        icon: Activity
-      };
-    }
-
-    // Use the first available recovery data (most recent)
-    const latestRecovery = data.recovery[0];
-    if (!latestRecovery) {
-      return {
-        status: 'no-data',
-        title: 'No Recovery Data',
-        message: 'Waiting for WHOOP recovery data',
         color: colors.textSecondary,
         icon: Activity
       };
@@ -139,26 +131,21 @@ export default function DailyEvaluationCard({ onPress }: DailyEvaluationCardProp
       const proteinProgress = macroProgress.protein.consumed / macroProgress.protein.target;
       const nutritionQuality = todaysFoodEntries.length > 0 ? 'logged' : 'not-logged';
       
-      // Prepare data for AI analysis using available data
+      // Prepare data for AI analysis
       const last7DaysData = {
         recovery: data.recovery.slice(0, 7),
-        strain: data.strain?.slice(0, 7) || [],
+        strain: data.strain.slice(0, 7),
         sleep: data.sleep?.slice(0, 7) || []
       };
 
-      // Use the latest recovery data we have
       const currentMetrics = {
-        recovery: latestRecovery.score,
-        strain: todaysStrain?.score || (data.strain && data.strain.length > 0 ? data.strain[0].score : 0),
-        hrv: latestRecovery.hrvMs,
-        rhr: latestRecovery.restingHeartRate,
-        sleep: todaysSleep?.efficiency || (data.sleep && data.sleep.length > 0 ? data.sleep[0].efficiency : 0)
+        recovery: todaysRecovery.score,
+        strain: todaysStrain?.score || 0,
+        hrv: todaysRecovery.hrvMs,
+        rhr: todaysRecovery.restingHeartRate,
+        sleep: todaysSleep?.efficiency || 0
       };
 
-      // Get program progress for active programs
-      const activeProgram = activePrograms.find(p => p.active);
-      const programProgress = activeProgram ? getProgramProgress(activeProgram.id) : null;
-      
       const programContext = activeProgram ? {
         name: activeProgram.name,
         type: activeProgram.type,
@@ -300,7 +287,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
 
   // Fallback basic evaluation with actionable steps
   const generateBasicEvaluation = () => {
-    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
+    if (!isConnectedToWhoop || !todaysRecovery) {
       return {
         status: 'no-data',
         title: 'Connect WHOOP for Insights',
@@ -310,9 +297,7 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
       };
     }
 
-    // Use the most recent recovery data available
-    const mostRecentRecovery = data.recovery[0];
-    const recoveryScore = mostRecentRecovery.score;
+    const recoveryScore = todaysRecovery.score;
     const recoveryTrend = getRecoveryTrend();
     
     // Get nutrition data for basic recommendations
@@ -435,142 +420,33 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     }
   };
 
-  // Track previous data state to detect meaningful changes
-  const [previousDataState, setPreviousDataState] = useState<{
-    recoveryScore?: number;
-    recoveryDate?: string;
-    foodLogCount?: number;
-    lastFoodLogTime?: number;
-  }>({});
-  
-  // Track last update time to prevent too frequent updates
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
-
-  // Initialize with basic evaluation on mount
+  // Initialize with basic evaluation only - no automatic AI loading
   useEffect(() => {
-    console.log('🔄 DailyEvaluationCard: Initial load', {
-      isConnected: isConnectedToWhoop,
-      hasData: !!(data?.recovery && data.recovery.length > 0),
-      recoveryCount: data?.recovery?.length || 0,
-      latestRecoveryDate: data?.recovery?.[0]?.date || 'none'
-    });
-    
-    // Always generate a basic evaluation first
-    const evaluation = generateBasicEvaluation();
-    setAiEvaluation(evaluation);
-    
-    // Only auto-generate AI analysis on initial load if we haven't done it today
-    if (isConnectedToWhoop && data?.recovery && data.recovery.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      if (!lastEvaluationDate || lastEvaluationDate !== today) {
-        console.log('🔄 Initial AI evaluation for connected WHOOP user');
-        setTimeout(() => {
-          handleRefreshEvaluation();
-        }, 2000);
-      }
+    if (!aiEvaluation) {
+      const evaluation = generateBasicEvaluation();
+      setAiEvaluation(evaluation);
     }
-  }, []); // Only run on mount
-
-  // Smart update logic - only update when there's meaningful new input
-  useEffect(() => {
-    if (!isConnectedToWhoop || !data?.recovery || data.recovery.length === 0) {
-      return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const currentRecoveryScore = data.recovery[0]?.score;
-    const currentRecoveryDate = data.recovery[0]?.date;
-    
-    // Get current nutrition data
-    const { getFoodLogEntriesByDate } = useWhoopStore.getState();
-    const todaysFoodEntries = getFoodLogEntriesByDate(today);
-    const currentFoodLogCount = todaysFoodEntries.length;
-
-    // Check if we have meaningful new data
-    const hasNewRecoveryData = (
-      currentRecoveryScore !== previousDataState.recoveryScore ||
-      currentRecoveryDate !== previousDataState.recoveryDate
-    );
-
-    const hasNewNutritionData = currentFoodLogCount !== previousDataState.foodLogCount;
-
-    // Add cooldown period to prevent too frequent updates (minimum 5 minutes between updates)
-    const timeSinceLastUpdate = Date.now() - lastUpdateTime;
-    const cooldownPeriod = 5 * 60 * 1000; // 5 minutes
-    
-    // Only update if we have new meaningful input AND haven't updated recently AND haven't updated today
-    const shouldUpdate = (hasNewRecoveryData || hasNewNutritionData) && 
-                        (!lastEvaluationDate || lastEvaluationDate !== today) &&
-                        (timeSinceLastUpdate > cooldownPeriod);
-
-    if (shouldUpdate) {
-      console.log('📊 New input detected, updating AI evaluation:', {
-        newRecoveryData: hasNewRecoveryData,
-        newNutritionData: hasNewNutritionData,
-        recoveryScore: currentRecoveryScore,
-        foodLogCount: currentFoodLogCount,
-        previousFoodLogCount: previousDataState.foodLogCount,
-        timeSinceLastUpdate: Math.round(timeSinceLastUpdate / 1000) + 's'
-      });
-
-      // Update the evaluation with a slight delay to ensure data is fully processed
-      setTimeout(() => {
-        handleRefreshEvaluation();
-        setLastUpdateTime(Date.now());
-      }, 2000);
-    }
-
-    // Update previous state only when there's actual change
-    if (hasNewRecoveryData || hasNewNutritionData) {
-      setPreviousDataState({
-        recoveryScore: currentRecoveryScore,
-        recoveryDate: currentRecoveryDate,
-        foodLogCount: currentFoodLogCount,
-        lastFoodLogTime: lastFoodLogUpdate || 0
-      });
-    }
-
-  }, [
-    data?.recovery?.[0]?.score, 
-    data?.recovery?.[0]?.date
-    // Removed lastFoodLogUpdate from dependencies to prevent constant updates
-  ]);
-
-  // Listen for fresh data syncs (only when there's actually new data)
-  useEffect(() => {
-    if (!isConnectedToWhoop || !lastSyncTime || !data?.recovery || data.recovery.length === 0) {
-      return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const syncDate = new Date(lastSyncTime).toISOString().split('T')[0];
-    const timeSinceSync = Date.now() - lastSyncTime;
-    const timeSinceLastUpdate = Date.now() - lastUpdateTime;
-    
-    // Only update if:
-    // 1. Sync happened today
-    // 2. We don't have today's evaluation yet
-    // 3. Sync was recent (within last 3 minutes)
-    // 4. We haven't updated recently (at least 3 minutes ago)
-    const shouldUpdateFromSync = (
-      syncDate === today && 
-      (!lastEvaluationDate || lastEvaluationDate !== today) &&
-      timeSinceSync < 3 * 60 * 1000 &&
-      timeSinceLastUpdate > 3 * 60 * 1000
-    );
-
-    if (shouldUpdateFromSync) {
-      console.log('🔄 Fresh WHOOP data sync detected, updating evaluation');
-      setTimeout(() => {
-        handleRefreshEvaluation();
-      }, 3000);
-    }
-  }, [lastSyncTime, lastEvaluationDate, lastUpdateTime]);
+  }, [isConnectedToWhoop, todaysRecovery, data]);
 
   const evaluation = aiEvaluation || generateBasicEvaluation();
   const IconComponent = evaluation.icon;
 
-
+  // Program progress insights
+  const getProgramProgressInsight = () => {
+    if (!programProgress || !activeProgram) return null;
+    
+    const { progressPercentage, currentWeek, totalWeeks, daysUntilGoal } = programProgress;
+    
+    if (daysUntilGoal && daysUntilGoal < 14) {
+      return `${daysUntilGoal} days until goal - final preparation phase`;
+    } else if (progressPercentage > 75) {
+      return `Week ${currentWeek}/${totalWeeks} - peak training phase`;
+    } else if (progressPercentage > 50) {
+      return `Week ${currentWeek}/${totalWeeks} - building intensity`;
+    } else {
+      return `Week ${currentWeek}/${totalWeeks} - foundation building`;
+    }
+  };
 
   const handleCardPress = () => {
     if (onPress) {
@@ -584,12 +460,9 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
   const handleRefreshEvaluation = async () => {
     if (isLoadingAI) return;
     
-    console.log('🤖 Generating AI evaluation...');
     const evaluation = await generateAIEvaluation();
     setAiEvaluation(evaluation);
     setLastEvaluationDate(new Date().toISOString().split('T')[0]);
-    setLastUpdateTime(Date.now()); // Update the last update time
-    console.log('✅ AI evaluation completed');
   };
 
   return (
@@ -662,60 +535,169 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
         )}
       </View>
 
-      {/* Quick Metrics - Only show if connected and have data */}
-      {isConnectedToWhoop && data?.recovery && data.recovery.length > 0 && (
-        <View style={styles.quickMetrics}>
-          <View style={styles.quickMetric}>
-            <Text style={styles.quickMetricValue}>
-              {data.recovery[0].score}%
+      {/* Metrics Row */}
+      {isConnectedToWhoop && data?.recovery && todaysRecovery && (
+        <View style={styles.metricsRow}>
+          <View style={styles.metric}>
+            <Battery size={14} color={colors.success} />
+            <Text style={styles.metricLabel}>Recovery</Text>
+            <Text style={[styles.metricValue, { color: getRecoveryColor(todaysRecovery.score) }]}>
+              {todaysRecovery.score}%
             </Text>
-            <Text style={styles.quickMetricLabel}>Recovery</Text>
           </View>
           
-          <View style={styles.quickMetric}>
-            <Text style={styles.quickMetricValue}>
-              {data.strain && data.strain.length > 0 ? data.strain[0].score.toFixed(1) : '0.0'}
+          <View style={styles.metric}>
+            <Activity size={14} color={colors.warning} />
+            <Text style={styles.metricLabel}>Strain</Text>
+            <Text style={styles.metricValue}>
+              {todaysStrain?.score.toFixed(1) || '0.0'}
             </Text>
-            <Text style={styles.quickMetricLabel}>Strain</Text>
           </View>
           
-          <View style={styles.quickMetric}>
-            <Text style={styles.quickMetricValue}>
-              {data.recovery[0].hrvMs}ms
+          <View style={styles.metric}>
+            <Heart size={14} color={colors.primary} />
+            <Text style={styles.metricLabel}>HRV</Text>
+            <Text style={styles.metricValue}>
+              {todaysRecovery.hrvMs}ms
             </Text>
-            <Text style={styles.quickMetricLabel}>HRV</Text>
           </View>
         </View>
       )}
 
-      {/* Top Priority Action - Only show the most important one */}
+      {/* Actionable Steps */}
       {evaluation.actionableSteps && evaluation.actionableSteps.length > 0 && (
-        <View style={styles.topActionContainer}>
-          <View style={styles.topActionHeader}>
+        <View style={styles.actionableStepsContainer}>
+          <View style={styles.actionableStepsHeader}>
             <Zap size={14} color={colors.primary} />
-            <Text style={styles.topActionTitle}>Priority Action</Text>
+            <Text style={styles.actionableStepsTitle}>Today's Action Plan</Text>
           </View>
-          <View style={styles.topActionItem}>
-            <View style={[styles.priorityDot, { 
-              backgroundColor: evaluation.actionableSteps[0].priority === 'high' ? colors.danger : 
-                             evaluation.actionableSteps[0].priority === 'medium' ? colors.warning : colors.success 
-            }]} />
-            <Text style={styles.topActionText}>{evaluation.actionableSteps[0].action}</Text>
+          {evaluation.actionableSteps.slice(0, 3).map((step, index) => (
+            <View key={index} style={styles.actionableStepItem}>
+              <View style={[styles.priorityIndicator, { 
+                backgroundColor: step.priority === 'high' ? colors.danger : 
+                               step.priority === 'medium' ? colors.warning : colors.success 
+              }]} />
+              <View style={styles.stepContent}>
+                <Text style={styles.stepCategory}>{step.category.toUpperCase()}</Text>
+                <Text style={styles.stepAction}>{step.action}</Text>
+                <Text style={styles.stepReason}>{step.reason}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Nutrition Advice */}
+      {evaluation.nutritionAdvice && (
+        <View style={styles.nutritionAdviceContainer}>
+          <View style={styles.nutritionAdviceHeader}>
+            <Utensils size={14} color={colors.success} />
+            <Text style={styles.nutritionAdviceTitle}>Nutrition Focus</Text>
+          </View>
+          <View style={styles.nutritionAdviceGrid}>
+            {evaluation.nutritionAdvice.calorieGuidance && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Calories</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.calorieGuidance}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.proteinFocus && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Protein</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.proteinFocus}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.hydrationTarget && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Hydration</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.hydrationTarget}</Text>
+              </View>
+            )}
+            {evaluation.nutritionAdvice.mealTiming && (
+              <View style={styles.nutritionAdviceItem}>
+                <Text style={styles.nutritionAdviceLabel}>Timing</Text>
+                <Text style={styles.nutritionAdviceText}>{evaluation.nutritionAdvice.mealTiming}</Text>
+              </View>
+            )}
           </View>
         </View>
       )}
 
-      {/* View Details Prompt */}
-      <View style={styles.viewDetailsPrompt}>
-        <Text style={styles.viewDetailsText}>Tap for detailed analysis, trends & recommendations</Text>
-        <ArrowRight size={14} color={colors.textSecondary} />
-      </View>
+      {/* Supplement Suggestions */}
+      {evaluation.supplementSuggestions && evaluation.supplementSuggestions.length > 0 && (
+        <View style={styles.supplementsContainer}>
+          <View style={styles.supplementsHeader}>
+            <Pill size={14} color={colors.warning} />
+            <Text style={styles.supplementsTitle}>Supplement Support</Text>
+          </View>
+          {evaluation.supplementSuggestions.slice(0, 2).map((supplement, index) => (
+            <View key={index} style={styles.supplementItem}>
+              <View style={styles.supplementDot} />
+              <Text style={styles.supplementText}>{supplement}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Program Integration */}
+      {evaluation.programInsight && (
+        <View style={styles.programInsight}>
+          <Text style={styles.programInsightText}>
+            {evaluation.programInsight}
+          </Text>
+        </View>
+      )}
+
+      {/* Program Progress */}
+      {programProgress && activeProgram && (
+        <View style={styles.programProgress}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.programName}>{activeProgram.name}</Text>
+            <Text style={styles.progressText}>
+              {getProgramProgressInsight()}
+            </Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View 
+              style={[
+                styles.progressFill, 
+                { width: `${Math.min(programProgress.progressPercentage, 100)}%` }
+              ]} 
+            />
+          </View>
+        </View>
+      )}
+
+      {/* Weekly Trends */}
+      {isConnectedToWhoop && data?.recovery && last7DaysRecovery.length > 0 && (
+        <View style={styles.trendsContainer}>
+          <Text style={styles.trendsTitle}>7-Day Trends</Text>
+          <View style={styles.trendsRow}>
+            <View style={styles.trendItem}>
+              <Text style={styles.trendLabel}>Avg Recovery</Text>
+              <View style={styles.trendValue}>
+                <Text style={[styles.trendNumber, { color: getRecoveryColor(avgRecovery) }]}>
+                  {avgRecovery.toFixed(0)}%
+                </Text>
+                {getRecoveryTrend() === 'improving' && <TrendingUp size={12} color={colors.success} />}
+                {getRecoveryTrend() === 'declining' && <TrendingDown size={12} color={colors.danger} />}
+              </View>
+            </View>
+            
+            <View style={styles.trendItem}>
+              <Text style={styles.trendLabel}>Avg Strain</Text>
+              <Text style={styles.trendNumber}>
+                {avgStrain.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
       </TouchableOpacity>
 
       <DetailedEvaluationModal 
         visible={showDetailedModal}
         onClose={() => setShowDetailedModal(false)}
-        evaluation={evaluation}
       />
     </>
   );
@@ -830,83 +812,238 @@ const styles = StyleSheet.create({
     flex: 1,
     fontStyle: 'italic',
   },
-  quickMetrics: {
+  metricsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginBottom: 16,
     paddingVertical: 12,
-    backgroundColor: 'rgba(93, 95, 239, 0.05)',
+    backgroundColor: '#2A2A2A',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(93, 95, 239, 0.1)',
+    paddingHorizontal: 16,
   },
-  quickMetric: {
+  metric: {
     alignItems: 'center',
+    flex: 1,
   },
-  quickMetricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+  metricLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
     marginBottom: 2,
   },
-  quickMetricLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '500',
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
-
-  // Top Action Styles
-  topActionContainer: {
-    backgroundColor: 'rgba(34, 197, 94, 0.05)',
+  programInsight: {
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  programInsightText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  programProgress: {
+    marginBottom: 16,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  programName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  progressText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  trendsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#2A2A2A',
+    paddingTop: 16,
+  },
+  trendsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  trendsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  trendItem: {
+    alignItems: 'center',
+  },
+  trendLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  trendValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginRight: 4,
+  },
+  // Actionable Steps Styles
+  actionableStepsContainer: {
+    backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.1)',
   },
-  topActionHeader: {
+  actionableStepsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  topActionTitle: {
-    fontSize: 13,
+  actionableStepsTitle: {
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.text,
     marginLeft: 6,
   },
-  topActionItem: {
+  actionableStepItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingLeft: 4,
   },
-  priorityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 10,
+  priorityIndicator: {
+    width: 3,
+    height: '100%',
+    borderRadius: 2,
+    marginRight: 12,
+    minHeight: 40,
   },
-  topActionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
+  stepContent: {
     flex: 1,
-    lineHeight: 20,
   },
-  // View Details Prompt
-  viewDetailsPrompt: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(128, 128, 128, 0.1)',
-    marginTop: 8,
+  stepCategory: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+    letterSpacing: 0.5,
   },
-  viewDetailsText: {
+  stepAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+    lineHeight: 18,
+  },
+  stepReason: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginRight: 6,
+    lineHeight: 16,
     fontStyle: 'italic',
+  },
+  // Nutrition Advice Styles
+  nutritionAdviceContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  nutritionAdviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  nutritionAdviceTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.success,
+    marginLeft: 6,
+  },
+  nutritionAdviceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  nutritionAdviceItem: {
+    width: '48%',
+    marginBottom: 8,
+  },
+  nutritionAdviceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  nutritionAdviceText: {
+    fontSize: 12,
+    color: colors.text,
+    lineHeight: 16,
+  },
+  // Supplement Styles
+  supplementsContainer: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  supplementsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  supplementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.warning,
+    marginLeft: 6,
+  },
+  supplementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  supplementDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.warning,
+    marginTop: 6,
+    marginRight: 8,
+  },
+  supplementText: {
+    fontSize: 13,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 18,
   },
   // AI Prompt Styles
   aiPromptContainer: {

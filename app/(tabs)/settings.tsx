@@ -345,7 +345,22 @@ export default function SettingsScreen() {
           )}
         </View>
         
-
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Nutrition Tracking</Text>
+          
+          {renderSettingItem(
+            <Link size={20} color={colors.textSecondary} />,
+            "Connect MyFitnessPal",
+            "Import nutrition data automatically"
+          )}
+          
+          {renderSettingItem(
+            <Link size={20} color={colors.textSecondary} />,
+            "Connect Cronometer",
+            "Import nutrition data automatically"
+          )}
+        </View>
+        
         <TouchableOpacity style={styles.logoutButton}>
           <LogOut size={20} color={colors.danger} />
           <Text style={styles.logoutText}>Log Out</Text>

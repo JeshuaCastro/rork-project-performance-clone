@@ -12,7 +12,6 @@ import {
   Platform,
   Dimensions
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { colors } from '@/constants/colors';
 import {
   Plus,
@@ -39,10 +38,7 @@ import {
   ChefHat,
   Search,
   Camera,
-  Scan,
-  Settings,
-  Copy,
-  Check
+  Scan
 } from 'lucide-react-native';
 import { useWhoopStore } from '@/store/whoopStore';
 import { FoodLogEntry, NutrientAnalysis } from '@/types/whoop';
@@ -96,20 +92,6 @@ export default function NutritionScreen() {
   // Meal planner states
   const [mealPlan, setMealPlan] = useState<any>(null);
   const [isGeneratingMealPlan, setIsGeneratingMealPlan] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [mealPlanPreferencesVisible, setMealPlanPreferencesVisible] = useState(false);
-  const [mealPlanPreferences, setMealPlanPreferences] = useState({
-    favoriteFoods: '',
-    dietaryRestrictions: '',
-    allergies: '',
-    cuisinePreferences: '',
-    mealPrepTime: '',
-    cookingSkill: 'intermediate',
-    budgetRange: '',
-    specificGoals: '',
-    dislikedFoods: '',
-    mealTypes: ['breakfast', 'lunch', 'dinner', 'snacks']
-  });
 
   const [newFood, setNewFood] = useState<Partial<FoodLogEntry>>({
     date: selectedDate,
@@ -338,13 +320,11 @@ export default function NutritionScreen() {
     }
   };
 
-  const generateMealPlan = async (preferences?: any) => {
+  const generateMealPlan = async () => {
     setIsGeneratingMealPlan(true);
     
     try {
-      const prefs = preferences || mealPlanPreferences;
-      
-      let prompt = `Create a personalized meal plan for tomorrow based on my profile:
+      const prompt = `Create a personalized meal plan for tomorrow based on my profile:
       - Age: ${userProfile.age}
       - Gender: ${userProfile.gender}
       - Weight: ${userProfile.weight}kg
@@ -354,66 +334,18 @@ export default function NutritionScreen() {
       - Daily Calorie Target: ${macroTargets?.calories || 2000}
       - Protein Target: ${macroTargets?.protein || 150}g
       - Carb Target: ${macroTargets?.carbs || 200}g
-      - Fat Target: ${macroTargets?.fat || 70}g`;
-
-      // Add preferences to the prompt
-      if (prefs.favoriteFoods) {
-        prompt += `\n- Favorite Foods: ${prefs.favoriteFoods}`;
-      }
-      if (prefs.dietaryRestrictions) {
-        prompt += `\n- Dietary Restrictions: ${prefs.dietaryRestrictions}`;
-      }
-      if (prefs.allergies) {
-        prompt += `\n- Allergies: ${prefs.allergies}`;
-      }
-      if (prefs.cuisinePreferences) {
-        prompt += `\n- Cuisine Preferences: ${prefs.cuisinePreferences}`;
-      }
-      if (prefs.mealPrepTime) {
-        prompt += `\n- Available Meal Prep Time: ${prefs.mealPrepTime}`;
-      }
-      if (prefs.cookingSkill) {
-        prompt += `\n- Cooking Skill Level: ${prefs.cookingSkill}`;
-      }
-      if (prefs.budgetRange) {
-        prompt += `\n- Budget Range: ${prefs.budgetRange}`;
-      }
-      if (prefs.specificGoals) {
-        prompt += `\n- Specific Goals: ${prefs.specificGoals}`;
-      }
-      if (prefs.dislikedFoods) {
-        prompt += `\n- Foods to Avoid: ${prefs.dislikedFoods}`;
-      }
-
-      prompt += `\n\nPlease provide a complete meal plan with ${prefs.mealTypes.join(', ')}. Include specific foods, portions, and approximate macros for each meal. Make sure to consider all my preferences and restrictions mentioned above.`;
+      - Fat Target: ${macroTargets?.fat || 70}g
+      
+      Please provide a complete meal plan with breakfast, lunch, dinner, and 2 snacks. Include specific foods, portions, and approximate macros for each meal.`;
       
       const plan = await generateMealSuggestion(prompt);
       setMealPlan(plan);
       setMealPlannerVisible(true);
-      setMealPlanPreferencesVisible(false);
-      setIsCopied(false); // Reset copy state when new plan is generated
     } catch (error) {
       console.error('Error generating meal plan:', error);
       Alert.alert('Error', 'Failed to generate meal plan.');
     } finally {
       setIsGeneratingMealPlan(false);
-    }
-  };
-
-  const copyMealPlan = async () => {
-    if (!mealPlan) return;
-    
-    try {
-      await Clipboard.setStringAsync(mealPlan);
-      setIsCopied(true);
-      
-      // Reset the copied state after 2 seconds
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Error copying meal plan:', error);
-      Alert.alert('Error', 'Failed to copy meal plan to clipboard.');
     }
   };
 
@@ -708,66 +640,42 @@ export default function NutritionScreen() {
             {/* Analysis Tools */}
             <View style={styles.analysisTools}>
               <TouchableOpacity 
-                style={styles.analysisRowButton}
+                style={styles.analysisButton}
                 onPress={handleAnalyzeNutrients}
                 disabled={isAnalyzingNutrients || dayEntries.length === 0}
               >
-                <View style={styles.analysisRowContent}>
-                  <View style={styles.analysisRowLeft}>
-                    {isAnalyzingNutrients ? (
-                      <ActivityIndicator size="small" color={colors.text} />
-                    ) : (
-                      <Brain size={20} color={colors.primary} />
-                    )}
-                    <View style={styles.analysisRowTextContainer}>
-                      <Text style={styles.analysisRowTitle}>Nutrient Analysis</Text>
-                      <Text style={styles.analysisRowSubtitle}>Analyze your daily nutrition intake</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.analysisRowArrow}>›</Text>
-                </View>
+                {isAnalyzingNutrients ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Brain size={18} color={colors.text} />
+                )}
+                <Text style={styles.analysisButtonText}>Nutrient Analysis</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.analysisRowButton}
+                style={styles.analysisButton}
                 onPress={generateWeeklyStats}
                 disabled={isLoadingWeeklyStats}
               >
-                <View style={styles.analysisRowContent}>
-                  <View style={styles.analysisRowLeft}>
-                    {isLoadingWeeklyStats ? (
-                      <ActivityIndicator size="small" color={colors.text} />
-                    ) : (
-                      <BarChart3 size={20} color={colors.primary} />
-                    )}
-                    <View style={styles.analysisRowTextContainer}>
-                      <Text style={styles.analysisRowTitle}>Weekly Stats</Text>
-                      <Text style={styles.analysisRowSubtitle}>View your weekly nutrition trends</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.analysisRowArrow}>›</Text>
-                </View>
+                {isLoadingWeeklyStats ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <BarChart3 size={18} color={colors.text} />
+                )}
+                <Text style={styles.analysisButtonText}>Weekly Stats</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.analysisRowButton}
-                onPress={() => setMealPlanPreferencesVisible(true)}
+                style={styles.analysisButton}
+                onPress={generateMealPlan}
                 disabled={isGeneratingMealPlan}
               >
-                <View style={styles.analysisRowContent}>
-                  <View style={styles.analysisRowLeft}>
-                    {isGeneratingMealPlan ? (
-                      <ActivityIndicator size="small" color={colors.text} />
-                    ) : (
-                      <Target size={20} color={colors.primary} />
-                    )}
-                    <View style={styles.analysisRowTextContainer}>
-                      <Text style={styles.analysisRowTitle}>AI Meal Plan</Text>
-                      <Text style={styles.analysisRowSubtitle}>Customizable personalized meal suggestions</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.analysisRowArrow}>›</Text>
-                </View>
+                {isGeneratingMealPlan ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Target size={18} color={colors.text} />
+                )}
+                <Text style={styles.analysisButtonText}>Meal Plan</Text>
               </TouchableOpacity>
             </View>
 
@@ -1300,198 +1208,6 @@ export default function NutritionScreen() {
           </View>
         </Modal>
 
-        {/* Meal Plan Preferences Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={mealPlanPreferencesVisible}
-          onRequestClose={() => setMealPlanPreferencesVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Customize Your Meal Plan</Text>
-                <TouchableOpacity 
-                  onPress={() => setMealPlanPreferencesVisible(false)}
-                  style={styles.closeButton}
-                >
-                  <X size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                <Text style={styles.preferencesDescription}>
-                  Tell us about your preferences to create a personalized meal plan just for you.
-                </Text>
-
-                <Text style={styles.inputLabel}>Favorite Foods</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., chicken, salmon, avocado, quinoa, Greek yogurt..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.favoriteFoods}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, favoriteFoods: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Dietary Restrictions</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., vegetarian, vegan, keto, paleo, low-carb..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.dietaryRestrictions}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, dietaryRestrictions: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Allergies & Intolerances</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., nuts, dairy, gluten, shellfish..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.allergies}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, allergies: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Cuisine Preferences</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., Mediterranean, Asian, Mexican, Italian..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.cuisinePreferences}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, cuisinePreferences: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Available Meal Prep Time</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., 30 minutes per meal, quick meals only, batch cooking on weekends..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.mealPrepTime}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, mealPrepTime: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Cooking Skill Level</Text>
-                <View style={styles.skillLevelSelector}>
-                  {['beginner', 'intermediate', 'advanced'].map((skill) => (
-                    <TouchableOpacity
-                      key={skill}
-                      style={[
-                        styles.skillOption,
-                        mealPlanPreferences.cookingSkill === skill && styles.selectedSkillOption
-                      ]}
-                      onPress={() => setMealPlanPreferences({...mealPlanPreferences, cookingSkill: skill})}
-                    >
-                      <Text 
-                        style={[
-                          styles.skillOptionText,
-                          mealPlanPreferences.cookingSkill === skill && styles.selectedSkillOptionText
-                        ]}
-                      >
-                        {skill.charAt(0).toUpperCase() + skill.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={styles.inputLabel}>Budget Range</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., budget-friendly, moderate, premium ingredients..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.budgetRange}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, budgetRange: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Specific Goals</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., muscle gain, weight loss, energy boost, better digestion..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.specificGoals}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, specificGoals: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Foods to Avoid</Text>
-                <TextInput
-                  style={styles.preferencesInput}
-                  placeholder="e.g., processed foods, red meat, spicy foods..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={mealPlanPreferences.dislikedFoods}
-                  onChangeText={(text) => setMealPlanPreferences({...mealPlanPreferences, dislikedFoods: text})}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Text style={styles.inputLabel}>Meal Types to Include</Text>
-                <View style={styles.mealTypesSelector}>
-                  {[
-                    { id: 'breakfast', label: 'Breakfast' },
-                    { id: 'lunch', label: 'Lunch' },
-                    { id: 'dinner', label: 'Dinner' },
-                    { id: 'snacks', label: 'Snacks' }
-                  ].map((mealType) => (
-                    <TouchableOpacity
-                      key={mealType.id}
-                      style={[
-                        styles.mealTypeCheckbox,
-                        mealPlanPreferences.mealTypes.includes(mealType.id) && styles.selectedMealTypeCheckbox
-                      ]}
-                      onPress={() => {
-                        const updatedMealTypes = mealPlanPreferences.mealTypes.includes(mealType.id)
-                          ? mealPlanPreferences.mealTypes.filter(type => type !== mealType.id)
-                          : [...mealPlanPreferences.mealTypes, mealType.id];
-                        setMealPlanPreferences({...mealPlanPreferences, mealTypes: updatedMealTypes});
-                      }}
-                    >
-                      <Text 
-                        style={[
-                          styles.mealTypeCheckboxText,
-                          mealPlanPreferences.mealTypes.includes(mealType.id) && styles.selectedMealTypeCheckboxText
-                        ]}
-                      >
-                        {mealType.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TouchableOpacity 
-                  style={styles.generateMealPlanButton}
-                  onPress={() => generateMealPlan(mealPlanPreferences)}
-                  disabled={isGeneratingMealPlan}
-                >
-                  {isGeneratingMealPlan ? (
-                    <ActivityIndicator size="small" color={colors.text} />
-                  ) : (
-                    <Text style={styles.generateMealPlanButtonText}>Generate My Meal Plan</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.skipPreferencesButton}
-                  onPress={() => generateMealPlan()}
-                  disabled={isGeneratingMealPlan}
-                >
-                  <Text style={styles.skipPreferencesButtonText}>Skip & Use Basic Plan</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
         {/* Meal Planner Modal */}
         <Modal
           animationType="slide"
@@ -1503,26 +1219,12 @@ export default function NutritionScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>AI Meal Plan</Text>
-                <View style={styles.modalHeaderButtons}>
-                  {mealPlan && (
-                    <TouchableOpacity 
-                      onPress={copyMealPlan}
-                      style={styles.copyButton}
-                    >
-                      {isCopied ? (
-                        <Check size={20} color={colors.success || '#4CAF50'} />
-                      ) : (
-                        <Copy size={20} color={colors.text} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity 
-                    onPress={() => setMealPlannerVisible(false)}
-                    style={styles.closeButton}
-                  >
-                    <X size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  onPress={() => setMealPlannerVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <X size={24} color={colors.text} />
+                </TouchableOpacity>
               </View>
               
               <ScrollView style={styles.modalScroll}>
@@ -1530,25 +1232,6 @@ export default function NutritionScreen() {
                   <View style={styles.mealPlanContainer}>
                     <Text style={styles.mealPlanTitle}>Tomorrow's Meal Plan</Text>
                     <Text style={styles.mealPlanText}>{mealPlan}</Text>
-                    
-                    <TouchableOpacity 
-                      style={styles.copyMealPlanButton}
-                      onPress={copyMealPlan}
-                    >
-                      <View style={styles.copyButtonContent}>
-                        {isCopied ? (
-                          <>
-                            <Check size={20} color={colors.text} />
-                            <Text style={styles.copyButtonText}>Copied!</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={20} color={colors.text} />
-                            <Text style={styles.copyButtonText}>Copy Meal Plan</Text>
-                          </>
-                        )}
-                      </View>
-                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.loadingContainer}>
@@ -1694,6 +1377,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   analysisTools: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
   analysisButton: {
@@ -1712,42 +1397,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginLeft: 6,
-  },
-  analysisRowButton: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    marginBottom: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  analysisRowContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  analysisRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  analysisRowTextContainer: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  analysisRowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  analysisRowSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  analysisRowArrow: {
-    fontSize: 20,
-    color: colors.textSecondary,
-    fontWeight: '300',
   },
   sectionTitle: {
     fontSize: 18,
@@ -2284,125 +1933,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 16,
-  },
-  preferencesDescription: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  preferencesInput: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: colors.text,
-    fontSize: 16,
-    marginBottom: 20,
-    minHeight: 50,
-    textAlignVertical: 'top',
-  },
-  skillLevelSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  skillOption: {
-    flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-  },
-  selectedSkillOption: {
-    backgroundColor: colors.primary,
-  },
-  skillOptionText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  selectedSkillOptionText: {
-    color: colors.text,
-    fontWeight: '600',
-  },
-  mealTypesSelector: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 24,
-  },
-  mealTypeCheckbox: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  selectedMealTypeCheckbox: {
-    backgroundColor: colors.primary,
-  },
-  mealTypeCheckboxText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  selectedMealTypeCheckboxText: {
-    color: colors.text,
-    fontWeight: '600',
-  },
-  generateMealPlanButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  generateMealPlanButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  skipPreferencesButton: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  skipPreferencesButtonText: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  modalHeaderButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  copyButton: {
-    padding: 8,
-    marginRight: 8,
-    borderRadius: 8,
-    backgroundColor: '#2A2A2A',
-  },
-  copyMealPlanButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  copyButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  copyButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
   },
 });
