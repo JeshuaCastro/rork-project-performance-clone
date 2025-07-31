@@ -600,7 +600,8 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
     
     const result: WhoopData = {
       recovery: transformedRecovery.sort(sortByDate),
-      strain: transformedStrain.sort(sortByDate)
+      strain: transformedStrain.sort(sortByDate),
+      sleep: [] // TODO: Add sleep data transformation when sleep endpoint is implemented
     };
     
     console.log('Transformed WHOOP data:', {
