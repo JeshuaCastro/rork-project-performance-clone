@@ -38,7 +38,8 @@ import {
   ChefHat,
   Search,
   Camera,
-  Scan
+  Scan,
+  Utensils as Fork
 } from 'lucide-react-native';
 import { useWhoopStore } from '@/store/whoopStore';
 import { FoodLogEntry, NutrientAnalysis } from '@/types/whoop';
@@ -70,6 +71,7 @@ export default function NutritionScreen() {
   const [nutrientAnalysisVisible, setNutrientAnalysisVisible] = useState(false);
   const [weeklyStatsVisible, setWeeklyStatsVisible] = useState(false);
   const [mealPlannerVisible, setMealPlannerVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'tracker' | 'meal-plan' | 'insights'>('tracker');
 
   // AI states
   const [aiPrompt, setAiPrompt] = useState('');
@@ -382,8 +384,55 @@ export default function NutritionScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Nutrition Tracker' }} />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Stack.Screen 
+        options={{ 
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+          headerLeft: () => (
+            <View style={styles.headerLeft}>
+              <Fork size={24} color={colors.text} />
+            </View>
+          ),
+          title: 'Nutrition',
+          headerRight: () => (
+            <TouchableOpacity 
+              style={styles.headerRight}
+              onPress={() => setModalVisible(true)}
+              disabled={!isProfileComplete}
+            >
+              <View style={styles.plusButton}>
+                <Plus size={20} color={colors.text} />
+              </View>
+            </TouchableOpacity>
+          ),
+        }} 
+      />
+      <View style={styles.container}>
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'tracker' && styles.activeTab]}
+            onPress={() => setActiveTab('tracker')}
+          >
+            <Text style={[styles.tabText, activeTab === 'tracker' && styles.activeTabText]}>Tracker</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'meal-plan' && styles.activeTab]}
+            onPress={() => setActiveTab('meal-plan')}
+          >
+            <Text style={[styles.tabText, activeTab === 'meal-plan' && styles.activeTabText]}>Meal Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'insights' && styles.activeTab]}
+            onPress={() => setActiveTab('insights')}
+          >
+            <Text style={[styles.tabText, activeTab === 'insights' && styles.activeTabText]}>Insights</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         {/* Date Selector */}
         <View style={styles.dateSelector}>
           <TouchableOpacity 
@@ -550,89 +599,68 @@ export default function NutritionScreen() {
           </View>
         ) : (
           <>
-            {/* Macro Summary */}
-            <View style={styles.macroSummaryContainer}>
-              <View style={styles.calorieContainer}>
-                <View style={styles.calorieHeader}>
-                  <Flame size={20} color={colors.primary} />
-                  <Text style={styles.calorieLabel}>Calories</Text>
+            {/* Simplified Calories Display */}
+            <View style={styles.simplifiedCaloriesContainer}>
+              <Text style={styles.simplifiedCaloriesValue}>
+                {macroProgress.calories.consumed} / {macroProgress.calories.target}
+              </Text>
+            </View>
+              
+            <View style={styles.macroGrid}>
+              <View style={styles.macroItem}>
+                <View style={styles.macroHeader}>
+                  <Egg size={16} color={colors.primary} />
+                  <Text style={styles.macroLabel}>Protein</Text>
                 </View>
-                <Text style={styles.calorieValue}>
-                  {macroProgress.calories.consumed} / {macroProgress.calories.target}
+                <Text style={styles.macroValue}>
+                  {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
                 </Text>
                 <View style={styles.progressBar}>
                   <View 
                     style={[
                       styles.progressFill, 
-                      { width: `${caloriePercentage}%` },
-                      caloriePercentage > 100 ? styles.progressOverage : null
+                      { width: `${proteinPercentage}%` },
+                      proteinPercentage > 100 ? styles.progressOverage : null
                     ]} 
                   />
                 </View>
-                <Text style={styles.remainingText}>
-                  {macroProgress.calories.target - macroProgress.calories.consumed > 0 
-                    ? `${macroProgress.calories.target - macroProgress.calories.consumed} remaining`
-                    : `${macroProgress.calories.consumed - macroProgress.calories.target} over`
-                  }
-                </Text>
               </View>
               
-              <View style={styles.macroGrid}>
-                <View style={styles.macroItem}>
-                  <View style={styles.macroHeader}>
-                    <Egg size={16} color={colors.primary} />
-                    <Text style={styles.macroLabel}>Protein</Text>
-                  </View>
-                  <Text style={styles.macroValue}>
-                    {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
-                  </Text>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { width: `${proteinPercentage}%` },
-                        proteinPercentage > 100 ? styles.progressOverage : null
-                      ]} 
-                    />
-                  </View>
+              <View style={styles.macroItem}>
+                <View style={styles.macroHeader}>
+                  <Cookie size={16} color={colors.primary} />
+                  <Text style={styles.macroLabel}>Carbs</Text>
                 </View>
-                
-                <View style={styles.macroItem}>
-                  <View style={styles.macroHeader}>
-                    <Cookie size={16} color={colors.primary} />
-                    <Text style={styles.macroLabel}>Carbs</Text>
-                  </View>
-                  <Text style={styles.macroValue}>
-                    {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
-                  </Text>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { width: `${carbsPercentage}%` },
-                        carbsPercentage > 100 ? styles.progressOverage : null
-                      ]} 
-                    />
-                  </View>
+                <Text style={styles.macroValue}>
+                  {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
+                </Text>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${carbsPercentage}%` },
+                      carbsPercentage > 100 ? styles.progressOverage : null
+                    ]} 
+                  />
                 </View>
-                
-                <View style={styles.macroItem}>
-                  <View style={styles.macroHeader}>
-                    <Droplets size={16} color={colors.primary} />
-                    <Text style={styles.macroLabel}>Fat</Text>
-                  </View>
-                  <Text style={styles.macroValue}>
-                    {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
-                  </Text>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { width: `${fatPercentage}%` },
-                        fatPercentage > 100 ? styles.progressOverage : null
-                      ]} 
-                    />
-                  </View>
+              </View>
+              
+              <View style={styles.macroItem}>
+                <View style={styles.macroHeader}>
+                  <Droplets size={16} color={colors.primary} />
+                  <Text style={styles.macroLabel}>Fat</Text>
+                </View>
+                <Text style={styles.macroValue}>
+                  {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
+                </Text>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${fatPercentage}%` },
+                      fatPercentage > 100 ? styles.progressOverage : null
+                    ]} 
+                  />
                 </View>
               </View>
             </View>
@@ -1243,7 +1271,8 @@ export default function NutritionScreen() {
             </View>
           </View>
         </Modal>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </>
   );
 }
@@ -1252,7 +1281,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  headerLeft: {
+    marginLeft: 16,
+  },
+  headerRight: {
+    marginRight: 16,
+  },
+  plusButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  activeTabText: {
+    color: colors.text,
+  },
+  scrollContainer: {
+    flex: 1,
     padding: 16,
+  },
+  simplifiedCaloriesContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 20,
+  },
+  simplifiedCaloriesValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.text,
   },
   dateSelector: {
     flexDirection: 'row',
