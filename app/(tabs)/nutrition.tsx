@@ -39,7 +39,8 @@ import {
   Search,
   Camera,
   Scan,
-  Utensils as Fork
+  Utensils as Fork,
+  Utensils as PlateIcon
 } from 'lucide-react-native';
 import { useWhoopStore } from '@/store/whoopStore';
 import { FoodLogEntry, NutrientAnalysis } from '@/types/whoop';
@@ -606,113 +607,73 @@ export default function NutritionScreen() {
               </Text>
             </View>
               
-            <View style={styles.macroGrid}>
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Egg size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Protein</Text>
-                </View>
-                <Text style={styles.macroValue}>
+            {/* Redesigned Macros Row */}
+            <View style={styles.macrosRow}>
+              <View style={styles.macroRowItem}>
+                <View style={[styles.macroDot, { backgroundColor: '#3B82F6' }]} />
+                <Text style={styles.macroRowLabel}>Protein</Text>
+                <Text style={styles.macroRowValue}>
                   {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
                 </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${proteinPercentage}%` },
-                      proteinPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
-                </View>
               </View>
               
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Cookie size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Carbs</Text>
-                </View>
-                <Text style={styles.macroValue}>
+              <View style={styles.macroRowItem}>
+                <View style={[styles.macroDot, { backgroundColor: '#8B5CF6' }]} />
+                <Text style={styles.macroRowLabel}>Carbs</Text>
+                <Text style={styles.macroRowValue}>
                   {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
                 </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${carbsPercentage}%` },
-                      carbsPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
-                </View>
               </View>
               
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Droplets size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Fat</Text>
-                </View>
-                <Text style={styles.macroValue}>
+              <View style={styles.macroRowItem}>
+                <View style={[styles.macroDot, { backgroundColor: '#F97316' }]} />
+                <Text style={styles.macroRowLabel}>Fat</Text>
+                <Text style={styles.macroRowValue}>
                   {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
                 </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${fatPercentage}%` },
-                      fatPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
-                </View>
               </View>
             </View>
 
-            {/* Analysis Tools */}
-            <View style={styles.analysisTools}>
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
               <TouchableOpacity 
-                style={styles.analysisButton}
+                style={styles.actionButton}
+                onPress={() => setTextModalVisible(true)}
+                disabled={!isProfileComplete}
+              >
+                <ChefHat size={20} color={colors.text} />
+                <Text style={styles.actionButtonText}>Describe Meal</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => setAiModalVisible(true)}
+                disabled={!isProfileComplete}
+              >
+                <Sparkles size={20} color={colors.text} />
+                <Text style={styles.actionButtonText}>AI Suggestions</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
                 onPress={handleAnalyzeNutrients}
                 disabled={isAnalyzingNutrients || dayEntries.length === 0}
               >
                 {isAnalyzingNutrients ? (
                   <ActivityIndicator size="small" color={colors.text} />
                 ) : (
-                  <Brain size={18} color={colors.text} />
+                  <Target size={20} color={colors.text} />
                 )}
-                <Text style={styles.analysisButtonText}>Nutrient Analysis</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.analysisButton}
-                onPress={generateWeeklyStats}
-                disabled={isLoadingWeeklyStats}
-              >
-                {isLoadingWeeklyStats ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <BarChart3 size={18} color={colors.text} />
-                )}
-                <Text style={styles.analysisButtonText}>Weekly Stats</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.analysisButton}
-                onPress={generateMealPlan}
-                disabled={isGeneratingMealPlan}
-              >
-                {isGeneratingMealPlan ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Target size={18} color={colors.text} />
-                )}
-                <Text style={styles.analysisButtonText}>Meal Plan</Text>
+                <Text style={styles.actionButtonText}>Analyze</Text>
               </TouchableOpacity>
             </View>
 
             {/* Food Log */}
             {dayEntries.length === 0 ? (
               <View style={styles.emptyState}>
-                <Apple size={48} color={colors.textSecondary} />
-                <Text style={styles.emptyText}>No foods logged for {formatDate(selectedDate)}</Text>
-                <Text style={styles.emptySubtext}>Start tracking your nutrition by adding your first meal</Text>
+                <PlateIcon size={48} color={colors.textSecondary} />
+                <Text style={styles.emptyText}>No foods logged today</Text>
+                <Text style={styles.emptySubtext}>Tap + to add your first food</Text>
               </View>
             ) : (
               <View style={styles.foodsList}>
@@ -1443,6 +1404,35 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 6,
   },
+  macrosRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  macroRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  macroDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  macroRowLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    marginRight: 4,
+  },
+  macroRowValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
   progressBar: {
     height: 8,
     backgroundColor: '#2A2A2A',
@@ -1479,6 +1469,30 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 6,
   },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -1489,8 +1503,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    backgroundColor: colors.card,
-    borderRadius: 16,
     marginBottom: 20,
   },
   emptyText: {
