@@ -7,8 +7,8 @@ import { WhoopData, RecoveryData, StrainData } from '@/types/whoop';
 // WHOOP API configuration
 const WHOOP_CLIENT_ID = 'acb83b21-9201-481e-8297-acbc6b2a9d25';
 const WHOOP_CLIENT_SECRET = 'ec0310e3f5121aee71c8fee99297b9bd6c4bc613059f5475a656adaec60de09c';
-// Updated to use deep linking
-const WHOOP_REDIRECT_URI = 'rork://oauth/callback';
+// Updated to use deep linking with correct scheme
+const WHOOP_REDIRECT_URI = 'myapp://oauth/callback';
 const WHOOP_AUTH_URL = 'https://api.prod.whoop.com/oauth/oauth2/auth';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 // Updated API base URL to match current WHOOP API version
