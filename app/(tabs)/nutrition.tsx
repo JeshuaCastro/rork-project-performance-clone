@@ -434,284 +434,394 @@ export default function NutritionScreen() {
         </View>
 
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Date Selector */}
-        <View style={styles.dateSelector}>
-          <TouchableOpacity 
-            style={styles.dateArrow}
-            onPress={() => changeDateBy(-1)}
-          >
-            <Text style={styles.dateArrowText}>‹</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.dateContainer}>
-            <Calendar size={16} color={colors.primary} />
-            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.dateArrow}
-            onPress={() => changeDateBy(1)}
-          >
-            <Text style={styles.dateArrowText}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setTextModalVisible(true)}
-            disabled={!isProfileComplete}
-          >
-            <ChefHat size={20} color={colors.text} />
-            <Text style={styles.quickActionText}>Describe Meal</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setModalVisible(true)}
-            disabled={!isProfileComplete}
-          >
-            <Plus size={20} color={colors.text} />
-            <Text style={styles.quickActionText}>Add Food</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setAiModalVisible(true)}
-            disabled={!isProfileComplete}
-          >
-            <Sparkles size={20} color={colors.text} />
-            <Text style={styles.quickActionText}>AI Suggest</Text>
-          </TouchableOpacity>
-        </View>
-
-        {!isProfileComplete ? (
-          <View style={styles.incompleteProfileContainer}>
-            {Platform.OS === 'web' ? (
-              <View style={styles.blurOverlay}>
-                <View style={styles.macroSummaryContainer}>
-                  <View style={[styles.calorieContainer, styles.blurred]}>
-                    <View style={styles.calorieHeader}>
-                      <Flame size={20} color={colors.primary} />
-                      <Text style={styles.calorieLabel}>Calories</Text>
-                    </View>
-                    <Text style={styles.calorieValue}>0 / 0</Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
-                    </View>
-                  </View>
-                  
-                  <View style={styles.macroGrid}>
-                    <View style={[styles.macroItem, styles.blurred]}>
-                      <View style={styles.macroHeader}>
-                        <Egg size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Protein</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                    
-                    <View style={[styles.macroItem, styles.blurred]}>
-                      <View style={styles.macroHeader}>
-                        <Cookie size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Carbs</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                    
-                    <View style={[styles.macroItem, styles.blurred]}>
-                      <View style={styles.macroHeader}>
-                        <Droplets size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Fat</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <BlurView intensity={8} tint="dark" style={styles.blurView}>
-                <View style={styles.macroSummaryContainer}>
-                  <View style={styles.calorieContainer}>
-                    <View style={styles.calorieHeader}>
-                      <Flame size={20} color={colors.primary} />
-                      <Text style={styles.calorieLabel}>Calories</Text>
-                    </View>
-                    <Text style={styles.calorieValue}>0 / 0</Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
-                    </View>
-                  </View>
-                  
-                  <View style={styles.macroGrid}>
-                    <View style={styles.macroItem}>
-                      <View style={styles.macroHeader}>
-                        <Egg size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Protein</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                    
-                    <View style={styles.macroItem}>
-                      <View style={styles.macroHeader}>
-                        <Cookie size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Carbs</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                    
-                    <View style={styles.macroItem}>
-                      <View style={styles.macroHeader}>
-                        <Droplets size={16} color={colors.primary} />
-                        <Text style={styles.macroLabel}>Fat</Text>
-                      </View>
-                      <Text style={styles.macroValue}>0g / 0g</Text>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '0%' }]} />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </BlurView>
-            )}
-            
-            <TouchableOpacity 
-              style={styles.completeProfileButton}
-              onPress={navigateToProfile}
-            >
-              <UserCircle size={20} color={colors.text} />
-              <Text style={styles.completeProfileText}>Complete Profile</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+        {activeTab === 'tracker' && (
           <>
-            {/* Simplified Calories Display */}
-            <View style={styles.simplifiedCaloriesContainer}>
-              <Text style={styles.simplifiedCaloriesValue}>
-                {macroProgress.calories.consumed} / {macroProgress.calories.target}
-              </Text>
-            </View>
+            {/* Date Selector */}
+            <View style={styles.dateSelector}>
+              <TouchableOpacity 
+                style={styles.dateArrow}
+                onPress={() => changeDateBy(-1)}
+              >
+                <Text style={styles.dateArrowText}>‹</Text>
+              </TouchableOpacity>
               
-            {/* Redesigned Macros Row */}
-            <View style={styles.macrosRow}>
-              <View style={styles.macroRowItem}>
-                <View style={[styles.macroDot, { backgroundColor: '#3B82F6' }]} />
-                <Text style={styles.macroRowLabel}>Protein</Text>
-                <Text style={styles.macroRowValue}>
-                  {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
-                </Text>
-              </View>
+              <TouchableOpacity style={styles.dateContainer}>
+                <Calendar size={16} color={colors.primary} />
+                <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+              </TouchableOpacity>
               
-              <View style={styles.macroRowItem}>
-                <View style={[styles.macroDot, { backgroundColor: '#8B5CF6' }]} />
-                <Text style={styles.macroRowLabel}>Carbs</Text>
-                <Text style={styles.macroRowValue}>
-                  {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
-                </Text>
-              </View>
-              
-              <View style={styles.macroRowItem}>
-                <View style={[styles.macroDot, { backgroundColor: '#F97316' }]} />
-                <Text style={styles.macroRowLabel}>Fat</Text>
-                <Text style={styles.macroRowValue}>
-                  {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
-                </Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.dateArrow}
+                onPress={() => changeDateBy(1)}
+              >
+                <Text style={styles.dateArrowText}>›</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => setTextModalVisible(true)}
-                disabled={!isProfileComplete}
-              >
-                <ChefHat size={20} color={colors.text} />
-                <Text style={styles.actionButtonText}>Describe Meal</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => setAiModalVisible(true)}
-                disabled={!isProfileComplete}
-              >
-                <Sparkles size={20} color={colors.text} />
-                <Text style={styles.actionButtonText}>AI Suggestions</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={handleAnalyzeNutrients}
-                disabled={isAnalyzingNutrients || dayEntries.length === 0}
-              >
-                {isAnalyzingNutrients ? (
-                  <ActivityIndicator size="small" color={colors.text} />
+            {!isProfileComplete ? (
+              <View style={styles.incompleteProfileContainer}>
+                {Platform.OS === 'web' ? (
+                  <View style={styles.blurOverlay}>
+                    <View style={styles.macroSummaryContainer}>
+                      <View style={[styles.calorieContainer, styles.blurred]}>
+                        <View style={styles.calorieHeader}>
+                          <Flame size={20} color={colors.primary} />
+                          <Text style={styles.calorieLabel}>Calories</Text>
+                        </View>
+                        <Text style={styles.calorieValue}>0 / 0</Text>
+                        <View style={styles.progressBar}>
+                          <View style={[styles.progressFill, { width: '0%' }]} />
+                        </View>
+                      </View>
+                      
+                      <View style={styles.macroGrid}>
+                        <View style={[styles.macroItem, styles.blurred]}>
+                          <View style={styles.macroHeader}>
+                            <Egg size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Protein</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                        
+                        <View style={[styles.macroItem, styles.blurred]}>
+                          <View style={styles.macroHeader}>
+                            <Cookie size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Carbs</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                        
+                        <View style={[styles.macroItem, styles.blurred]}>
+                          <View style={styles.macroHeader}>
+                            <Droplets size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Fat</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
                 ) : (
-                  <Target size={20} color={colors.text} />
+                  <BlurView intensity={8} tint="dark" style={styles.blurView}>
+                    <View style={styles.macroSummaryContainer}>
+                      <View style={styles.calorieContainer}>
+                        <View style={styles.calorieHeader}>
+                          <Flame size={20} color={colors.primary} />
+                          <Text style={styles.calorieLabel}>Calories</Text>
+                        </View>
+                        <Text style={styles.calorieValue}>0 / 0</Text>
+                        <View style={styles.progressBar}>
+                          <View style={[styles.progressFill, { width: '0%' }]} />
+                        </View>
+                      </View>
+                      
+                      <View style={styles.macroGrid}>
+                        <View style={styles.macroItem}>
+                          <View style={styles.macroHeader}>
+                            <Egg size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Protein</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                        
+                        <View style={styles.macroItem}>
+                          <View style={styles.macroHeader}>
+                            <Cookie size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Carbs</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                        
+                        <View style={styles.macroItem}>
+                          <View style={styles.macroHeader}>
+                            <Droplets size={16} color={colors.primary} />
+                            <Text style={styles.macroLabel}>Fat</Text>
+                          </View>
+                          <Text style={styles.macroValue}>0g / 0g</Text>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: '0%' }]} />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </BlurView>
                 )}
-                <Text style={styles.actionButtonText}>Analyze</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Food Log */}
-            {dayEntries.length === 0 ? (
-              <View style={styles.emptyState}>
-                <PlateIcon size={48} color={colors.textSecondary} />
-                <Text style={styles.emptyText}>No foods logged today</Text>
-                <Text style={styles.emptySubtext}>Tap + to add your first food</Text>
+                
+                <TouchableOpacity 
+                  style={styles.completeProfileButton}
+                  onPress={navigateToProfile}
+                >
+                  <UserCircle size={20} color={colors.text} />
+                  <Text style={styles.completeProfileText}>Complete Profile</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.foodsList}>
-                <Text style={styles.sectionTitle}>Today's Meals</Text>
-                {dayEntries.map((entry) => (
-                  <View key={entry.id} style={styles.foodItem}>
-                    <View style={styles.foodHeader}>
-                      <View style={styles.foodTypeContainer}>
-                        {mealTypes.find(type => type.id === entry.mealType)?.icon}
-                        <Text style={styles.foodType}>
-                          {mealTypes.find(type => type.id === entry.mealType)?.label}
-                        </Text>
-                      </View>
-                      <Text style={styles.foodTime}>
-                        <Clock size={14} color={colors.textSecondary} /> {entry.time}
-                      </Text>
-                    </View>
-                    
-                    <Text style={styles.foodName}>{entry.name}</Text>
-                    
-                    <View style={styles.foodNutrition}>
-                      <Text style={styles.foodCalories}>{entry.calories} cal</Text>
-                      <Text style={styles.foodMacros}>
-                        P: {entry.protein}g • C: {entry.carbs}g • F: {entry.fat}g
-                      </Text>
-                    </View>
-                    
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteEntry(entry.id)}
-                    >
-                      <X size={16} color={colors.danger} />
-                    </TouchableOpacity>
+              <>
+                {/* Simplified Calories Display */}
+                <View style={styles.simplifiedCaloriesContainer}>
+                  <Text style={styles.simplifiedCaloriesValue}>
+                    {macroProgress.calories.consumed} / {macroProgress.calories.target}
+                  </Text>
+                </View>
+                  
+                {/* Redesigned Macros Row */}
+                <View style={styles.macrosRow}>
+                  <View style={styles.macroRowItem}>
+                    <View style={[styles.macroDot, { backgroundColor: '#3B82F6' }]} />
+                    <Text style={styles.macroRowLabel}>Protein</Text>
+                    <Text style={styles.macroRowValue}>
+                      {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
+                    </Text>
                   </View>
-                ))}
-              </View>
+                  
+                  <View style={styles.macroRowItem}>
+                    <View style={[styles.macroDot, { backgroundColor: '#8B5CF6' }]} />
+                    <Text style={styles.macroRowLabel}>Carbs</Text>
+                    <Text style={styles.macroRowValue}>
+                      {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.macroRowItem}>
+                    <View style={[styles.macroDot, { backgroundColor: '#F97316' }]} />
+                    <Text style={styles.macroRowLabel}>Fat</Text>
+                    <Text style={styles.macroRowValue}>
+                      {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    onPress={() => setTextModalVisible(true)}
+                    disabled={!isProfileComplete}
+                  >
+                    <ChefHat size={20} color={colors.text} />
+                    <Text style={styles.actionButtonText}>Describe Meal</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    onPress={() => setAiModalVisible(true)}
+                    disabled={!isProfileComplete}
+                  >
+                    <Sparkles size={20} color={colors.text} />
+                    <Text style={styles.actionButtonText}>AI Suggestions</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    onPress={handleAnalyzeNutrients}
+                    disabled={isAnalyzingNutrients || dayEntries.length === 0}
+                  >
+                    {isAnalyzingNutrients ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Target size={20} color={colors.text} />
+                    )}
+                    <Text style={styles.actionButtonText}>Analyze</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Food Log */}
+                {dayEntries.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <PlateIcon size={48} color={colors.textSecondary} />
+                    <Text style={styles.emptyText}>No foods logged today</Text>
+                    <Text style={styles.emptySubtext}>Tap + to add your first food</Text>
+                  </View>
+                ) : (
+                  <View style={styles.foodsList}>
+                    <Text style={styles.sectionTitle}>Today's Meals</Text>
+                    {dayEntries.map((entry) => (
+                      <View key={entry.id} style={styles.foodItem}>
+                        <View style={styles.foodHeader}>
+                          <View style={styles.foodTypeContainer}>
+                            {mealTypes.find(type => type.id === entry.mealType)?.icon}
+                            <Text style={styles.foodType}>
+                              {mealTypes.find(type => type.id === entry.mealType)?.label}
+                            </Text>
+                          </View>
+                          <Text style={styles.foodTime}>
+                            <Clock size={14} color={colors.textSecondary} /> {entry.time}
+                          </Text>
+                        </View>
+                        
+                        <Text style={styles.foodName}>{entry.name}</Text>
+                        
+                        <View style={styles.foodNutrition}>
+                          <Text style={styles.foodCalories}>{entry.calories} cal</Text>
+                          <Text style={styles.foodMacros}>
+                            P: {entry.protein}g • C: {entry.carbs}g • F: {entry.fat}g
+                          </Text>
+                        </View>
+                        
+                        <TouchableOpacity 
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteEntry(entry.id)}
+                        >
+                          <X size={16} color={colors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </>
+        )}
+
+        {/* Meal Plan Tab */}
+        {activeTab === 'meal-plan' && (
+          <View style={styles.mealPlanPage}>
+            {!isProfileComplete ? (
+              <View style={styles.incompleteProfileContainer}>
+                <TouchableOpacity 
+                  style={styles.completeProfileButton}
+                  onPress={navigateToProfile}
+                >
+                  <UserCircle size={20} color={colors.text} />
+                  <Text style={styles.completeProfileText}>Complete Profile</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.mealPlanHeader}>
+                  <Text style={styles.mealPlanHeaderTitle}>AI Meal Planning</Text>
+                  <Text style={styles.mealPlanHeaderSubtitle}>
+                    Get personalized meal plans based on your goals and preferences
+                  </Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.generateMealPlanButton}
+                  onPress={generateMealPlan}
+                  disabled={isGeneratingMealPlan}
+                >
+                  {isGeneratingMealPlan ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <Sparkles size={20} color={colors.text} />
+                  )}
+                  <Text style={styles.generateMealPlanButtonText}>
+                    {isGeneratingMealPlan ? 'Generating...' : 'Generate Meal Plan'}
+                  </Text>
+                </TouchableOpacity>
+
+                {mealPlan && (
+                  <View style={styles.mealPlanDisplay}>
+                    <Text style={styles.mealPlanDisplayTitle}>Your Personalized Meal Plan</Text>
+                    <View style={styles.mealPlanContent}>
+                      <Text style={styles.mealPlanText}>{mealPlan}</Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.mealPlanTips}>
+                  <Text style={styles.mealPlanTipsTitle}>Tips for Success</Text>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>•</Text>
+                    <Text style={styles.tipText}>Meal prep on weekends to save time during busy weekdays</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>•</Text>
+                    <Text style={styles.tipText}>Keep healthy snacks readily available</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>•</Text>
+                    <Text style={styles.tipText}>Stay hydrated throughout the day</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>•</Text>
+                    <Text style={styles.tipText}>Listen to your body's hunger and fullness cues</Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Insights Tab */}
+        {activeTab === 'insights' && (
+          <View style={styles.insightsPage}>
+            {!isProfileComplete ? (
+              <View style={styles.incompleteProfileContainer}>
+                <TouchableOpacity 
+                  style={styles.completeProfileButton}
+                  onPress={navigateToProfile}
+                >
+                  <UserCircle size={20} color={colors.text} />
+                  <Text style={styles.completeProfileText}>Complete Profile</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.insightsHeader}>
+                  <Text style={styles.insightsHeaderTitle}>Nutrition Insights</Text>
+                  <Text style={styles.insightsHeaderSubtitle}>
+                    Analyze your nutrition patterns and get personalized recommendations
+                  </Text>
+                </View>
+
+                <View style={styles.insightActions}>
+                  <TouchableOpacity 
+                    style={styles.insightActionButton}
+                    onPress={handleAnalyzeNutrients}
+                    disabled={isAnalyzingNutrients || dayEntries.length === 0}
+                  >
+                    {isAnalyzingNutrients ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Target size={24} color={colors.text} />
+                    )}
+                    <Text style={styles.insightActionTitle}>Nutrient Analysis</Text>
+                    <Text style={styles.insightActionSubtitle}>Analyze today's nutrition</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.insightActionButton}
+                    onPress={generateWeeklyStats}
+                    disabled={isLoadingWeeklyStats}
+                  >
+                    {isLoadingWeeklyStats ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <BarChart3 size={24} color={colors.text} />
+                    )}
+                    <Text style={styles.insightActionTitle}>Weekly Stats</Text>
+                    <Text style={styles.insightActionSubtitle}>View 7-day nutrition trends</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {dayEntries.length === 0 && (
+                  <View style={styles.insightsEmptyState}>
+                    <BarChart3 size={48} color={colors.textSecondary} />
+                    <Text style={styles.insightsEmptyText}>No data to analyze yet</Text>
+                    <Text style={styles.insightsEmptySubtext}>
+                      Start logging your meals to get personalized insights
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         )}
 
         {/* Add Food Modal */}
@@ -2026,5 +2136,160 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 16,
+  },
+  // Meal Plan Page Styles
+  mealPlanPage: {
+    flex: 1,
+  },
+  mealPlanHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingVertical: 20,
+  },
+  mealPlanHeaderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  mealPlanHeaderSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  generateMealPlanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginBottom: 32,
+    marginHorizontal: 20,
+  },
+  generateMealPlanButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  mealPlanDisplay: {
+    marginBottom: 32,
+  },
+  mealPlanDisplayTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  mealPlanContent: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 4,
+  },
+  mealPlanTips: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 4,
+  },
+  mealPlanTipsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  tipBullet: {
+    fontSize: 16,
+    color: colors.primary,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  tipText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    flex: 1,
+  },
+  // Insights Page Styles
+  insightsPage: {
+    flex: 1,
+  },
+  insightsHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingVertical: 20,
+  },
+  insightsHeaderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  insightsHeaderSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  insightActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+    paddingHorizontal: 8,
+  },
+  insightActionButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  insightActionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  insightActionSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  insightsEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    marginTop: 40,
+  },
+  insightsEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  insightsEmptySubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
