@@ -108,7 +108,8 @@ export default function NutritionScreen() {
     dislikedFoods: '',
     foodPreferences: '',
     mealPrepPreference: '',
-    primaryGoal: ''
+    primaryGoal: '',
+    mealPlanDuration: ''
   });
 
   const [newFood, setNewFood] = useState<Partial<FoodLogEntry>>({
@@ -372,13 +373,14 @@ Preferences:
 - Budget: ${mealPlanPreferences.budgetRange}
 - Meal prep: ${mealPlanPreferences.mealPrepPreference}
 - Primary goal: ${mealPlanPreferences.primaryGoal}
+- Duration: ${mealPlanPreferences.mealPlanDuration}
 ${restrictionsText ? `- ${restrictionsText}` : ''}
 ${allergiesText ? `- ${allergiesText}` : ''}
 ${cuisinesText ? `- ${cuisinesText}` : ''}
 ${dislikesText ? `- ${dislikesText}` : ''}
 ${foodPreferencesText ? `- ${foodPreferencesText}` : ''}
 
-Provide a complete daily meal plan with specific foods, portions, and macros for each meal.`;
+Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specific foods, portions, and macros for each meal.`;
       
       const plan = await generateMealSuggestion(prompt);
       setMealPlan(plan);
@@ -466,6 +468,14 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
       options: ["Weight loss", "Muscle gain", "Maintenance", "Energy boost", "Better health"],
       value: mealPlanPreferences.primaryGoal,
       setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, primaryGoal: value })
+    },
+    {
+      title: "Meal Plan Duration",
+      subtitle: "How long would you like your meal plan to be?",
+      type: "single-select",
+      options: ["1 day", "3 days", "1 week", "2 weeks", "1 month"],
+      value: mealPlanPreferences.mealPlanDuration,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, mealPlanDuration: value })
     }
   ];
 
