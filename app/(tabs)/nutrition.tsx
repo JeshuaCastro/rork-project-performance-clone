@@ -957,6 +957,15 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                 <View style={styles.actionButtons}>
                   <TouchableOpacity 
                     style={styles.actionButton}
+                    onPress={() => setModalVisible(true)}
+                    disabled={!isProfileComplete}
+                  >
+                    <Plus size={20} color={colors.text} />
+                    <Text style={styles.actionButtonText}>Manual Add</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.actionButton}
                     onPress={() => setTextModalVisible(true)}
                     disabled={!isProfileComplete}
                   >
@@ -1991,7 +2000,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
+    gap: 8,
   },
   actionButton: {
     flex: 1,
@@ -1999,16 +2009,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.card,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderRadius: 16,
-    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.text,
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
   },
   sectionTitle: {
