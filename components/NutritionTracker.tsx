@@ -326,43 +326,55 @@ export default function NutritionTracker() {
                   </View>
                 </View>
                 
-                <View style={styles.macroGrid}>
-                  <View style={[styles.macroItem, styles.blurred]}>
-                    <View style={styles.macroHeader}>
-                      <Egg size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Protein</Text>
+                <View style={[styles.macroPillsContainer, styles.blurred]}>
+                  <View style={[styles.macroPill, { backgroundColor: '#E8F5E8' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Egg size={18} color="#4CAF50" />
                     </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Protein</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
                     </View>
-                  </View>
-                  
-                  <View style={[styles.macroItem, styles.blurred]}>
-                    <View style={styles.macroHeader}>
-                      <Cookie size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Carbs</Text>
-                    </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#C8E6C9' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#4CAF50' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
                     </View>
                   </View>
                   
-                  <View style={[styles.macroItem, styles.blurred]}>
-                    <View style={styles.macroHeader}>
-                      <Droplets size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Fat</Text>
+                  <View style={[styles.macroPill, { backgroundColor: '#FFF3E0' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Cookie size={18} color="#FF9800" />
                     </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Carbs</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
+                    </View>
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#FFE0B2' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#FF9800' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={[styles.macroPill, { backgroundColor: '#E3F2FD' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Droplets size={18} color="#2196F3" />
+                    </View>
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Fat</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
+                    </View>
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#BBDEFB' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#2196F3' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
                     </View>
                   </View>
                 </View>
@@ -389,43 +401,55 @@ export default function NutritionTracker() {
                   </View>
                 </View>
                 
-                <View style={styles.macroGrid}>
-                  <View style={styles.macroItem}>
-                    <View style={styles.macroHeader}>
-                      <Egg size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Protein</Text>
+                <View style={styles.macroPillsContainer}>
+                  <View style={[styles.macroPill, { backgroundColor: '#E8F5E8' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Egg size={18} color="#4CAF50" />
                     </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Protein</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
                     </View>
-                  </View>
-                  
-                  <View style={styles.macroItem}>
-                    <View style={styles.macroHeader}>
-                      <Cookie size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Carbs</Text>
-                    </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#C8E6C9' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#4CAF50' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
                     </View>
                   </View>
                   
-                  <View style={styles.macroItem}>
-                    <View style={styles.macroHeader}>
-                      <Droplets size={16} color={colors.primary} />
-                      <Text style={styles.macroLabel}>Fat</Text>
+                  <View style={[styles.macroPill, { backgroundColor: '#FFF3E0' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Cookie size={18} color="#FF9800" />
                     </View>
-                    <Text style={styles.macroValue}>
-                      0g / 0g
-                    </Text>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Carbs</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
+                    </View>
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#FFE0B2' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#FF9800' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={[styles.macroPill, { backgroundColor: '#E3F2FD' }]}>
+                    <View style={styles.macroPillIcon}>
+                      <Droplets size={18} color="#2196F3" />
+                    </View>
+                    <View style={styles.macroPillContent}>
+                      <Text style={styles.macroPillLabel}>Fat</Text>
+                      <Text style={styles.macroPillValue}>0g</Text>
+                      <Text style={styles.macroPillTarget}>of 0g</Text>
+                    </View>
+                    <View style={styles.macroPillProgress}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#BBDEFB' }]}>
+                        <View style={[styles.macroPillProgressFill, { width: '0%', backgroundColor: '#2196F3' }]} />
+                      </View>
+                      <Text style={styles.macroPillPercentage}>0%</Text>
                     </View>
                   </View>
                 </View>
@@ -468,61 +492,76 @@ export default function NutritionTracker() {
               </View>
             </View>
             
-            <View style={styles.macroGrid}>
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Egg size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Protein</Text>
+            <View style={styles.macroPillsContainer}>
+              <View style={[styles.macroPill, { backgroundColor: '#E8F5E8' }]}>
+                <View style={styles.macroPillIcon}>
+                  <Egg size={18} color="#4CAF50" />
                 </View>
-                <Text style={styles.macroValue}>
-                  {macroProgress.protein.consumed}g / {macroProgress.protein.target}g
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${proteinPercentage}%` },
-                      proteinPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
+                <View style={styles.macroPillContent}>
+                  <Text style={styles.macroPillLabel}>Protein</Text>
+                  <Text style={styles.macroPillValue}>
+                    {macroProgress.protein.consumed}g
+                  </Text>
+                  <Text style={styles.macroPillTarget}>of {macroProgress.protein.target}g</Text>
                 </View>
-              </View>
-              
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Cookie size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Carbs</Text>
-                </View>
-                <Text style={styles.macroValue}>
-                  {macroProgress.carbs.consumed}g / {macroProgress.carbs.target}g
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${carbsPercentage}%` },
-                      carbsPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
+                <View style={styles.macroPillProgress}>
+                  <View style={[styles.macroPillProgressBar, { backgroundColor: '#C8E6C9' }]}>
+                    <View 
+                      style={[
+                        styles.macroPillProgressFill, 
+                        { width: `${Math.min(100, proteinPercentage)}%`, backgroundColor: '#4CAF50' }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.macroPillPercentage}>{Math.round(proteinPercentage)}%</Text>
                 </View>
               </View>
               
-              <View style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Droplets size={16} color={colors.primary} />
-                  <Text style={styles.macroLabel}>Fat</Text>
+              <View style={[styles.macroPill, { backgroundColor: '#FFF3E0' }]}>
+                <View style={styles.macroPillIcon}>
+                  <Cookie size={18} color="#FF9800" />
                 </View>
-                <Text style={styles.macroValue}>
-                  {macroProgress.fat.consumed}g / {macroProgress.fat.target}g
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${fatPercentage}%` },
-                      fatPercentage > 100 ? styles.progressOverage : null
-                    ]} 
-                  />
+                <View style={styles.macroPillContent}>
+                  <Text style={styles.macroPillLabel}>Carbs</Text>
+                  <Text style={styles.macroPillValue}>
+                    {macroProgress.carbs.consumed}g
+                  </Text>
+                  <Text style={styles.macroPillTarget}>of {macroProgress.carbs.target}g</Text>
+                </View>
+                <View style={styles.macroPillProgress}>
+                  <View style={[styles.macroPillProgressBar, { backgroundColor: '#FFE0B2' }]}>
+                    <View 
+                      style={[
+                        styles.macroPillProgressFill, 
+                        { width: `${Math.min(100, carbsPercentage)}%`, backgroundColor: '#FF9800' }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.macroPillPercentage}>{Math.round(carbsPercentage)}%</Text>
+                </View>
+              </View>
+              
+              <View style={[styles.macroPill, { backgroundColor: '#E3F2FD' }]}>
+                <View style={styles.macroPillIcon}>
+                  <Droplets size={18} color="#2196F3" />
+                </View>
+                <View style={styles.macroPillContent}>
+                  <Text style={styles.macroPillLabel}>Fat</Text>
+                  <Text style={styles.macroPillValue}>
+                    {macroProgress.fat.consumed}g
+                  </Text>
+                  <Text style={styles.macroPillTarget}>of {macroProgress.fat.target}g</Text>
+                </View>
+                <View style={styles.macroPillProgress}>
+                  <View style={[styles.macroPillProgressBar, { backgroundColor: '#BBDEFB' }]}>
+                    <View 
+                      style={[
+                        styles.macroPillProgressFill, 
+                        { width: `${Math.min(100, fatPercentage)}%`, backgroundColor: '#2196F3' }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.macroPillPercentage}>{Math.round(fatPercentage)}%</Text>
                 </View>
               </View>
             </View>
@@ -1070,31 +1109,69 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
-  macroGrid: {
-    gap: 8,
+  macroPillsContainer: {
+    gap: 12,
   },
-  macroItem: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  macroHeader: {
+  macroPill: {
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  macroLabel: {
+  macroPillIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  macroPillContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  macroPillLabel: {
     fontSize: 14,
-    color: colors.text,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  macroValue: {
-    fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
+    color: '#333',
+    marginBottom: 2,
+  },
+  macroPillValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2,
+  },
+  macroPillTarget: {
+    fontSize: 12,
+    color: '#666',
+  },
+  macroPillProgress: {
+    alignItems: 'flex-end',
+    minWidth: 60,
+  },
+  macroPillProgressBar: {
+    width: 50,
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  macroPillProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  macroPillPercentage: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
   },
   progressBar: {
     height: 6,
