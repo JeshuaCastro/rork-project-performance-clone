@@ -399,7 +399,7 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
   };
 
   const nextQuestion = () => {
-    if (questions.length - 1) {
+    if (questionnaireStep < questions.length - 1) {
       setQuestionnaireStep(questionnaireStep + 1);
     } else {
       generateMealPlan();
