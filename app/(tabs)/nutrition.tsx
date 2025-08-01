@@ -106,6 +106,7 @@ export default function NutritionScreen() {
     budgetRange: '',
     allergies: [] as string[],
     dislikedFoods: '',
+    foodPreferences: '',
     mealPrepPreference: '',
     primaryGoal: ''
   });
@@ -353,6 +354,9 @@ export default function NutritionScreen() {
       const dislikesText = mealPlanPreferences.dislikedFoods 
         ? `Foods to avoid: ${mealPlanPreferences.dislikedFoods}` 
         : '';
+      const foodPreferencesText = mealPlanPreferences.foodPreferences 
+        ? `Food preferences: ${mealPlanPreferences.foodPreferences}` 
+        : '';
 
       const prompt = `Create a personalized meal plan based on:
 
@@ -372,6 +376,7 @@ ${restrictionsText ? `- ${restrictionsText}` : ''}
 ${allergiesText ? `- ${allergiesText}` : ''}
 ${cuisinesText ? `- ${cuisinesText}` : ''}
 ${dislikesText ? `- ${dislikesText}` : ''}
+${foodPreferencesText ? `- ${foodPreferencesText}` : ''}
 
 Provide a complete daily meal plan with specific foods, portions, and macros for each meal.`;
       
@@ -394,7 +399,7 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
   };
 
   const nextQuestion = () => {
-    if (questionnaireStep < 6) {
+    if (questionnaireStep < 7) {
       setQuestionnaireStep(questionnaireStep + 1);
     } else {
       generateMealPlan();
@@ -431,6 +436,14 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
         options: ["Nuts", "Shellfish", "Eggs", "Dairy", "Soy", "Gluten", "Fish", "Sesame"],
         value: mealPlanPreferences.allergies,
         setter: (item: string) => toggleArrayPreference(mealPlanPreferences.allergies, item, setMealPlanPreferences)
+      },
+      {
+        title: "Food Preferences",
+        subtitle: "Tell us about foods you enjoy eating",
+        type: "text-input",
+        value: mealPlanPreferences.foodPreferences,
+        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, foodPreferences: value }),
+        placeholder: "e.g., I love Mediterranean flavors, grilled meats, fresh vegetables, and spicy foods. I enjoy trying new cuisines but prefer familiar comfort foods for breakfast."
       },
       {
         title: "Cooking Time",
@@ -577,6 +590,19 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
                 </View>
               </View>
             </View>
+          )}
+
+          {currentQuestion.type === "text-input" && (
+            <TextInput
+              style={styles.questionTextInput}
+              placeholder={currentQuestion.placeholder}
+              placeholderTextColor={colors.textSecondary}
+              value={currentQuestion.value}
+              onChangeText={currentQuestion.setter}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           )}
         </View>
 
@@ -2729,5 +2755,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
+  },
+  questionTextInput: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: colors.text,
+    fontSize: 16,
+    minHeight: 120,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
 });
