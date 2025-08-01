@@ -43,7 +43,10 @@ import {
   Eye,
   Check,
   CheckCircle,
-  Info
+  Info,
+  TrendingUp,
+  Calendar,
+  BarChart3
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -282,6 +285,29 @@ export default function DashboardScreen() {
       default:
         return colors.textSecondary;
     }
+  };
+  
+  // Get status color for recovery
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'high':
+        return colors.recovery.high;
+      case 'medium':
+        return colors.recovery.medium;
+      case 'low':
+        return colors.recovery.low;
+      default:
+        return colors.textSecondary;
+    }
+  };
+  
+  // Get strain level description
+  const getStrainDescription = (score: number) => {
+    if (score >= 18) return "All Out";
+    if (score >= 14) return "Strenuous";
+    if (score >= 10) return "Moderate";
+    if (score >= 6) return "Light";
+    return "Minimal";
   };
   
   // Handle starting a workout from dashboard
@@ -797,17 +823,79 @@ export default function DashboardScreen() {
           
 
           
+          {/* Quick Stats Overview */}
+          {data?.recovery && data.recovery.length > 0 && (
+            <View style={styles.quickStatsSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Today's Overview</Text>
+                <TouchableOpacity 
+                  style={styles.trendsButton}
+                  onPress={() => router.push('/trends')}
+                >
+                  <TrendingUp size={16} color={colors.primary} />
+                  <Text style={styles.trendsButtonText}>Trends</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.quickStatsGrid}>
+                {selectedRecovery && (
+                  <View style={styles.quickStatCard}>
+                    <View style={styles.quickStatHeader}>
+                      <Heart size={18} color={colors.recovery.high} />
+                      <Text style={styles.quickStatLabel}>Recovery</Text>
+                    </View>
+                    <Text style={styles.quickStatValue}>{selectedRecovery.score}%</Text>
+                    <Text style={[styles.quickStatStatus, { color: getStatusColor(selectedRecovery.status) }]}>
+                      {selectedRecovery.status.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                
+                {selectedStrain && (
+                  <View style={styles.quickStatCard}>
+                    <View style={styles.quickStatHeader}>
+                      <Dumbbell size={18} color={colors.warning} />
+                      <Text style={styles.quickStatLabel}>Strain</Text>
+                    </View>
+                    <Text style={styles.quickStatValue}>{selectedStrain.score.toFixed(1)}</Text>
+                    <Text style={styles.quickStatStatus}>
+                      {getStrainDescription(selectedStrain.score)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+          
           {/* Weight Tracking */}
           <WeightTracker />
           
           {/* Calendar View */}
-          <CalendarView 
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            highlightedDates={dates}
-          />
+          <View style={styles.calendarSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Activity Calendar</Text>
+              <TouchableOpacity 
+                style={styles.calendarViewButton}
+                onPress={() => router.push('/activity-detail')}
+              >
+                <Calendar size={16} color={colors.primary} />
+                <Text style={styles.calendarViewButtonText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <CalendarView 
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              highlightedDates={dates}
+            />
+          </View>
           
-          {selectedRecovery && <RecoveryCard recovery={selectedRecovery} />}
+          {/* Detailed Cards */}
+          {selectedRecovery && (
+            <View style={styles.detailedCardsSection}>
+              <Text style={styles.sectionTitle}>Detailed Metrics</Text>
+              <RecoveryCard recovery={selectedRecovery} />
+            </View>
+          )}
           {selectedStrain && <StrainCard strain={selectedStrain} />}
           
 
@@ -860,22 +948,22 @@ export default function DashboardScreen() {
                     <View style={styles.quickStatsContainer}>
                       <View style={styles.quickStat}>
                         <Clock size={16} color={colors.primary} />
-                        <Text style={styles.quickStatLabel}>Duration</Text>
-                        <Text style={styles.quickStatValue}>{todaysWorkout.duration}</Text>
+                        <Text style={styles.quickStatLabelModal}>Duration</Text>
+                        <Text style={styles.quickStatValueModal}>{todaysWorkout.duration}</Text>
                       </View>
                       
                       <View style={styles.quickStat}>
                         <Heart size={16} color={colors.primary} />
-                        <Text style={styles.quickStatLabel}>Target HR</Text>
-                        <Text style={styles.quickStatValue}>
+                        <Text style={styles.quickStatLabelModal}>Target HR</Text>
+                        <Text style={styles.quickStatValueModal}>
                           {generateTargetHeartRate(todaysWorkout.type, todaysWorkout.intensity)}
                         </Text>
                       </View>
                       
                       <View style={styles.quickStat}>
                         <Flame size={16} color={colors.primary} />
-                        <Text style={styles.quickStatLabel}>Calories</Text>
-                        <Text style={styles.quickStatValue}>
+                        <Text style={styles.quickStatLabelModal}>Calories</Text>
+                        <Text style={styles.quickStatValueModal}>
                           {generateCaloriesBurned(todaysWorkout.type, todaysWorkout.intensity)}
                         </Text>
                       </View>
@@ -1484,13 +1572,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  quickStatLabel: {
+  quickStatLabelModal: {
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 4,
     marginBottom: 2,
   },
-  quickStatValue: {
+  quickStatValueModal: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
@@ -1644,5 +1732,84 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginTop: 8,
     marginRight: 8,
+  },
+  // Quick Stats Section
+  quickStatsSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  trendsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  trendsButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  quickStatsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickStatCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+  },
+  quickStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  quickStatLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  quickStatValue: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  quickStatStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  // Calendar Section
+  calendarSection: {
+    marginBottom: 24,
+  },
+  calendarViewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  calendarViewButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  // Detailed Cards Section
+  detailedCardsSection: {
+    marginBottom: 16,
   },
 });
