@@ -597,8 +597,8 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
               style={styles.questionTextInput}
               placeholder={currentQuestion.placeholder}
               placeholderTextColor={colors.textSecondary}
-              value={currentQuestion.value}
-              onChangeText={currentQuestion.setter}
+              value={currentQuestion.value as string}
+              onChangeText={currentQuestion.setter as (text: string) => void}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
