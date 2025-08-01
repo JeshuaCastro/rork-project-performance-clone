@@ -398,6 +398,77 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
     setQuestionnaireStep(0);
   };
 
+  const questions = [
+    {
+      title: "Dietary Restrictions",
+      subtitle: "Select any that apply to you",
+      type: "multi-select",
+      options: ["Vegetarian", "Vegan", "Keto", "Paleo", "Mediterranean", "Low-carb", "Gluten-free", "Dairy-free"],
+      value: mealPlanPreferences.dietaryRestrictions,
+      setter: (item: string) => toggleArrayPreference(mealPlanPreferences.dietaryRestrictions, item, setMealPlanPreferences)
+    },
+    {
+      title: "Food Allergies",
+      subtitle: "Select any allergies you have",
+      type: "multi-select",
+      options: ["Nuts", "Shellfish", "Eggs", "Dairy", "Soy", "Gluten", "Fish", "Sesame"],
+      value: mealPlanPreferences.allergies,
+      setter: (item: string) => toggleArrayPreference(mealPlanPreferences.allergies, item, setMealPlanPreferences)
+    },
+    {
+      title: "Food Preferences",
+      subtitle: "Tell us about foods you enjoy eating",
+      type: "text-input",
+      value: mealPlanPreferences.foodPreferences,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, foodPreferences: value }),
+      placeholder: "e.g., I love Mediterranean flavors, grilled meats, fresh vegetables, and spicy foods. I enjoy trying new cuisines but prefer familiar comfort foods for breakfast."
+    },
+    {
+      title: "Cooking Time",
+      subtitle: "How much time can you spend cooking?",
+      type: "single-select",
+      options: ["Under 15 minutes", "15-30 minutes", "30-60 minutes", "Over 1 hour"],
+      value: mealPlanPreferences.cookingTime,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, cookingTime: value })
+    },
+    {
+      title: "Meal Structure",
+      subtitle: "How many meals and snacks per day?",
+      type: "meal-structure",
+      value: { meals: mealPlanPreferences.mealsPerDay, snacks: mealPlanPreferences.snacksPerDay },
+      setter: (type: 'meals' | 'snacks', value: number) => {
+        setMealPlanPreferences({ 
+          ...mealPlanPreferences, 
+          [type === 'meals' ? 'mealsPerDay' : 'snacksPerDay']: value 
+        });
+      }
+    },
+    {
+      title: "Budget Range",
+      subtitle: "What's your weekly food budget?",
+      type: "single-select",
+      options: ["Under $50", "$50-100", "$100-150", "$150+"],
+      value: mealPlanPreferences.budgetRange,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, budgetRange: value })
+    },
+    {
+      title: "Meal Prep Style",
+      subtitle: "How do you prefer to prepare meals?",
+      type: "single-select",
+      options: ["Fresh daily", "Batch cook weekends", "Mix of both", "Minimal prep"],
+      value: mealPlanPreferences.mealPrepPreference,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, mealPrepPreference: value })
+    },
+    {
+      title: "Primary Goal",
+      subtitle: "What's your main nutrition goal?",
+      type: "single-select",
+      options: ["Weight loss", "Muscle gain", "Maintenance", "Energy boost", "Better health"],
+      value: mealPlanPreferences.primaryGoal,
+      setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, primaryGoal: value })
+    }
+  ];
+
   const nextQuestion = () => {
     if (questionnaireStep < questions.length - 1) {
       setQuestionnaireStep(questionnaireStep + 1);
@@ -420,77 +491,6 @@ Provide a complete daily meal plan with specific foods, portions, and macros for
   };
 
   const renderQuestionnaireStep = () => {
-    const questions = [
-      {
-        title: "Dietary Restrictions",
-        subtitle: "Select any that apply to you",
-        type: "multi-select",
-        options: ["Vegetarian", "Vegan", "Keto", "Paleo", "Mediterranean", "Low-carb", "Gluten-free", "Dairy-free"],
-        value: mealPlanPreferences.dietaryRestrictions,
-        setter: (item: string) => toggleArrayPreference(mealPlanPreferences.dietaryRestrictions, item, setMealPlanPreferences)
-      },
-      {
-        title: "Food Allergies",
-        subtitle: "Select any allergies you have",
-        type: "multi-select",
-        options: ["Nuts", "Shellfish", "Eggs", "Dairy", "Soy", "Gluten", "Fish", "Sesame"],
-        value: mealPlanPreferences.allergies,
-        setter: (item: string) => toggleArrayPreference(mealPlanPreferences.allergies, item, setMealPlanPreferences)
-      },
-      {
-        title: "Food Preferences",
-        subtitle: "Tell us about foods you enjoy eating",
-        type: "text-input",
-        value: mealPlanPreferences.foodPreferences,
-        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, foodPreferences: value }),
-        placeholder: "e.g., I love Mediterranean flavors, grilled meats, fresh vegetables, and spicy foods. I enjoy trying new cuisines but prefer familiar comfort foods for breakfast."
-      },
-      {
-        title: "Cooking Time",
-        subtitle: "How much time can you spend cooking?",
-        type: "single-select",
-        options: ["Under 15 minutes", "15-30 minutes", "30-60 minutes", "Over 1 hour"],
-        value: mealPlanPreferences.cookingTime,
-        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, cookingTime: value })
-      },
-      {
-        title: "Meal Structure",
-        subtitle: "How many meals and snacks per day?",
-        type: "meal-structure",
-        value: { meals: mealPlanPreferences.mealsPerDay, snacks: mealPlanPreferences.snacksPerDay },
-        setter: (type: 'meals' | 'snacks', value: number) => {
-          setMealPlanPreferences({ 
-            ...mealPlanPreferences, 
-            [type === 'meals' ? 'mealsPerDay' : 'snacksPerDay']: value 
-          });
-        }
-      },
-      {
-        title: "Budget Range",
-        subtitle: "What's your weekly food budget?",
-        type: "single-select",
-        options: ["Under $50", "$50-100", "$100-150", "$150+"],
-        value: mealPlanPreferences.budgetRange,
-        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, budgetRange: value })
-      },
-      {
-        title: "Meal Prep Style",
-        subtitle: "How do you prefer to prepare meals?",
-        type: "single-select",
-        options: ["Fresh daily", "Batch cook weekends", "Mix of both", "Minimal prep"],
-        value: mealPlanPreferences.mealPrepPreference,
-        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, mealPrepPreference: value })
-      },
-      {
-        title: "Primary Goal",
-        subtitle: "What's your main nutrition goal?",
-        type: "single-select",
-        options: ["Weight loss", "Muscle gain", "Maintenance", "Energy boost", "Better health"],
-        value: mealPlanPreferences.primaryGoal,
-        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, primaryGoal: value })
-      }
-    ];
-
     const currentQuestion = questions[questionnaireStep];
     
     return (
