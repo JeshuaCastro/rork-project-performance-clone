@@ -880,9 +880,9 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                   
                 {/* Macro Pills */}
                 <View style={styles.macroPillsContainer}>
-                  <View style={[styles.macroPill, { backgroundColor: '#E8F5E8' }]}>
+                  <View style={[styles.macroPill, { backgroundColor: colors.card }]}>
                     <View style={styles.macroPillIcon}>
-                      <Egg size={18} color="#4CAF50" />
+                      <Egg size={18} color={colors.success} />
                     </View>
                     <View style={styles.macroPillContent}>
                       <Text style={styles.macroPillLabel}>Protein</Text>
@@ -892,11 +892,11 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                       <Text style={styles.macroPillTarget}>of {macroProgress.protein.target}g</Text>
                     </View>
                     <View style={styles.macroPillProgress}>
-                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#C8E6C9' }]}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: colors.ios.tertiaryBackground }]}>
                         <View 
                           style={[
                             styles.macroPillProgressFill, 
-                            { width: `${Math.min(100, proteinPercentage)}%`, backgroundColor: '#4CAF50' }
+                            { width: `${Math.min(100, proteinPercentage)}%`, backgroundColor: colors.success }
                           ]} 
                         />
                       </View>
@@ -904,9 +904,9 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                     </View>
                   </View>
                   
-                  <View style={[styles.macroPill, { backgroundColor: '#FFF3E0' }]}>
+                  <View style={[styles.macroPill, { backgroundColor: colors.card }]}>
                     <View style={styles.macroPillIcon}>
-                      <Cookie size={18} color="#FF9800" />
+                      <Cookie size={18} color={colors.warning} />
                     </View>
                     <View style={styles.macroPillContent}>
                       <Text style={styles.macroPillLabel}>Carbs</Text>
@@ -916,11 +916,11 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                       <Text style={styles.macroPillTarget}>of {macroProgress.carbs.target}g</Text>
                     </View>
                     <View style={styles.macroPillProgress}>
-                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#FFE0B2' }]}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: colors.ios.tertiaryBackground }]}>
                         <View 
                           style={[
                             styles.macroPillProgressFill, 
-                            { width: `${Math.min(100, carbsPercentage)}%`, backgroundColor: '#FF9800' }
+                            { width: `${Math.min(100, carbsPercentage)}%`, backgroundColor: colors.warning }
                           ]} 
                         />
                       </View>
@@ -928,9 +928,9 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                     </View>
                   </View>
                   
-                  <View style={[styles.macroPill, { backgroundColor: '#E3F2FD' }]}>
+                  <View style={[styles.macroPill, { backgroundColor: colors.card }]}>
                     <View style={styles.macroPillIcon}>
-                      <Droplets size={18} color="#2196F3" />
+                      <Droplets size={18} color={colors.primary} />
                     </View>
                     <View style={styles.macroPillContent}>
                       <Text style={styles.macroPillLabel}>Fat</Text>
@@ -940,11 +940,11 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
                       <Text style={styles.macroPillTarget}>of {macroProgress.fat.target}g</Text>
                     </View>
                     <View style={styles.macroPillProgress}>
-                      <View style={[styles.macroPillProgressBar, { backgroundColor: '#BBDEFB' }]}>
+                      <View style={[styles.macroPillProgressBar, { backgroundColor: colors.ios.tertiaryBackground }]}>
                         <View 
                           style={[
                             styles.macroPillProgressFill, 
-                            { width: `${Math.min(100, fatPercentage)}%`, backgroundColor: '#2196F3' }
+                            { width: `${Math.min(100, fatPercentage)}%`, backgroundColor: colors.primary }
                           ]} 
                         />
                       </View>
@@ -1906,7 +1906,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.ios.secondaryBackground,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -1918,18 +1918,18 @@ const styles = StyleSheet.create({
   macroPillLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 2,
   },
   macroPillValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 2,
   },
   macroPillTarget: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
   macroPillProgress: {
     alignItems: 'flex-end',
@@ -1949,7 +1949,7 @@ const styles = StyleSheet.create({
   macroPillPercentage: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   progressBar: {
     height: 8,
