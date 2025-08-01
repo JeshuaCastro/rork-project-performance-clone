@@ -624,6 +624,16 @@ Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specif
           )}
           
           <TouchableOpacity 
+            style={styles.skipButton} 
+            onPress={nextQuestion}
+            disabled={isGeneratingMealPlan}
+          >
+            <Text style={styles.skipButtonText}>
+              {questionnaireStep === questions.length - 1 ? 'Skip & Generate' : 'Skip'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
             style={styles.nextButton} 
             onPress={nextQuestion}
             disabled={isGeneratingMealPlan}
@@ -2720,6 +2730,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+  },
+  skipButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   nextButton: {
     flex: 2,
