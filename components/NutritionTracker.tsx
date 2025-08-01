@@ -1073,26 +1073,33 @@ const styles = StyleSheet.create({
   macroGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 8,
   },
   macroItem: {
     flex: 1,
-    marginHorizontal: 4,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 8,
+    padding: 12,
+    minWidth: 0,
   },
   macroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    justifyContent: 'center',
   },
   macroLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.text,
     marginLeft: 4,
+    fontWeight: '500',
   },
   macroValue: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   progressBar: {
     height: 6,
