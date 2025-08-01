@@ -95,6 +95,20 @@ export default function NutritionScreen() {
   // Meal planner states
   const [mealPlan, setMealPlan] = useState<any>(null);
   const [isGeneratingMealPlan, setIsGeneratingMealPlan] = useState(false);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [questionnaireStep, setQuestionnaireStep] = useState(0);
+  const [mealPlanPreferences, setMealPlanPreferences] = useState({
+    dietaryRestrictions: [] as string[],
+    cuisinePreferences: [] as string[],
+    cookingTime: '',
+    mealsPerDay: 3,
+    snacksPerDay: 1,
+    budgetRange: '',
+    allergies: [] as string[],
+    dislikedFoods: '',
+    mealPrepPreference: '',
+    primaryGoal: ''
+  });
 
   const [newFood, setNewFood] = useState<Partial<FoodLogEntry>>({
     date: selectedDate,
@@ -327,29 +341,268 @@ export default function NutritionScreen() {
     setIsGeneratingMealPlan(true);
     
     try {
-      const prompt = `Create a personalized meal plan for tomorrow based on my profile:
-      - Age: ${userProfile.age}
-      - Gender: ${userProfile.gender}
-      - Weight: ${userProfile.weight}kg
-      - Height: ${userProfile.height}cm
-      - Activity Level: ${userProfile.activityLevel}
-      - Fitness Goal: ${userProfile.fitnessGoal}
-      - Daily Calorie Target: ${macroTargets?.calories || 2000}
-      - Protein Target: ${macroTargets?.protein || 150}g
-      - Carb Target: ${macroTargets?.carbs || 200}g
-      - Fat Target: ${macroTargets?.fat || 70}g
-      
-      Please provide a complete meal plan with breakfast, lunch, dinner, and 2 snacks. Include specific foods, portions, and approximate macros for each meal.`;
+      const restrictionsText = mealPlanPreferences.dietaryRestrictions.length > 0 
+        ? `Dietary restrictions: ${mealPlanPreferences.dietaryRestrictions.join(', ')}` 
+        : '';
+      const allergiesText = mealPlanPreferences.allergies.length > 0 
+        ? `Allergies: ${mealPlanPreferences.allergies.join(', ')}` 
+        : '';
+      const cuisinesText = mealPlanPreferences.cuisinePreferences.length > 0 
+        ? `Preferred cuisines: ${mealPlanPreferences.cuisinePreferences.join(', ')}` 
+        : '';
+      const dislikesText = mealPlanPreferences.dislikedFoods 
+        ? `Foods to avoid: ${mealPlanPreferences.dislikedFoods}` 
+        : '';
+
+      const prompt = `Create a personalized meal plan based on:
+
+Profile:
+- Age: ${userProfile.age}, Gender: ${userProfile.gender}
+- Weight: ${userProfile.weight}kg, Height: ${userProfile.height}cm
+- Activity: ${userProfile.activityLevel}, Goal: ${userProfile.fitnessGoal}
+- Calories: ${macroTargets?.calories || 2000}, Protein: ${macroTargets?.protein || 150}g
+
+Preferences:
+- ${mealPlanPreferences.mealsPerDay} meals + ${mealPlanPreferences.snacksPerDay} snacks daily
+- Cooking time: ${mealPlanPreferences.cookingTime}
+- Budget: ${mealPlanPreferences.budgetRange}
+- Meal prep: ${mealPlanPreferences.mealPrepPreference}
+- Primary goal: ${mealPlanPreferences.primaryGoal}
+${restrictionsText ? `- ${restrictionsText}` : ''}
+${allergiesText ? `- ${allergiesText}` : ''}
+${cuisinesText ? `- ${cuisinesText}` : ''}
+${dislikesText ? `- ${dislikesText}` : ''}
+
+Provide a complete daily meal plan with specific foods, portions, and macros for each meal.`;
       
       const plan = await generateMealSuggestion(prompt);
       setMealPlan(plan);
       setMealPlannerVisible(true);
+      setShowQuestionnaire(false);
+      setQuestionnaireStep(0);
     } catch (error) {
       console.error('Error generating meal plan:', error);
       Alert.alert('Error', 'Failed to generate meal plan.');
     } finally {
       setIsGeneratingMealPlan(false);
     }
+  };
+
+  const startQuestionnaire = () => {
+    setShowQuestionnaire(true);
+    setQuestionnaireStep(0);
+  };
+
+  const nextQuestion = () => {
+    if (questionnaireStep < 6) {
+      setQuestionnaireStep(questionnaireStep + 1);
+    } else {
+      generateMealPlan();
+    }
+  };
+
+  const prevQuestion = () => {
+    if (questionnaireStep > 0) {
+      setQuestionnaireStep(questionnaireStep - 1);
+    }
+  };
+
+  const toggleArrayPreference = (array: string[], item: string, setter: (value: any) => void) => {
+    const newArray = array.includes(item) 
+      ? array.filter(i => i !== item)
+      : [...array, item];
+    setter({ ...mealPlanPreferences, [array === mealPlanPreferences.dietaryRestrictions ? 'dietaryRestrictions' : array === mealPlanPreferences.cuisinePreferences ? 'cuisinePreferences' : 'allergies']: newArray });
+  };
+
+  const renderQuestionnaireStep = () => {
+    const questions = [
+      {
+        title: "Dietary Restrictions",
+        subtitle: "Select any that apply to you",
+        type: "multi-select",
+        options: ["Vegetarian", "Vegan", "Keto", "Paleo", "Mediterranean", "Low-carb", "Gluten-free", "Dairy-free"],
+        value: mealPlanPreferences.dietaryRestrictions,
+        setter: (item: string) => toggleArrayPreference(mealPlanPreferences.dietaryRestrictions, item, setMealPlanPreferences)
+      },
+      {
+        title: "Food Allergies",
+        subtitle: "Select any allergies you have",
+        type: "multi-select",
+        options: ["Nuts", "Shellfish", "Eggs", "Dairy", "Soy", "Gluten", "Fish", "Sesame"],
+        value: mealPlanPreferences.allergies,
+        setter: (item: string) => toggleArrayPreference(mealPlanPreferences.allergies, item, setMealPlanPreferences)
+      },
+      {
+        title: "Cooking Time",
+        subtitle: "How much time can you spend cooking?",
+        type: "single-select",
+        options: ["Under 15 minutes", "15-30 minutes", "30-60 minutes", "Over 1 hour"],
+        value: mealPlanPreferences.cookingTime,
+        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, cookingTime: value })
+      },
+      {
+        title: "Meal Structure",
+        subtitle: "How many meals and snacks per day?",
+        type: "meal-structure",
+        value: { meals: mealPlanPreferences.mealsPerDay, snacks: mealPlanPreferences.snacksPerDay },
+        setter: (type: 'meals' | 'snacks', value: number) => {
+          setMealPlanPreferences({ 
+            ...mealPlanPreferences, 
+            [type === 'meals' ? 'mealsPerDay' : 'snacksPerDay']: value 
+          });
+        }
+      },
+      {
+        title: "Budget Range",
+        subtitle: "What's your weekly food budget?",
+        type: "single-select",
+        options: ["Under $50", "$50-100", "$100-150", "$150+"],
+        value: mealPlanPreferences.budgetRange,
+        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, budgetRange: value })
+      },
+      {
+        title: "Meal Prep Style",
+        subtitle: "How do you prefer to prepare meals?",
+        type: "single-select",
+        options: ["Fresh daily", "Batch cook weekends", "Mix of both", "Minimal prep"],
+        value: mealPlanPreferences.mealPrepPreference,
+        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, mealPrepPreference: value })
+      },
+      {
+        title: "Primary Goal",
+        subtitle: "What's your main nutrition goal?",
+        type: "single-select",
+        options: ["Weight loss", "Muscle gain", "Maintenance", "Energy boost", "Better health"],
+        value: mealPlanPreferences.primaryGoal,
+        setter: (value: string) => setMealPlanPreferences({ ...mealPlanPreferences, primaryGoal: value })
+      }
+    ];
+
+    const currentQuestion = questions[questionnaireStep];
+    
+    return (
+      <View style={styles.questionnaireContainer}>
+        <View style={styles.questionnaireProgress}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${((questionnaireStep + 1) / questions.length) * 100}%` }]} />
+          </View>
+          <Text style={styles.progressText}>{questionnaireStep + 1} of {questions.length}</Text>
+        </View>
+
+        <View style={styles.questionContainer}>
+          <Text style={styles.questionTitle}>{currentQuestion.title}</Text>
+          <Text style={styles.questionSubtitle}>{currentQuestion.subtitle}</Text>
+
+          {currentQuestion.type === "multi-select" && (
+            <View style={styles.optionsContainer}>
+              {currentQuestion.options?.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.optionButton,
+                    currentQuestion.value?.includes(option) && styles.selectedOption
+                  ]}
+                  onPress={() => currentQuestion.setter(option)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    currentQuestion.value?.includes(option) && styles.selectedOptionText
+                  ]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {currentQuestion.type === "single-select" && (
+            <View style={styles.optionsContainer}>
+              {currentQuestion.options?.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.optionButton,
+                    currentQuestion.value === option && styles.selectedOption
+                  ]}
+                  onPress={() => currentQuestion.setter(option)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    currentQuestion.value === option && styles.selectedOptionText
+                  ]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {currentQuestion.type === "meal-structure" && (
+            <View style={styles.mealStructureContainer}>
+              <View style={styles.mealStructureItem}>
+                <Text style={styles.mealStructureLabel}>Meals per day</Text>
+                <View style={styles.counterContainer}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => currentQuestion.setter('meals', Math.max(2, mealPlanPreferences.mealsPerDay - 1))}
+                  >
+                    <Text style={styles.counterButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{mealPlanPreferences.mealsPerDay}</Text>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => currentQuestion.setter('meals', Math.min(5, mealPlanPreferences.mealsPerDay + 1))}
+                  >
+                    <Text style={styles.counterButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.mealStructureItem}>
+                <Text style={styles.mealStructureLabel}>Snacks per day</Text>
+                <View style={styles.counterContainer}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => currentQuestion.setter('snacks', Math.max(0, mealPlanPreferences.snacksPerDay - 1))}
+                  >
+                    <Text style={styles.counterButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{mealPlanPreferences.snacksPerDay}</Text>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => currentQuestion.setter('snacks', Math.min(3, mealPlanPreferences.snacksPerDay + 1))}
+                  >
+                    <Text style={styles.counterButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.questionnaireButtons}>
+          {questionnaireStep > 0 && (
+            <TouchableOpacity style={styles.prevButton} onPress={prevQuestion}>
+              <Text style={styles.prevButtonText}>Previous</Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.nextButton} 
+            onPress={nextQuestion}
+            disabled={isGeneratingMealPlan}
+          >
+            {isGeneratingMealPlan ? (
+              <ActivityIndicator size="small" color={colors.text} />
+            ) : (
+              <Text style={styles.nextButtonText}>
+                {questionnaireStep === questions.length - 1 ? 'Generate Plan' : 'Next'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const navigateToProfile = () => {
@@ -710,27 +963,52 @@ export default function NutritionScreen() {
                   </Text>
                 </View>
 
-                <TouchableOpacity 
-                  style={styles.generateMealPlanButton}
-                  onPress={generateMealPlan}
-                  disabled={isGeneratingMealPlan}
-                >
-                  {isGeneratingMealPlan ? (
-                    <ActivityIndicator size="small" color={colors.text} />
-                  ) : (
+                {!showQuestionnaire ? (
+                  <TouchableOpacity 
+                    style={styles.generateMealPlanButton}
+                    onPress={startQuestionnaire}
+                    disabled={isGeneratingMealPlan}
+                  >
                     <Sparkles size={20} color={colors.text} />
-                  )}
-                  <Text style={styles.generateMealPlanButtonText}>
-                    {isGeneratingMealPlan ? 'Generating...' : 'Generate Meal Plan'}
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={styles.generateMealPlanButtonText}>
+                      Create Personalized Plan
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  renderQuestionnaireStep()
+                )}
 
                 {mealPlan && (
                   <View style={styles.mealPlanDisplay}>
                     <Text style={styles.mealPlanDisplayTitle}>Your Personalized Meal Plan</Text>
+                    <View style={styles.mealPlanPreferencesDisplay}>
+                      <Text style={styles.preferencesTitle}>Based on your preferences:</Text>
+                      <View style={styles.preferencesGrid}>
+                        {mealPlanPreferences.dietaryRestrictions.length > 0 && (
+                          <Text style={styles.preferenceItem}>🥗 {mealPlanPreferences.dietaryRestrictions.join(', ')}</Text>
+                        )}
+                        {mealPlanPreferences.cookingTime && (
+                          <Text style={styles.preferenceItem}>⏱️ {mealPlanPreferences.cookingTime}</Text>
+                        )}
+                        {mealPlanPreferences.budgetRange && (
+                          <Text style={styles.preferenceItem}>💰 {mealPlanPreferences.budgetRange}</Text>
+                        )}
+                        <Text style={styles.preferenceItem}>🍽️ {mealPlanPreferences.mealsPerDay} meals + {mealPlanPreferences.snacksPerDay} snacks</Text>
+                      </View>
+                    </View>
                     <View style={styles.mealPlanContent}>
                       <Text style={styles.mealPlanText}>{mealPlan}</Text>
                     </View>
+                    <TouchableOpacity 
+                      style={styles.regenerateButton}
+                      onPress={() => {
+                        setMealPlan(null);
+                        setShowQuestionnaire(true);
+                        setQuestionnaireStep(0);
+                      }}
+                    >
+                      <Text style={styles.regenerateButtonText}>Create New Plan</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -2291,5 +2569,165 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Questionnaire Styles
+  questionnaireContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  questionnaireProgress: {
+    marginBottom: 32,
+  },
+  progressText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  questionContainer: {
+    flex: 1,
+    marginBottom: 24,
+  },
+  questionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  questionSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionButton: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedOption: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  optionText: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  selectedOptionText: {
+    fontWeight: '600',
+    color: colors.text,
+  },
+  mealStructureContainer: {
+    gap: 24,
+  },
+  mealStructureItem: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mealStructureLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  counterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  counterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  counterValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    minWidth: 24,
+    textAlign: 'center',
+  },
+  questionnaireButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 20,
+  },
+  prevButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  prevButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  nextButton: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  nextButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  mealPlanPreferencesDisplay: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  preferencesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  preferencesGrid: {
+    gap: 4,
+  },
+  preferenceItem: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  regenerateButton: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  regenerateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
