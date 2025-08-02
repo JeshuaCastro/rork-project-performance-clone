@@ -58,6 +58,7 @@ export default function DashboardScreen() {
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'subpage'>('dashboard');
   
   const { 
     data, 
@@ -588,6 +589,26 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       )}
       
+      {/* Tab Switcher */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'dashboard' && styles.activeTabButton]}
+          onPress={() => setActiveTab('dashboard')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'dashboard' && styles.activeTabButtonText]}>
+            Dashboard
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'subpage' && styles.activeTabButton]}
+          onPress={() => setActiveTab('subpage')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'subpage' && styles.activeTabButtonText]}>
+            Subpage
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
       <View style={styles.headerContainer}>
         {!isProfileComplete && (
           <TouchableOpacity 
@@ -684,6 +705,8 @@ export default function DashboardScreen() {
             />
           }
         >
+          {activeTab === 'dashboard' ? (
+            <>
           {/* Today's Workout Section */}
           {todaysWorkout && (
             <View style={styles.todaysWorkoutSection}>
@@ -898,7 +921,15 @@ export default function DashboardScreen() {
           )}
           {selectedStrain && <StrainCard strain={selectedStrain} />}
           
-
+            </>
+          ) : (
+            <View style={styles.subpageContainer}>
+              <Text style={styles.subpageTitle}>Subpage Content</Text>
+              <Text style={styles.subpageText}>
+                This is the subpage. You can add any content here as needed.
+              </Text>
+            </View>
+          )}
         </ScrollView>
       )}
       
@@ -1811,5 +1842,52 @@ const styles = StyleSheet.create({
   // Detailed Cards Section
   detailedCardsSection: {
     marginBottom: 16,
+  },
+  // Tab Switcher Styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTabButton: {
+    backgroundColor: colors.primary,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  activeTabButtonText: {
+    color: colors.text,
+  },
+  // Subpage Styles
+  subpageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  subpageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  subpageText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
