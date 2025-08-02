@@ -970,13 +970,6 @@ export default function DashboardScreen() {
             <View style={styles.quickStatsSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Today's Overview</Text>
-                <TouchableOpacity 
-                  style={styles.trendsButton}
-                  onPress={() => router.push('/trends')}
-                >
-                  <TrendingUp size={16} color={colors.primary} />
-                  <Text style={styles.trendsButtonText}>Trends</Text>
-                </TouchableOpacity>
               </View>
               
               <View style={styles.quickStatsGrid}>
