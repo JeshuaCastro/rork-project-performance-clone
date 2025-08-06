@@ -971,25 +971,6 @@ export default function DashboardScreen() {
           {/* Weight Tracking */}
           <WeightTracker />
           
-          {/* Calendar View */}
-          <View style={styles.calendarSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Activity Calendar</Text>
-              <TouchableOpacity 
-                style={styles.calendarViewButton}
-                onPress={() => router.push('/activity-detail')}
-              >
-                <Calendar size={16} color={colors.primary} />
-                <Text style={styles.calendarViewButtonText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <CalendarView 
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-              highlightedDates={dates}
-            />
-          </View>
-          
           {/* Detailed Cards */}
           {selectedRecovery && (
             <View style={styles.detailedCardsSection}>
