@@ -966,42 +966,7 @@ export default function DashboardScreen() {
           
 
           
-          {/* Quick Stats Overview */}
-          {data?.recovery && data.recovery.length > 0 && (
-            <View style={styles.quickStatsSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Today's Overview</Text>
-              </View>
-              
-              <View style={styles.quickStatsGrid}>
-                {selectedRecovery && (
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatHeader}>
-                      <Heart size={18} color={colors.recovery.high} />
-                      <Text style={styles.quickStatLabel}>Recovery</Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{selectedRecovery.score}%</Text>
-                    <Text style={[styles.quickStatStatus, { color: getStatusColor(selectedRecovery.status) }]}>
-                      {selectedRecovery.status.toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-                
-                {selectedStrain && (
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatHeader}>
-                      <Dumbbell size={18} color={colors.warning} />
-                      <Text style={styles.quickStatLabel}>Strain</Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{selectedStrain.score.toFixed(1)}</Text>
-                    <Text style={styles.quickStatStatus}>
-                      {getStrainDescription(selectedStrain.score)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
+
           
           {/* Weight Tracking */}
           <WeightTracker />
