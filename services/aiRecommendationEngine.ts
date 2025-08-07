@@ -345,11 +345,12 @@ class AIRecommendationEngine {
     const baseRecommendations = this.generateBaseRecommendations(context);
     
     let finalRecommendations = baseRecommendations;
+    let contextualData: ContextualData | undefined;
     
     if (enablePersonalization && this.learningEnabled) {
       try {
         // Get contextual data
-        const contextualData = await contextualAwarenessService.getCurrentContext();
+        contextualData = await contextualAwarenessService.getCurrentContext();
         
         // Get user preferences
         const userPreferences = await userFeedbackService.getUserPreferences();

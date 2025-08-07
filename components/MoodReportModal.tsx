@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  Alert,
-  Slider
+  Alert
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { colors } from '@/constants/colors';
 import { X, Heart, Zap, Brain } from 'lucide-react-native';
 import contextualAwarenessService from '@/services/contextualAwarenessService';
