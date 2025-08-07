@@ -257,6 +257,47 @@ export interface ProgramProgress {
   totalWorkouts: number;
 }
 
+// AI Recommendation types
+export interface AIRecommendation {
+  id: string;
+  category: 'recovery' | 'workout' | 'nutrition' | 'lifestyle';
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  actionable: boolean;
+  estimatedImpact: string;
+  timeframe: string;
+  icon: string;
+  createdAt: Date;
+}
+
+export interface RecommendationContext {
+  currentRecovery: number;
+  recentRecoveryTrend: number;
+  currentStrain: number;
+  recentStrainTrend: number;
+  avgHRV: number;
+  avgRestingHR: number;
+  sleepQuality: number;
+  userProfile: UserProfile;
+  activePrograms: TrainingProgram[];
+  recentWorkouts: number;
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  dayOfWeek: string;
+}
+
+export interface SmartInsightsData {
+  recommendations: AIRecommendation[];
+  dailySummary: string;
+  keyMetrics: {
+    recoveryStatus: string;
+    readinessScore: number;
+    recommendedIntensity: 'low' | 'moderate' | 'high';
+    hydrationReminder: boolean;
+  };
+  lastUpdated: Date;
+}
+
 // Add to constants/colors.ts
 declare module '@/constants/colors' {
   interface Colors {

@@ -23,6 +23,7 @@ import CalendarView from '@/components/CalendarView';
 
 
 import WeightTracker from '@/components/WeightTracker';
+import SmartInsightsPanel from '@/components/SmartInsightsPanel';
 import { colors } from '@/constants/colors';
 import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
@@ -967,6 +968,9 @@ export default function DashboardScreen() {
 
           
 
+          
+          {/* Smart Insights Panel */}
+          <SmartInsightsPanel />
           
           {/* Weight Tracking */}
           <WeightTracker />
