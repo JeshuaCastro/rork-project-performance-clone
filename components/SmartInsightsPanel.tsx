@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { colors } from '@/constants/colors';
 import { AIRecommendation, SmartInsightsData } from '@/types/whoop';
 import { useWhoopStore } from '@/store/whoopStore';
 import aiRecommendationEngine from '@/services/aiRecommendationEngine';
+import userFeedbackService from '@/services/userFeedbackService';
+import contextualAwarenessService from '@/services/contextualAwarenessService';
 import {
   Brain,
   Heart,
@@ -120,7 +122,7 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
     }
   };
 
-  const generateInsights = useMemo(() => {
+  const generateInsights = useCallback(async () => {
     if (!data?.recovery || !data?.strain || !data?.sleep || !userProfile.name) {
       return null;
     }
@@ -134,7 +136,7 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
         activePrograms
       );
 
-      return aiRecommendationEngine.generateRecommendations(context);
+      return await aiRecommendationEngine.generateRecommendations(context, true);
     } catch (error) {
       console.error('Error generating insights:', error);
       return null;
@@ -142,47 +144,104 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
   }, [data, userProfile, activePrograms]);
 
   useEffect(() => {
-    if (generateInsights) {
-      setInsightsData(generateInsights);
+    const loadInsights = async () => {
+      setIsLoading(true);
+      const insights = await generateInsights();
+      if (insights) {
+        setInsightsData(insights);
+      }
       setIsLoading(false);
-    } else {
-      setIsLoading(false);
-    }
+    };
+    
+    loadInsights();
   }, [generateInsights]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh delay
-    setTimeout(() => {
-      if (generateInsights) {
-        setInsightsData(generateInsights);
+    try {
+      const insights = await generateInsights();
+      if (insights) {
+        setInsightsData(insights);
       }
+    } catch (error) {
+      console.error('Error refreshing insights:', error);
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   const toggleRecommendation = (id: string) => {
     setExpandedRecommendation(expandedRecommendation === id ? null : id);
   };
 
-  const dismissRecommendation = (id: string, feedback?: 'helpful' | 'not-helpful') => {
-    setDismissedRecommendations(prev => [
-      ...prev,
-      { id, dismissedAt: new Date(), feedback }
-    ]);
-    setExpandedRecommendation(null);
+  const dismissRecommendation = async (id: string, feedback?: 'helpful' | 'not-helpful') => {
+    try {
+      // Record feedback in the learning system
+      await aiRecommendationEngine.recordRecommendationOutcome(
+        id,
+        userProfile.id || 'default_user',
+        'dismissed',
+        undefined,
+        feedback
+      );
+      
+      setDismissedRecommendations(prev => [
+        ...prev,
+        { id, dismissedAt: new Date(), feedback }
+      ]);
+      setExpandedRecommendation(null);
+      
+      console.log('Recommendation dismissed and feedback recorded');
+    } catch (error) {
+      console.error('Error recording dismissal feedback:', error);
+      // Still dismiss locally even if feedback recording fails
+      setDismissedRecommendations(prev => [
+        ...prev,
+        { id, dismissedAt: new Date(), feedback }
+      ]);
+      setExpandedRecommendation(null);
+    }
   };
 
-  const followRecommendation = (id: string) => {
-    setFollowedRecommendations(prev => [...prev, id]);
-    Alert.alert(
-      'Recommendation Followed',
-      'Great! We\'ll track your progress with this recommendation.',
-      [{ text: 'OK' }]
-    );
+  const followRecommendation = async (id: string) => {
+    try {
+      // Record feedback in the learning system
+      await aiRecommendationEngine.recordRecommendationOutcome(
+        id,
+        userProfile.id || 'default_user',
+        'followed'
+      );
+      
+      setFollowedRecommendations(prev => [...prev, id]);
+      
+      // Record activity in contextual awareness
+      const recommendation = insightsData?.recommendations.find(r => r.id === id);
+      if (recommendation?.category === 'workout') {
+        await contextualAwarenessService.recordActivity('workout');
+      } else if (recommendation?.category === 'nutrition') {
+        await contextualAwarenessService.recordActivity('meal');
+      }
+      
+      Alert.alert(
+        'Recommendation Followed',
+        'Great! We\'ll track your progress and learn from this to improve future recommendations.',
+        [{ text: 'OK' }]
+      );
+      
+      console.log('Recommendation followed and feedback recorded');
+    } catch (error) {
+      console.error('Error recording follow feedback:', error);
+      // Still mark as followed locally
+      setFollowedRecommendations(prev => [...prev, id]);
+      Alert.alert(
+        'Recommendation Followed',
+        'Great! We\'ll track your progress with this recommendation.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
-  const scheduleReminder = (recommendation: AIRecommendation) => {
+  const scheduleReminder = async (recommendation: AIRecommendation) => {
     Alert.alert(
       'Set Reminder',
       `Would you like to set a reminder for "${recommendation.title}"?`,
@@ -190,8 +249,21 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Set Reminder', 
-          onPress: () => {
-            Alert.alert('Reminder Set', 'You\'ll be notified to follow this recommendation.');
+          onPress: async () => {
+            try {
+              // Record scheduling in the learning system
+              await aiRecommendationEngine.recordRecommendationOutcome(
+                recommendation.id,
+                userProfile.id || 'default_user',
+                'scheduled'
+              );
+              
+              Alert.alert('Reminder Set', 'You\'ll be notified to follow this recommendation. We\'ll learn from your scheduling patterns.');
+              console.log('Recommendation scheduled and feedback recorded');
+            } catch (error) {
+              console.error('Error recording schedule feedback:', error);
+              Alert.alert('Reminder Set', 'You\'ll be notified to follow this recommendation.');
+            }
           }
         }
       ]

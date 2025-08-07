@@ -1,6 +1,19 @@
-import { AIRecommendation, RecommendationContext, SmartInsightsData } from '@/types/whoop';
+import { 
+  AIRecommendation, 
+  RecommendationContext, 
+  SmartInsightsData,
+  PersonalizedRecommendation,
+  ContextualData,
+  UserPreferences,
+  LearningInsights,
+  RecommendationEffectiveness
+} from '@/types/whoop';
+import userFeedbackService from './userFeedbackService';
+import contextualAwarenessService from './contextualAwarenessService';
 
 class AIRecommendationEngine {
+  private learningEnabled: boolean = true;
+  private personalizationWeight: number = 0.3; // How much to weight personalization vs base recommendations
   private getTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
     const hour = new Date().getHours();
     if (hour < 12) return 'morning';
@@ -324,22 +337,58 @@ class AIRecommendationEngine {
     return Math.round(Math.max(0, Math.min(100, readinessScore)));
   }
 
-  public generateRecommendations(context: RecommendationContext): SmartInsightsData {
-    const recoveryRecs = this.generateRecoveryRecommendations(context);
-    const workoutRecs = this.generateWorkoutRecommendations(context);
-    const nutritionRecs = this.generateNutritionRecommendations(context);
-    const lifestyleRecs = this.generateLifestyleRecommendations(context);
-
-    const allRecommendations = [
-      ...recoveryRecs,
-      ...workoutRecs,
-      ...nutritionRecs,
-      ...lifestyleRecs
-    ];
-
-    // Sort by priority (high -> medium -> low)
-    const priorityOrder = { high: 3, medium: 2, low: 1 };
-    allRecommendations.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+  public async generateRecommendations(
+    context: RecommendationContext,
+    enablePersonalization: boolean = true
+  ): Promise<SmartInsightsData> {
+    // Get base recommendations
+    const baseRecommendations = this.generateBaseRecommendations(context);
+    
+    let finalRecommendations = baseRecommendations;
+    
+    if (enablePersonalization && this.learningEnabled) {
+      try {
+        // Get contextual data
+        const contextualData = await contextualAwarenessService.getCurrentContext();
+        
+        // Get user preferences
+        const userPreferences = await userFeedbackService.getUserPreferences();
+        
+        // Get learning insights
+        const learningInsights = await userFeedbackService.getLearningInsights();
+        
+        // Get effectiveness metrics
+        const effectivenessMetrics = await userFeedbackService.getEffectivenessMetrics();
+        
+        // Personalize recommendations
+        finalRecommendations = await this.personalizeRecommendations(
+          baseRecommendations,
+          contextualData,
+          userPreferences,
+          learningInsights,
+          effectivenessMetrics
+        );
+        
+        console.log('Personalized recommendations generated:', finalRecommendations.length);
+      } catch (error) {
+        console.error('Error personalizing recommendations:', error);
+        // Fall back to base recommendations
+      }
+    }
+    
+    // Sort by personalized score if available, otherwise by priority
+    finalRecommendations.sort((a, b) => {
+      const aScore = (a as PersonalizedRecommendation).personalizedScore;
+      const bScore = (b as PersonalizedRecommendation).personalizedScore;
+      
+      if (aScore !== undefined && bScore !== undefined) {
+        return bScore - aScore;
+      }
+      
+      // Fall back to priority sorting
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    });
 
     const readinessScore = this.calculateReadinessScore(context);
     let recommendedIntensity: 'low' | 'moderate' | 'high' = 'moderate';
@@ -348,8 +397,8 @@ class AIRecommendationEngine {
     else if (readinessScore < 50) recommendedIntensity = 'low';
 
     return {
-      recommendations: allRecommendations.slice(0, 6), // Limit to top 6 recommendations
-      dailySummary: this.generateDailySummary(context),
+      recommendations: finalRecommendations.slice(0, 6), // Limit to top 6 recommendations
+      dailySummary: await this.generatePersonalizedDailySummary(context, contextualData),
       keyMetrics: {
         recoveryStatus: context.currentRecovery >= 67 ? 'High' : context.currentRecovery >= 34 ? 'Medium' : 'Low',
         readinessScore,
@@ -358,6 +407,357 @@ class AIRecommendationEngine {
       },
       lastUpdated: new Date()
     };
+  }
+
+  private generateBaseRecommendations(context: RecommendationContext): AIRecommendation[] {
+    const recoveryRecs = this.generateRecoveryRecommendations(context);
+    const workoutRecs = this.generateWorkoutRecommendations(context);
+    const nutritionRecs = this.generateNutritionRecommendations(context);
+    const lifestyleRecs = this.generateLifestyleRecommendations(context);
+
+    return [
+      ...recoveryRecs,
+      ...workoutRecs,
+      ...nutritionRecs,
+      ...lifestyleRecs
+    ];
+  }
+
+  // Personalization Methods
+  private async personalizeRecommendations(
+    baseRecommendations: AIRecommendation[],
+    contextualData: ContextualData,
+    userPreferences: UserPreferences | null,
+    learningInsights: LearningInsights | null,
+    effectivenessMetrics: RecommendationEffectiveness[]
+  ): Promise<PersonalizedRecommendation[]> {
+    const personalizedRecommendations: PersonalizedRecommendation[] = [];
+    
+    for (const recommendation of baseRecommendations) {
+      const personalizedRec = await this.personalizeRecommendation(
+        recommendation,
+        contextualData,
+        userPreferences,
+        learningInsights,
+        effectivenessMetrics
+      );
+      
+      personalizedRecommendations.push(personalizedRec);
+    }
+    
+    return personalizedRecommendations;
+  }
+  
+  private async personalizeRecommendation(
+    recommendation: AIRecommendation,
+    contextualData: ContextualData,
+    userPreferences: UserPreferences | null,
+    learningInsights: LearningInsights | null,
+    effectivenessMetrics: RecommendationEffectiveness[]
+  ): Promise<PersonalizedRecommendation> {
+    let personalizedScore = 0.5; // Base score
+    let adaptationReason = '';
+    let historicalSuccess = 0.5;
+    let contextualRelevance = 0.5;
+    let userPreferenceMatch = 0.5;
+    
+    // Calculate historical success
+    const similarRecommendations = effectivenessMetrics.filter(
+      m => m.category === recommendation.category
+    );
+    
+    if (similarRecommendations.length > 0) {
+      historicalSuccess = similarRecommendations.reduce((sum, m) => sum + m.successRate, 0) / similarRecommendations.length;
+      adaptationReason += `Historical success rate: ${Math.round(historicalSuccess * 100)}%. `;
+    }
+    
+    // Calculate contextual relevance
+    contextualRelevance = this.calculateContextualRelevance(recommendation, contextualData);
+    if (contextualRelevance > 0.7) {
+      adaptationReason += 'High contextual relevance. ';
+    }
+    
+    // Calculate user preference match
+    if (userPreferences) {
+      userPreferenceMatch = this.calculateUserPreferenceMatch(recommendation, userPreferences);
+      if (userPreferenceMatch > 0.7) {
+        adaptationReason += 'Matches user preferences. ';
+      }
+    }
+    
+    // Apply learning insights
+    if (learningInsights) {
+      const categoryPerformance = learningInsights.categoryPerformance[recommendation.category];
+      if (categoryPerformance) {
+        const categoryBoost = categoryPerformance.successRate * 0.2;
+        personalizedScore += categoryBoost;
+        
+        if (categoryPerformance.successRate > 0.7) {
+          adaptationReason += 'Category performs well for you. ';
+        }
+      }
+      
+      // Time-based adjustments
+      if (learningInsights.bestPerformingTimes.includes(contextualData.timeOfDay)) {
+        personalizedScore += 0.1;
+        adaptationReason += 'Optimal timing based on your patterns. ';
+      }
+    }
+    
+    // Mood-based adjustments
+    if (contextualData.userReportedMood) {
+      const mood = contextualData.userReportedMood;
+      
+      if (recommendation.category === 'recovery' && mood.stress > 7) {
+        personalizedScore += 0.2;
+        adaptationReason += 'High stress levels detected. ';
+      }
+      
+      if (recommendation.category === 'workout' && mood.energy < 4) {
+        personalizedScore -= 0.2;
+        adaptationReason += 'Low energy levels considered. ';
+      }
+      
+      if (recommendation.category === 'workout' && mood.motivation < 4) {
+        personalizedScore -= 0.1;
+        adaptationReason += 'Low motivation considered. ';
+      }
+    }
+    
+    // Weather-based adjustments
+    if (contextualData.weather && recommendation.category === 'workout') {
+      if (contextualData.weather.condition === 'rainy' && recommendation.description.includes('outdoor')) {
+        personalizedScore -= 0.3;
+        adaptationReason += 'Weather not suitable for outdoor activities. ';
+      } else if (contextualData.weather.condition === 'sunny' && recommendation.description.includes('outdoor')) {
+        personalizedScore += 0.2;
+        adaptationReason += 'Great weather for outdoor activities. ';
+      }
+    }
+    
+    // Calendar-based adjustments
+    if (contextualData.calendarEvents) {
+      if (contextualData.calendarEvents.isBusy && recommendation.timeframe.includes('hour')) {
+        personalizedScore -= 0.2;
+        adaptationReason += 'Busy schedule detected. ';
+      } else if (!contextualData.calendarEvents.isBusy && recommendation.timeframe.includes('minutes')) {
+        personalizedScore += 0.1;
+        adaptationReason += 'Free time available. ';
+      }
+    }
+    
+    // Location-based adjustments
+    if (contextualData.location) {
+      if (recommendation.category === 'workout') {
+        if (contextualData.location.isGym && recommendation.description.includes('strength')) {
+          personalizedScore += 0.2;
+          adaptationReason += 'At gym location. ';
+        } else if (contextualData.location.isHome && recommendation.description.includes('bodyweight')) {
+          personalizedScore += 0.2;
+          adaptationReason += 'Home workout suitable. ';
+        }
+      }
+    }
+    
+    // Calculate final personalized score
+    personalizedScore = Math.max(0, Math.min(1, 
+      (personalizedScore * 0.4) + 
+      (historicalSuccess * 0.3) + 
+      (contextualRelevance * 0.2) + 
+      (userPreferenceMatch * 0.1)
+    ));
+    
+    // Adapt recommendation content based on personalization
+    let adaptedDescription = recommendation.description;
+    let adaptedTitle = recommendation.title;
+    
+    if (contextualData.userReportedMood?.energy && contextualData.userReportedMood.energy < 5) {
+      if (recommendation.category === 'workout') {
+        adaptedDescription = adaptedDescription.replace(/challenging|intense|high-intensity/gi, 'gentle');
+        adaptedTitle = adaptedTitle.replace(/High-Intensity|Challenging/gi, 'Gentle');
+      }
+    }
+    
+    if (userPreferences?.nutritionPreferences.dietType) {
+      const dietType = userPreferences.nutritionPreferences.dietType;
+      if (recommendation.category === 'nutrition' && dietType !== 'omnivore') {
+        adaptedDescription = adaptedDescription.replace(/protein shake/gi, `${dietType}-friendly protein`);
+      }
+    }
+    
+    return {
+      ...recommendation,
+      title: adaptedTitle,
+      description: adaptedDescription,
+      personalizedScore,
+      adaptationReason: adaptationReason.trim(),
+      historicalSuccess,
+      contextualRelevance,
+      userPreferenceMatch
+    };
+  }
+  
+  private calculateContextualRelevance(recommendation: AIRecommendation, contextualData: ContextualData): number {
+    let relevance = 0.5;
+    
+    // Time-based relevance
+    if (recommendation.category === 'workout' && contextualData.timeOfDay === 'morning') {
+      relevance += 0.2;
+    } else if (recommendation.category === 'recovery' && contextualData.timeOfDay === 'evening') {
+      relevance += 0.2;
+    }
+    
+    // Day-based relevance
+    if (recommendation.category === 'workout' && ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].includes(contextualData.dayOfWeek)) {
+      relevance += 0.1;
+    } else if (recommendation.category === 'recovery' && ['Saturday', 'Sunday'].includes(contextualData.dayOfWeek)) {
+      relevance += 0.1;
+    }
+    
+    // Recent activity relevance
+    if (contextualData.recentActivities.lastWorkout) {
+      const hoursSinceWorkout = (Date.now() - contextualData.recentActivities.lastWorkout.getTime()) / (1000 * 60 * 60);
+      if (recommendation.category === 'recovery' && hoursSinceWorkout < 2) {
+        relevance += 0.3;
+      } else if (recommendation.category === 'workout' && hoursSinceWorkout > 24) {
+        relevance += 0.2;
+      }
+    }
+    
+    return Math.max(0, Math.min(1, relevance));
+  }
+  
+  private calculateUserPreferenceMatch(recommendation: AIRecommendation, userPreferences: UserPreferences): number {
+    let match = 0.5;
+    
+    // Workout preferences
+    if (recommendation.category === 'workout') {
+      const currentTime = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening';
+      if (userPreferences.preferredWorkoutTimes.includes(currentTime)) {
+        match += 0.3;
+      }
+      
+      // Check if recommendation matches preferred workout types
+      const recLower = recommendation.description.toLowerCase();
+      const matchingTypes = userPreferences.preferredWorkoutTypes.filter(type => 
+        recLower.includes(type.toLowerCase())
+      );
+      if (matchingTypes.length > 0) {
+        match += 0.2;
+      }
+    }
+    
+    // Nutrition preferences
+    if (recommendation.category === 'nutrition') {
+      const dietType = userPreferences.nutritionPreferences.dietType;
+      if (dietType && dietType !== 'omnivore') {
+        const recLower = recommendation.description.toLowerCase();
+        if (dietType === 'vegetarian' && !recLower.includes('meat')) {
+          match += 0.2;
+        } else if (dietType === 'vegan' && !recLower.includes('meat') && !recLower.includes('dairy')) {
+          match += 0.2;
+        }
+      }
+      
+      // Check for allergies
+      const allergies = userPreferences.nutritionPreferences.allergies;
+      if (allergies.length > 0) {
+        const recLower = recommendation.description.toLowerCase();
+        const hasAllergen = allergies.some(allergen => recLower.includes(allergen.toLowerCase()));
+        if (hasAllergen) {
+          match -= 0.5; // Heavily penalize recommendations with allergens
+        }
+      }
+    }
+    
+    // Recovery preferences
+    if (recommendation.category === 'recovery') {
+      const recLower = recommendation.description.toLowerCase();
+      const matchingMethods = userPreferences.recoveryPreferences.stressManagementMethods.filter(method => 
+        recLower.includes(method.toLowerCase())
+      );
+      if (matchingMethods.length > 0) {
+        match += 0.3;
+      }
+    }
+    
+    return Math.max(0, Math.min(1, match));
+  }
+  
+  private async generatePersonalizedDailySummary(
+    context: RecommendationContext, 
+    contextualData?: ContextualData
+  ): Promise<string> {
+    let summary = this.generateDailySummary(context);
+    
+    if (contextualData?.userReportedMood) {
+      const mood = contextualData.userReportedMood;
+      if (mood.energy < 5) {
+        summary += ' Your reported low energy suggests focusing on gentle activities today.';
+      } else if (mood.energy > 7) {
+        summary += ' Your high energy levels indicate great potential for challenging activities.';
+      }
+      
+      if (mood.stress > 7) {
+        summary += ' Consider prioritizing stress management techniques.';
+      }
+    }
+    
+    if (contextualData?.weather) {
+      const weather = contextualData.weather;
+      if (weather.condition === 'sunny') {
+        summary += ' Beautiful weather today - perfect for outdoor activities!';
+      } else if (weather.condition === 'rainy') {
+        summary += ' Rainy weather makes it a great day for indoor activities and recovery.';
+      }
+    }
+    
+    return summary;
+  }
+  
+  // Learning and Adaptation Methods
+  public async recordRecommendationOutcome(
+    recommendationId: string,
+    userId: string,
+    action: 'followed' | 'dismissed' | 'scheduled',
+    outcome?: 'improved' | 'no-change' | 'worsened',
+    feedback?: 'helpful' | 'not-helpful' | 'partially-helpful'
+  ): Promise<void> {
+    try {
+      await userFeedbackService.recordFeedback({
+        recommendationId,
+        userId,
+        action,
+        outcome,
+        feedback,
+        followedAt: action === 'followed' ? new Date() : undefined,
+        dismissedAt: action === 'dismissed' ? new Date() : undefined,
+        scheduledAt: action === 'scheduled' ? new Date() : undefined
+      });
+      
+      console.log('Recommendation outcome recorded:', { recommendationId, action, outcome });
+    } catch (error) {
+      console.error('Error recording recommendation outcome:', error);
+    }
+  }
+  
+  public async updateLearningModel(userId: string): Promise<void> {
+    try {
+      const insights = await userFeedbackService.generateLearningInsights(userId);
+      console.log('Learning model updated:', insights.overallSuccessRate);
+    } catch (error) {
+      console.error('Error updating learning model:', error);
+    }
+  }
+  
+  public setLearningEnabled(enabled: boolean): void {
+    this.learningEnabled = enabled;
+    console.log('Learning enabled:', enabled);
+  }
+  
+  public setPersonalizationWeight(weight: number): void {
+    this.personalizationWeight = Math.max(0, Math.min(1, weight));
+    console.log('Personalization weight set to:', this.personalizationWeight);
   }
 
   public createRecommendationContext(

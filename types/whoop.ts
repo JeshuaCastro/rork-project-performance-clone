@@ -298,6 +298,135 @@ export interface SmartInsightsData {
   lastUpdated: Date;
 }
 
+// User Feedback and Learning Types
+export interface RecommendationFeedback {
+  id: string;
+  recommendationId: string;
+  userId: string;
+  action: 'followed' | 'dismissed' | 'scheduled' | 'ignored';
+  feedback?: 'helpful' | 'not-helpful' | 'partially-helpful';
+  followedAt?: Date;
+  dismissedAt?: Date;
+  scheduledAt?: Date;
+  outcome?: 'improved' | 'no-change' | 'worsened';
+  outcomeMetrics?: {
+    recoveryChange?: number;
+    strainChange?: number;
+    sleepQualityChange?: number;
+    energyLevelChange?: number;
+  };
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserPreferences {
+  id: string;
+  userId: string;
+  preferredWorkoutTimes: string[]; // ['morning', 'afternoon', 'evening']
+  preferredWorkoutTypes: string[]; // ['cardio', 'strength', 'yoga', 'hiit']
+  nutritionPreferences: {
+    dietType?: 'omnivore' | 'vegetarian' | 'vegan' | 'keto' | 'paleo';
+    allergies: string[];
+    dislikes: string[];
+    mealTiming: 'early' | 'regular' | 'late';
+  };
+  recoveryPreferences: {
+    sleepGoal: number; // hours
+    bedtimeGoal: string; // '22:00'
+    stressManagementMethods: string[]; // ['meditation', 'breathing', 'yoga']
+  };
+  notificationSettings: {
+    workoutReminders: boolean;
+    recoveryAlerts: boolean;
+    nutritionReminders: boolean;
+    hydrationReminders: boolean;
+  };
+  learningRate: number; // 0-1, how quickly to adapt recommendations
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ContextualData {
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  dayOfWeek: string;
+  weather?: {
+    temperature: number;
+    condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy';
+    humidity: number;
+  };
+  calendarEvents?: {
+    hasWorkout: boolean;
+    hasMeeting: boolean;
+    isBusy: boolean;
+    freeTimeSlots: string[];
+  };
+  location?: {
+    isHome: boolean;
+    isGym: boolean;
+    isOffice: boolean;
+    hasGymAccess: boolean;
+  };
+  recentActivities: {
+    lastWorkout?: Date;
+    lastMeal?: Date;
+    lastSleep?: Date;
+    stressLevel?: 'low' | 'medium' | 'high';
+  };
+  userReportedMood?: {
+    energy: number; // 1-10
+    motivation: number; // 1-10
+    stress: number; // 1-10
+    mood: 'great' | 'good' | 'okay' | 'poor' | 'terrible';
+    reportedAt: Date;
+  };
+}
+
+export interface RecommendationEffectiveness {
+  recommendationId: string;
+  category: 'recovery' | 'workout' | 'nutrition' | 'lifestyle';
+  followCount: number;
+  successRate: number; // 0-1
+  averageOutcomeScore: number; // -1 to 1
+  userSatisfactionScore: number; // 0-1
+  contextualFactors: {
+    timeOfDay: string;
+    dayOfWeek: string;
+    recoveryLevel: 'low' | 'medium' | 'high';
+    userMood?: string;
+  };
+  lastUpdated: Date;
+}
+
+export interface PersonalizedRecommendation extends AIRecommendation {
+  personalizedScore: number; // 0-1, how well this fits the user
+  adaptationReason?: string; // Why this was adapted for the user
+  historicalSuccess?: number; // 0-1, how successful similar recommendations were
+  contextualRelevance: number; // 0-1, how relevant to current context
+  userPreferenceMatch: number; // 0-1, how well it matches user preferences
+}
+
+export interface LearningInsights {
+  userId: string;
+  totalRecommendationsGiven: number;
+  totalRecommendationsFollowed: number;
+  overallSuccessRate: number;
+  categoryPerformance: {
+    recovery: { successRate: number; followRate: number };
+    workout: { successRate: number; followRate: number };
+    nutrition: { successRate: number; followRate: number };
+    lifestyle: { successRate: number; followRate: number };
+  };
+  bestPerformingTimes: string[]; // Times when recommendations are most followed
+  preferredRecommendationTypes: string[];
+  adaptationTrends: {
+    improvingAreas: string[];
+    challengingAreas: string[];
+    recentChanges: string[];
+  };
+  lastAnalyzed: Date;
+}
+
 // Add to constants/colors.ts
 declare module '@/constants/colors' {
   interface Colors {
