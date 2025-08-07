@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Alert,
+  Animated
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { AIRecommendation, SmartInsightsData } from '@/types/whoop';
@@ -32,11 +34,33 @@ import {
   ChevronRight,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  X,
+  Bell,
+  Play,
+  Target,
+  Info,
+  Star,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react-native';
 
 interface SmartInsightsPanelProps {
   style?: any;
+}
+
+interface RecommendationAction {
+  id: string;
+  label: string;
+  type: 'primary' | 'secondary';
+  icon?: string;
+  onPress: () => void;
+}
+
+interface DismissedRecommendation {
+  id: string;
+  dismissedAt: Date;
+  feedback?: 'helpful' | 'not-helpful';
 }
 
 const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
@@ -44,6 +68,8 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
+  const [dismissedRecommendations, setDismissedRecommendations] = useState<DismissedRecommendation[]>([]);
+  const [followedRecommendations, setFollowedRecommendations] = useState<string[]>([]);
 
   const {
     data,
@@ -137,6 +163,86 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
 
   const toggleRecommendation = (id: string) => {
     setExpandedRecommendation(expandedRecommendation === id ? null : id);
+  };
+
+  const dismissRecommendation = (id: string, feedback?: 'helpful' | 'not-helpful') => {
+    setDismissedRecommendations(prev => [
+      ...prev,
+      { id, dismissedAt: new Date(), feedback }
+    ]);
+    setExpandedRecommendation(null);
+  };
+
+  const followRecommendation = (id: string) => {
+    setFollowedRecommendations(prev => [...prev, id]);
+    Alert.alert(
+      'Recommendation Followed',
+      'Great! We\'ll track your progress with this recommendation.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const scheduleReminder = (recommendation: AIRecommendation) => {
+    Alert.alert(
+      'Set Reminder',
+      `Would you like to set a reminder for "${recommendation.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Set Reminder', 
+          onPress: () => {
+            Alert.alert('Reminder Set', 'You\'ll be notified to follow this recommendation.');
+          }
+        }
+      ]
+    );
+  };
+
+  const getRecommendationActions = (recommendation: AIRecommendation): RecommendationAction[] => {
+    const actions: RecommendationAction[] = [];
+
+    if (recommendation.actionable) {
+      actions.push({
+        id: 'follow',
+        label: 'Follow Now',
+        type: 'primary',
+        icon: 'play',
+        onPress: () => followRecommendation(recommendation.id)
+      });
+    }
+
+    actions.push({
+      id: 'remind',
+      label: 'Set Reminder',
+      type: 'secondary',
+      icon: 'bell',
+      onPress: () => scheduleReminder(recommendation)
+    });
+
+    return actions;
+  };
+
+  const getConfidenceIndicator = (recommendation: AIRecommendation) => {
+    // Calculate confidence based on priority and category
+    let confidence = 0.7; // Base confidence
+    
+    if (recommendation.priority === 'high') confidence += 0.2;
+    else if (recommendation.priority === 'low') confidence -= 0.1;
+    
+    if (recommendation.category === 'recovery') confidence += 0.1;
+    
+    return Math.min(0.95, Math.max(0.5, confidence));
+  };
+
+  const getActionIcon = (iconName: string, size: number = 16, color: string = colors.primary) => {
+    const iconProps = { size, color };
+    
+    switch (iconName) {
+      case 'play': return <Play {...iconProps} />;
+      case 'bell': return <Bell {...iconProps} />;
+      case 'target': return <Target {...iconProps} />;
+      default: return <Play {...iconProps} />;
+    }
   };
 
   if (!isConnectedToWhoop) {
@@ -264,82 +370,203 @@ const SmartInsightsPanel: React.FC<SmartInsightsPanelProps> = ({ style }) => {
 
         {/* Recommendations */}
         <View style={styles.recommendationsSection}>
-          <Text style={styles.sectionTitle}>Personalized Recommendations</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Personalized Recommendations</Text>
+            <View style={styles.recommendationStats}>
+              <Text style={styles.statsText}>
+                {insightsData.recommendations.filter(r => !dismissedRecommendations.find(d => d.id === r.id)).length} active
+              </Text>
+            </View>
+          </View>
           
-          {insightsData.recommendations.map((recommendation) => (
-            <TouchableOpacity
-              key={recommendation.id}
-              style={styles.recommendationCard}
-              onPress={() => toggleRecommendation(recommendation.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.recommendationHeader}>
-                <View style={styles.recommendationIconContainer}>
-                  {getRecommendationIcon(recommendation.icon, 20, getCategoryColor(recommendation.category))}
-                </View>
-                
-                <View style={styles.recommendationContent}>
-                  <View style={styles.recommendationTitleRow}>
-                    <Text style={styles.recommendationTitle} numberOfLines={1}>
-                      {recommendation.title}
-                    </Text>
-                    <View style={styles.recommendationMeta}>
-                      <View style={[
-                        styles.priorityBadge,
-                        { backgroundColor: getPriorityColor(recommendation.priority) }
-                      ]}>
-                        <Text style={styles.priorityText}>
-                          {recommendation.priority.toUpperCase()}
+          {insightsData.recommendations
+            .filter(recommendation => !dismissedRecommendations.find(d => d.id === recommendation.id))
+            .map((recommendation) => {
+              const confidence = getConfidenceIndicator(recommendation);
+              const isFollowed = followedRecommendations.includes(recommendation.id);
+              const actions = getRecommendationActions(recommendation);
+              
+              return (
+                <View key={recommendation.id} style={[
+                  styles.recommendationCard,
+                  isFollowed && styles.followedCard
+                ]}>
+                  <TouchableOpacity
+                    onPress={() => toggleRecommendation(recommendation.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.recommendationHeader}>
+                      <View style={styles.recommendationIconContainer}>
+                        {getRecommendationIcon(recommendation.icon, 20, getCategoryColor(recommendation.category))}
+                        {isFollowed && (
+                          <View style={styles.followedBadge}>
+                            <CheckCircle size={12} color={colors.success} />
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View style={styles.recommendationContent}>
+                        <View style={styles.recommendationTitleRow}>
+                          <Text style={[
+                            styles.recommendationTitle,
+                            isFollowed && styles.followedTitle
+                          ]} numberOfLines={1}>
+                            {recommendation.title}
+                          </Text>
+                          <View style={styles.recommendationMeta}>
+                            {/* Confidence Indicator */}
+                            <View style={styles.confidenceContainer}>
+                              <Star 
+                                size={12} 
+                                color={confidence > 0.8 ? colors.warning : colors.textSecondary}
+                                fill={confidence > 0.8 ? colors.warning : 'transparent'}
+                              />
+                              <Text style={styles.confidenceText}>
+                                {Math.round(confidence * 100)}%
+                              </Text>
+                            </View>
+                            
+                            <View style={[
+                              styles.priorityBadge,
+                              { backgroundColor: getPriorityColor(recommendation.priority) }
+                            ]}>
+                              <Text style={styles.priorityText}>
+                                {recommendation.priority.toUpperCase()}
+                              </Text>
+                            </View>
+                            
+                            <TouchableOpacity
+                              onPress={() => dismissRecommendation(recommendation.id)}
+                              style={styles.dismissButton}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                              <X size={14} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            
+                            <ChevronRight 
+                              size={16} 
+                              color={colors.textSecondary}
+                              style={{
+                                transform: [{ 
+                                  rotate: expandedRecommendation === recommendation.id ? '90deg' : '0deg' 
+                                }]
+                              }}
+                            />
+                          </View>
+                        </View>
+                        
+                        <View style={styles.categoryRow}>
+                          <Text style={styles.recommendationCategory}>
+                            {recommendation.category.charAt(0).toUpperCase() + recommendation.category.slice(1)}
+                          </Text>
+                          {recommendation.actionable && (
+                            <View style={styles.actionableBadge}>
+                              <Text style={styles.actionableBadgeText}>Actionable</Text>
+                            </View>
+                          )}
+                        </View>
+                        
+                        <Text style={styles.recommendationDescription} numberOfLines={2}>
+                          {recommendation.description}
                         </Text>
                       </View>
-                      <ChevronRight 
-                        size={16} 
-                        color={colors.textSecondary}
-                        style={{
-                          transform: [{ 
-                            rotate: expandedRecommendation === recommendation.id ? '90deg' : '0deg' 
-                          }]
-                        }}
-                      />
                     </View>
-                  </View>
-                  
-                  <Text style={styles.recommendationCategory}>
-                    {recommendation.category.charAt(0).toUpperCase() + recommendation.category.slice(1)}
-                  </Text>
-                  
-                  <Text style={styles.recommendationDescription} numberOfLines={2}>
-                    {recommendation.description}
-                  </Text>
-                </View>
-              </View>
+                  </TouchableOpacity>
 
-              {expandedRecommendation === recommendation.id && (
-                <View style={styles.expandedContent}>
-                  <View style={styles.impactContainer}>
-                    <View style={styles.impactItem}>
-                      <TrendingUp size={14} color={colors.success} />
-                      <Text style={styles.impactLabel}>Impact:</Text>
-                      <Text style={styles.impactValue}>{recommendation.estimatedImpact}</Text>
-                    </View>
-                    
-                    <View style={styles.impactItem}>
-                      <Clock size={14} color={colors.textSecondary} />
-                      <Text style={styles.impactLabel}>Timeframe:</Text>
-                      <Text style={styles.impactValue}>{recommendation.timeframe}</Text>
-                    </View>
-                  </View>
-                  
-                  {recommendation.actionable && (
-                    <View style={styles.actionableContainer}>
-                      <CheckCircle size={14} color={colors.success} />
-                      <Text style={styles.actionableText}>This recommendation is actionable now</Text>
+                  {expandedRecommendation === recommendation.id && (
+                    <View style={styles.expandedContent}>
+                      {/* Why This Recommendation */}
+                      <TouchableOpacity style={styles.whySection}>
+                        <Info size={16} color={colors.primary} />
+                        <Text style={styles.whySectionTitle}>Why this recommendation?</Text>
+                      </TouchableOpacity>
+                      
+                      <Text style={styles.whyText}>
+                        Based on your current recovery score and recent trends, this recommendation 
+                        is tailored to optimize your {recommendation.category} performance.
+                      </Text>
+                      
+                      <View style={styles.impactContainer}>
+                        <View style={styles.impactItem}>
+                          <TrendingUp size={14} color={colors.success} />
+                          <Text style={styles.impactLabel}>Expected Impact:</Text>
+                          <Text style={styles.impactValue}>{recommendation.estimatedImpact}</Text>
+                        </View>
+                        
+                        <View style={styles.impactItem}>
+                          <Clock size={14} color={colors.textSecondary} />
+                          <Text style={styles.impactLabel}>Timeframe:</Text>
+                          <Text style={styles.impactValue}>{recommendation.timeframe}</Text>
+                        </View>
+                        
+                        <View style={styles.impactItem}>
+                          <Target size={14} color={colors.primary} />
+                          <Text style={styles.impactLabel}>Confidence:</Text>
+                          <Text style={styles.impactValue}>{Math.round(confidence * 100)}%</Text>
+                        </View>
+                      </View>
+                      
+                      {/* Action Buttons */}
+                      <View style={styles.actionButtonsContainer}>
+                        {actions.map((action) => (
+                          <TouchableOpacity
+                            key={action.id}
+                            style={[
+                              styles.actionButton,
+                              action.type === 'primary' ? styles.primaryActionButton : styles.secondaryActionButton
+                            ]}
+                            onPress={action.onPress}
+                          >
+                            {action.icon && getActionIcon(action.icon, 16, 
+                              action.type === 'primary' ? colors.text : colors.primary
+                            )}
+                            <Text style={[
+                              styles.actionButtonText,
+                              action.type === 'primary' ? styles.primaryActionText : styles.secondaryActionText
+                            ]}>
+                              {action.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      
+                      {/* Feedback */}
+                      <View style={styles.feedbackContainer}>
+                        <Text style={styles.feedbackTitle}>Was this helpful?</Text>
+                        <View style={styles.feedbackButtons}>
+                          <TouchableOpacity
+                            style={styles.feedbackButton}
+                            onPress={() => dismissRecommendation(recommendation.id, 'helpful')}
+                          >
+                            <ThumbsUp size={16} color={colors.success} />
+                            <Text style={styles.feedbackButtonText}>Yes</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.feedbackButton}
+                            onPress={() => dismissRecommendation(recommendation.id, 'not-helpful')}
+                          >
+                            <ThumbsDown size={16} color={colors.danger} />
+                            <Text style={styles.feedbackButtonText}>No</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
                     </View>
                   )}
                 </View>
-              )}
-            </TouchableOpacity>
-          ))}
+              );
+            })
+          }
+          
+          {/* Progress Tracking */}
+          {followedRecommendations.length > 0 && (
+            <View style={styles.progressSection}>
+              <Text style={styles.progressTitle}>Your Progress</Text>
+              <Text style={styles.progressText}>
+                You're following {followedRecommendations.length} recommendation{followedRecommendations.length !== 1 ? 's' : ''}. 
+                Keep it up!
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Last Updated */}
@@ -584,6 +811,173 @@ const styles = StyleSheet.create({
   lastUpdatedText: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  // New styles for enhanced features
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recommendationStats: {
+    backgroundColor: colors.ios.secondaryBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statsText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  followedCard: {
+    borderWidth: 1,
+    borderColor: colors.success,
+    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+  },
+  followedBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: colors.ios.tertiaryBackground,
+    borderRadius: 8,
+    padding: 2,
+  },
+  followedTitle: {
+    color: colors.success,
+  },
+  confidenceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.ios.secondaryBackground,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  confidenceText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  dismissButton: {
+    padding: 2,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  actionableBadge: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  actionableBadgeText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  whySection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  whySectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  whyText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  primaryActionButton: {
+    backgroundColor: colors.primary,
+  },
+  secondaryActionButton: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  primaryActionText: {
+    color: colors.text,
+  },
+  secondaryActionText: {
+    color: colors.primary,
+  },
+  feedbackContainer: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 8,
+    padding: 12,
+  },
+  feedbackTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  feedbackButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: colors.ios.tertiaryBackground,
+    gap: 4,
+  },
+  feedbackButtonText: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  progressSection: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 18,
   },
 });
 
