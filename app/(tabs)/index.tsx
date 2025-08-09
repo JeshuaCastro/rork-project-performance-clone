@@ -22,6 +22,7 @@ import StrainCard from '@/components/StrainCard';
 
 
 import WeightTracker from '@/components/WeightTracker';
+import SleepInsights from '@/components/SleepInsights';
 import SmartInsightsPanel from '@/components/SmartInsightsPanel';
 import { colors } from '@/constants/colors';
 import { BlurView } from 'expo-blur';
@@ -61,7 +62,7 @@ export default function DashboardScreen() {
   const [appState, setAppState] = useState(AppState.currentState);
   const [showWorkoutDetailModal, setShowWorkoutDetailModal] = useState(false);
   const [isWorkoutCompletedToday, setIsWorkoutCompletedToday] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'subpage'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'subpage' | 'sleep'>('dashboard');
   const [selectedRange, setSelectedRange] = useState<'7d' | '30d' | '90d'>('7d');
   
   const { 
@@ -693,7 +694,7 @@ export default function DashboardScreen() {
   }
   
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="dashboard-root">
       <StatusBar style="light" />
       
       {!isConnectedToWhoop && (
@@ -714,6 +715,7 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'dashboard' && styles.activeTabButton]}
           onPress={() => setActiveTab('dashboard')}
+          testID="tab-dashboard"
         >
           <Text style={[styles.tabButtonText, activeTab === 'dashboard' && styles.activeTabButtonText]}>
             Dashboard
@@ -722,9 +724,19 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'subpage' && styles.activeTabButton]}
           onPress={() => setActiveTab('subpage')}
+          testID="tab-trends"
         >
           <Text style={[styles.tabButtonText, activeTab === 'subpage' && styles.activeTabButtonText]}>
             Trends
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'sleep' && styles.activeTabButton]}
+          onPress={() => setActiveTab('sleep')}
+          testID="tab-sleep"
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'sleep' && styles.activeTabButtonText]}>
+            Sleep
           </Text>
         </TouchableOpacity>
       </View>
@@ -976,7 +988,7 @@ export default function DashboardScreen() {
           
           
             </>
-          ) : (
+          ) : activeTab === 'subpage' ? (
             <View style={styles.trendsContainer}>
               {/* Time Range Selector */}
               <View style={styles.timeRangeContainer}>
@@ -1175,6 +1187,34 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               )}
+            </View>
+          ) : (
+            <View style={styles.trendsContainer}>
+              <View style={styles.timeRangeContainer}>
+                <Text style={styles.sectionTitle}>Time Range</Text>
+                <View style={styles.timeRangeButtons}>
+                  {(['7d', '30d', '90d'] as ('7d' | '30d' | '90d')[]).map((range) => (
+                    <TouchableOpacity
+                      key={range}
+                      style={[
+                        styles.timeRangeButton,
+                        selectedRange === range && styles.timeRangeButtonActive
+                      ]}
+                      onPress={() => setSelectedRange(range)}
+                      testID={`sleep-range-${range}`}
+                    >
+                      <Text style={[
+                        styles.timeRangeButtonText,
+                        selectedRange === range && styles.timeRangeButtonTextActive
+                      ]}>
+                        {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <SleepInsights selectedRange={selectedRange} />
             </View>
           )}
         </ScrollView>
