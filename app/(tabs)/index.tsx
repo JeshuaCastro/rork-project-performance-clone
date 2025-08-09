@@ -19,7 +19,6 @@ import { useWhoopStore } from '@/store/whoopStore';
 import RecoveryCard from '@/components/RecoveryCard';
 import StrainCard from '@/components/StrainCard';
 
-import CalendarView from '@/components/CalendarView';
 
 
 import WeightTracker from '@/components/WeightTracker';
@@ -975,14 +974,6 @@ export default function DashboardScreen() {
           {/* Weight Tracking */}
           <WeightTracker />
           
-          {/* Detailed Cards */}
-          {selectedRecovery && (
-            <View style={styles.detailedCardsSection}>
-              <Text style={styles.sectionTitle}>Detailed Metrics</Text>
-              <RecoveryCard recovery={selectedRecovery} />
-            </View>
-          )}
-          {selectedStrain && <StrainCard strain={selectedStrain} />}
           
             </>
           ) : (
@@ -1013,6 +1004,15 @@ export default function DashboardScreen() {
 
               {trendsData ? (
                 <>
+                  {/* Daily Details moved from Dashboard */}
+                  {(selectedRecovery || selectedStrain) && (
+                    <View style={styles.detailedCardsSection}>
+                      <Text style={styles.sectionTitle}>Daily Details</Text>
+                      {selectedRecovery && <RecoveryCard recovery={selectedRecovery} />}
+                      {selectedStrain && <StrainCard strain={selectedStrain} />}
+                    </View>
+                  )}
+
                   {/* Overview Cards */}
                   <View style={styles.overviewSection}>
                     <Text style={styles.sectionTitle}>Overview</Text>
@@ -2154,24 +2154,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
-  },
-  // Calendar Section
-  calendarSection: {
-    marginBottom: 24,
-  },
-  calendarViewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  calendarViewButtonText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
   },
   // Detailed Cards Section
   detailedCardsSection: {
