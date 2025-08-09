@@ -16,12 +16,14 @@ const WHOOP_API_BASE = 'https://api.prod.whoop.com/developer/v1';
 
 // Required scopes for our app - REMOVED read:strain as it's not allowed for our client
 // We'll extract strain data from cycles instead
+// Added read:sleep to access user sleep data
 const WHOOP_SCOPES = [
   'read:recovery',
   'read:cycles',
+  'read:sleep',
   'read:profile',
   'read:body_measurement',
-  'offline' // Added offline scope for refresh tokens
+  'offline'
 ].join(' ');
 
 // Storage keys
