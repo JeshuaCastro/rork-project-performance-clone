@@ -5,7 +5,8 @@ import {
   MessageSquare, 
   Dumbbell, 
   Apple,
-  Settings 
+  Settings,
+  Moon 
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
@@ -170,6 +171,19 @@ export default function TabLayout() {
             title: 'Nutrition',
             tabBarIcon: ({ color, focused }) => (
               <Apple 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="sleep"
+          options={{
+            title: 'Sleep',
+            tabBarIcon: ({ color, focused }) => (
+              <Moon 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
