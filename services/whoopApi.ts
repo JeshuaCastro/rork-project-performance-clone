@@ -614,28 +614,61 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
     // Transform sleep data
     const transformedSleep: SleepData[] = [];
     
-    if (sleepData && sleepData.records) {
+    if (sleepData && Array.isArray(sleepData.records)) {
       for (const record of sleepData.records) {
-        // Get the date from the sleep record
         const dateObj = record.created_at ? new Date(record.created_at) : new Date();
         const date = dateObj.toISOString().split('T')[0];
-        
-        // Extract sleep metrics
-        const sleepScore = record.score?.stage_summary?.score || 0;
-        const totalSleepTime = record.score?.stage_summary?.total_in_bed_time_milli || 0;
-        const sleepEfficiency = record.score?.stage_summary?.sleep_efficiency_percentage || 0;
-        const disturbanceCount = record.score?.stage_summary?.disturbance_count || 0;
-        
-        // Convert milliseconds to minutes for duration
-        const durationMinutes = Math.round(totalSleepTime / (1000 * 60));
-        
+
+        // Robust field extraction across WHOOP API variants
+        const scoreObj = record.score ?? {};
+        const stageSummary = scoreObj.stage_summary ?? {};
+
+        const sleepScoreRaw =
+          scoreObj.sleep_performance_percentage ??
+          scoreObj.sleep_score ??
+          scoreObj.overall_score ??
+          stageSummary.score ??
+          0;
+
+        const efficiencyRaw =
+          scoreObj.sleep_efficiency_percentage ??
+          stageSummary.sleep_efficiency_percentage ??
+          0;
+
+        const totalSleepMilli =
+          stageSummary.total_sleep_time_milli ??
+          stageSummary.total_in_bed_time_milli ??
+          scoreObj.total_sleep_time_milli ??
+          0;
+
+        const disturbanceCount =
+          scoreObj.disturbance_count ??
+          stageSummary.disturbance_count ??
+          0;
+
+        const durationMinutes = Math.round((Number(totalSleepMilli) || 0) / (1000 * 60));
+        const efficiency = Math.round(Number(efficiencyRaw) || 0);
+        const qualityScore = Math.round(Number(sleepScoreRaw) || 0);
+
+        // Filter out clearly invalid entries to avoid zeros in UI
+        if (!durationMinutes || durationMinutes < 120 || !efficiency) {
+          console.log('Skipping invalid sleep record', {
+            id: record.id,
+            date,
+            durationMinutes,
+            efficiency,
+            qualityScore
+          });
+          continue;
+        }
+
         transformedSleep.push({
           id: `sleep-${record.id || Date.now()}`,
           date,
-          efficiency: Math.round(sleepEfficiency),
+          efficiency,
           duration: durationMinutes,
-          disturbances: disturbanceCount,
-          qualityScore: Math.round(sleepScore)
+          disturbances: Number(disturbanceCount) || 0,
+          qualityScore
         });
       }
     }

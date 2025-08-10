@@ -914,10 +914,24 @@ export const useWhoopStore = create<WhoopStore>()(
           
           const transformedData = await transformWhoopData(startDateStr, endDate);
           
-          if (transformedData && transformedData.recovery.length > 0) {
-            console.log('Successfully fetched WHOOP data with', transformedData.recovery.length, 'recovery records');
+          if (
+            transformedData && (
+              transformedData.recovery.length > 0 ||
+              transformedData.sleep.length > 0 ||
+              transformedData.strain.length > 0
+            )
+          ) {
+            console.log('Successfully fetched WHOOP data with counts', {
+              recovery: transformedData.recovery.length,
+              sleep: transformedData.sleep.length,
+              strain: transformedData.strain.length,
+            });
             
-            const mostRecentDate = transformedData.recovery[0]?.date || new Date().toISOString().split('T')[0];
+            const mostRecentDate =
+              transformedData.recovery[0]?.date ||
+              transformedData.sleep[0]?.date ||
+              transformedData.strain[0]?.date ||
+              new Date().toISOString().split('T')[0];
             
             set({ 
               data: transformedData,
@@ -960,13 +974,24 @@ export const useWhoopStore = create<WhoopStore>()(
           
           const transformedData = await transformWhoopData(startDateStr, endDate);
           
-          if (transformedData && transformedData.recovery.length > 0) {
+          if (
+            transformedData && (
+              transformedData.recovery.length > 0 ||
+              transformedData.sleep.length > 0 ||
+              transformedData.strain.length > 0
+            )
+          ) {
             console.log('Successfully synced WHOOP data:', {
               recoveryCount: transformedData.recovery.length,
-              strainCount: transformedData.strain.length
+              sleepCount: transformedData.sleep.length,
+              strainCount: transformedData.strain.length,
             });
             
-            const mostRecentDate = transformedData.recovery[0]?.date || new Date().toISOString().split('T')[0];
+            const mostRecentDate =
+              transformedData.recovery[0]?.date ||
+              transformedData.sleep[0]?.date ||
+              transformedData.strain[0]?.date ||
+              new Date().toISOString().split('T')[0];
             
             set({ 
               data: transformedData,
@@ -2836,7 +2861,7 @@ Return JSON with implementation and advisory guidance:
           const stored = await AsyncStorage.getItem(storageKey);
           
           if (stored) {
-            const completedWorkouts = JSON.parse(stored);
+            const completedWorkouts: string[] = JSON.parse(stored);
             const workoutKey = `${new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long' })}-${workoutTitle}`;
             return completedWorkouts.includes(workoutKey);
           }
@@ -2845,6 +2870,24 @@ Return JSON with implementation and advisory guidance:
         } catch (error) {
           console.error('Error checking workout completion:', error);
           return false;
+        }
+      },
+      
+      // Mark a workout completed for a given date
+      markWorkoutCompleted: async (programId: string, workoutTitle: string, workoutDay: string, date?: string): Promise<void> => {
+        try {
+          const targetDate = date || new Date().toISOString().split('T')[0];
+          const todayKey = `${programId}-${targetDate}`;
+          const storageKey = `completed-workouts-${todayKey}`;
+          const workoutKey = `${workoutDay}-${workoutTitle}`;
+          const stored = await AsyncStorage.getItem(storageKey);
+          const list: string[] = stored ? JSON.parse(stored) : [];
+          if (!list.includes(workoutKey)) {
+            list.push(workoutKey);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(list));
+          }
+        } catch (error) {
+          console.error('Error marking workout completed:', error);
         }
       },
       
