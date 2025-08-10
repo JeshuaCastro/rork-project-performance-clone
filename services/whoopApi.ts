@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WhoopData, RecoveryData, StrainData } from '@/types/whoop';
+import { WhoopData, RecoveryData, StrainData, SleepData } from '@/types/whoop';
 
 // WHOOP API configuration
 const WHOOP_CLIENT_ID = 'acb83b21-9201-481e-8297-acbc6b2a9d25';
@@ -472,6 +472,18 @@ export const fetchWhoopCycles = async (startDate: string, endDate: string): Prom
 };
 
 /**
+ * Fetches sleep data from WHOOP API
+ */
+export const fetchWhoopSleep = async (startDate: string, endDate: string): Promise<any> => {
+  try {
+    return await whoopApiRequest(`/activity/sleep?start_date=${startDate}&end_date=${endDate}`);
+  } catch (error) {
+    console.error('Error fetching WHOOP sleep:', error);
+    return { records: [] };
+  }
+};
+
+/**
  * Transform WHOOP API data to app format
  */
 export const transformWhoopData = async (startDate: string, endDate: string): Promise<WhoopData | null> => {
@@ -485,15 +497,17 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
       return null;
     }
     
-    // Fetch recovery and cycles data in parallel
-    const [recoveryData, cyclesData] = await Promise.all([
+    // Fetch recovery, cycles, and sleep data in parallel
+    const [recoveryData, cyclesData, sleepData] = await Promise.all([
       fetchWhoopRecovery(startDate, endDate),
-      fetchWhoopCycles(startDate, endDate)
+      fetchWhoopCycles(startDate, endDate),
+      fetchWhoopSleep(startDate, endDate)
     ]);
     
     console.log('API responses received:', {
       recovery: recoveryData ? 'success' : 'failed',
-      cycles: cyclesData ? 'success' : 'failed'
+      cycles: cyclesData ? 'success' : 'failed',
+      sleep: sleepData ? 'success' : 'failed'
     });
     
     // If we're missing critical data, return null
@@ -504,7 +518,8 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
     
     console.log('Transforming WHOOP data:', { 
       recoveryCount: recoveryData?.records?.length || 0,
-      cyclesCount: cyclesData?.records?.length || 0
+      cyclesCount: cyclesData?.records?.length || 0,
+      sleepCount: sleepData?.records?.length || 0
     });
     
     // Transform recovery data
@@ -596,6 +611,35 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
       }
     }
     
+    // Transform sleep data
+    const transformedSleep: SleepData[] = [];
+    
+    if (sleepData && sleepData.records) {
+      for (const record of sleepData.records) {
+        // Get the date from the sleep record
+        const dateObj = record.created_at ? new Date(record.created_at) : new Date();
+        const date = dateObj.toISOString().split('T')[0];
+        
+        // Extract sleep metrics
+        const sleepScore = record.score?.stage_summary?.score || 0;
+        const totalSleepTime = record.score?.stage_summary?.total_in_bed_time_milli || 0;
+        const sleepEfficiency = record.score?.stage_summary?.sleep_efficiency_percentage || 0;
+        const disturbanceCount = record.score?.stage_summary?.disturbance_count || 0;
+        
+        // Convert milliseconds to minutes for duration
+        const durationMinutes = Math.round(totalSleepTime / (1000 * 60));
+        
+        transformedSleep.push({
+          id: `sleep-${record.id || Date.now()}`,
+          date,
+          efficiency: Math.round(sleepEfficiency),
+          duration: durationMinutes,
+          disturbances: disturbanceCount,
+          qualityScore: Math.round(sleepScore)
+        });
+      }
+    }
+    
     // Sort all data by date (newest first)
     const sortByDate = (a: { date: string }, b: { date: string }): number => 
       new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -603,12 +647,13 @@ export const transformWhoopData = async (startDate: string, endDate: string): Pr
     const result: WhoopData = {
       recovery: transformedRecovery.sort(sortByDate),
       strain: transformedStrain.sort(sortByDate),
-      sleep: [] // TODO: Add sleep data transformation when sleep endpoint is implemented
+      sleep: transformedSleep.sort(sortByDate)
     };
     
     console.log('Transformed WHOOP data:', {
       recoveryCount: result.recovery.length,
-      strainCount: result.strain.length
+      strainCount: result.strain.length,
+      sleepCount: result.sleep.length
     });
     
     // Cache the transformed data
