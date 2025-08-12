@@ -118,42 +118,8 @@ export default function CoachScreen() {
     );
   };
 
-  const handleHealthEvaluation = async () => {
-    if (!isConnectedToWhoop) {
-      Alert.alert(
-        "WHOOP Connection Required",
-        "To get a comprehensive health evaluation, please connect your WHOOP account first.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Connect WHOOP", 
-            onPress: () => router.push('/connect-whoop')
-          }
-        ]
-      );
-      return;
-    }
-
-    if (!hasWhoopData) {
-      Alert.alert(
-        "Insufficient Data",
-        "We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Sync Data", 
-            onPress: () => syncWhoopData()
-          }
-        ]
-      );
-      return;
-    }
-
-    // Add health evaluation message to chat
-    addChatMessage({
-      role: 'user',
-      content: 'Please provide a comprehensive health evaluation based on my WHOOP data, including recovery patterns, sleep quality, strain levels, and personalized recommendations for improvement.',
-    });
+  const handleHealthEvaluation = () => {
+    router.push('/health-evaluation');
   };
 
   const renderEmptyChat = () => (
