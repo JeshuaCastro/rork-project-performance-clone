@@ -34,7 +34,9 @@ export default function RecoveryCard({ recovery }: RecoveryCardProps) {
       
       <View style={styles.scoreContainer}>
         <Text style={styles.scoreText}>{recovery.score}%</Text>
-        <View style={[styles.scoreIndicator, { width: `${recovery.score}%`, backgroundColor: getStatusColor(recovery.status) }]} />
+        <View style={styles.scoreBarContainer}>
+          <View style={[styles.scoreIndicator, { width: `${recovery.score}%`, backgroundColor: getStatusColor(recovery.status) }]} />
+        </View>
       </View>
       
       <View style={styles.metricsContainer}>
@@ -85,6 +87,12 @@ const styles = StyleSheet.create({
   scoreContainer: {
     marginBottom: iosSpacing.lg,
   },
+  scoreBarContainer: {
+    height: 8,
+    backgroundColor: colors.ios.quaternaryBackground,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
   scoreText: {
     ...iosTypography.largeTitle,
     color: colors.text,
@@ -94,6 +102,12 @@ const styles = StyleSheet.create({
   scoreIndicator: {
     height: 8,
     borderRadius: 4,
+    backgroundColor: colors.ios.quaternaryBackground,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   metricsContainer: {
     flexDirection: 'row',

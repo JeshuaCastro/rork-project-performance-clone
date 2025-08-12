@@ -766,7 +766,10 @@ export default function DashboardScreen() {
       <View style={styles.miniChart}>
         {data.map((item, index) => {
           const value = type === 'recovery' ? item.score : item.score;
-          const height = ((value - minValue) / range) * 30 + 5;
+          const height = ((value - minValue) / range) * 25 + 8;
+          const barColor = type === 'recovery' 
+            ? (value >= 67 ? colors.success : value >= 34 ? colors.warning : colors.danger)
+            : colors.info;
           return (
             <View
               key={index}
@@ -774,7 +777,7 @@ export default function DashboardScreen() {
                 styles.chartBar,
                 {
                   height,
-                  backgroundColor: type === 'recovery' ? colors.recovery.high : colors.warning
+                  backgroundColor: barColor
                 }
               ]}
             />
@@ -1607,7 +1610,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.ios.groupedBackground,
   },
   loadingText: {
     ...iosTypography.callout,
@@ -1653,8 +1656,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     marginTop: 40,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.ios.secondaryGroupedBackground,
     borderRadius: 16,
+    ...iosCardShadow,
   },
   errorTitle: {
     fontSize: isSmallDevice ? 18 : 20,
@@ -2481,12 +2485,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     height: 35,
-    gap: 2,
+    gap: 3,
+    paddingHorizontal: 4,
   },
   chartBar: {
-    width: 4,
-    borderRadius: 2,
-    minHeight: 5,
+    width: 6,
+    borderRadius: 3,
+    minHeight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 1,
+    elevation: 1,
   },
   // Additional Metrics
   additionalMetricsGrid: {

@@ -22,8 +22,8 @@ export default function StrainCard({ strain }: StrainCardProps) {
   // Get strain color based on level
   const getStrainColor = (score: number) => {
     if (score >= 18) return colors.danger;
-    if (score >= 14) return '#FF9800'; // Orange
-    if (score >= 10) return colors.warning;
+    if (score >= 14) return colors.warning;
+    if (score >= 10) return colors.info;
     if (score >= 6) return colors.primary;
     return colors.success;
   };
@@ -154,13 +154,18 @@ const styles = StyleSheet.create({
   },
   scoreBarContainer: {
     height: 8,
-    backgroundColor: colors.ios.tertiaryBackground,
+    backgroundColor: colors.ios.quaternaryBackground,
     borderRadius: 4,
     overflow: 'hidden',
   },
   scoreIndicator: {
     height: 8,
     borderRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   totalMetrics: {
     flexDirection: 'row',
