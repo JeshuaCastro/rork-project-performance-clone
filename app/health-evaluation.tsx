@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   SafeAreaView,
@@ -12,9 +11,10 @@ import {
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
-import { Activity, Heart, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
+import { Activity, Heart, TrendingUp, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react-native';
+import { useRouter, Stack } from 'expo-router';
+import IOSCard from '@/components/IOSCard';
+import IOSButton from '@/components/IOSButton';
 
 interface HealthInsight {
   category: string;
@@ -273,17 +273,20 @@ export default function HealthEvaluationScreen() {
         <StatusBar style="light" />
         
         <View style={styles.emptyContainer}>
-          <Activity size={64} color={colors.textSecondary} />
-          <Text style={styles.emptyTitle}>WHOOP Connection Required</Text>
-          <Text style={styles.emptyText}>
-            To get a comprehensive health evaluation, please connect your WHOOP account first.
-          </Text>
-          <TouchableOpacity 
-            style={styles.connectButton}
-            onPress={() => router.push('/connect-whoop')}
-          >
-            <Text style={styles.connectButtonText}>Connect WHOOP</Text>
-          </TouchableOpacity>
+          <IOSCard variant="elevated" style={styles.emptyCard}>
+            <Activity size={64} color={colors.textSecondary} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>WHOOP Connection Required</Text>
+            <Text style={styles.emptyText}>
+              To get a comprehensive health evaluation, please connect your WHOOP account first.
+            </Text>
+            <IOSButton 
+              title="Connect WHOOP"
+              onPress={() => router.push('/connect-whoop')}
+              variant="primary"
+              size="large"
+              icon={<Activity size={18} color={colors.text} />}
+            />
+          </IOSCard>
         </View>
       </SafeAreaView>
     );
@@ -296,20 +299,23 @@ export default function HealthEvaluationScreen() {
         <StatusBar style="light" />
         
         <View style={styles.emptyContainer}>
-          <Activity size={64} color={colors.textSecondary} />
-          <Text style={styles.emptyTitle}>Insufficient Data</Text>
-          <Text style={styles.emptyText}>
-            We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.
-          </Text>
-          <TouchableOpacity 
-            style={styles.connectButton}
-            onPress={() => {
-              syncWhoopData();
-              router.back();
-            }}
-          >
-            <Text style={styles.connectButtonText}>Sync Data</Text>
-          </TouchableOpacity>
+          <IOSCard variant="elevated" style={styles.emptyCard}>
+            <Activity size={64} color={colors.textSecondary} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>Insufficient Data</Text>
+            <Text style={styles.emptyText}>
+              We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.
+            </Text>
+            <IOSButton 
+              title="Sync Data"
+              onPress={() => {
+                syncWhoopData();
+                router.back();
+              }}
+              variant="primary"
+              size="large"
+              icon={<RefreshCw size={18} color={colors.text} />}
+            />
+          </IOSCard>
         </View>
       </SafeAreaView>
     );
@@ -322,22 +328,22 @@ export default function HealthEvaluationScreen() {
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {isLoading ? (
-          <View style={styles.loadingContainer}>
+          <IOSCard variant="elevated" style={styles.loadingCard}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Analyzing your health data...</Text>
-          </View>
+          </IOSCard>
         ) : (
           <>
             {/* Overall Evaluation */}
-            <View style={styles.evaluationCard}>
+            <IOSCard variant="elevated" style={styles.evaluationCard}>
               <Text style={styles.evaluationTitle}>Overall Health Assessment</Text>
               <Text style={styles.evaluationText}>{evaluation}</Text>
-            </View>
+            </IOSCard>
             
             {/* Insights */}
             <Text style={styles.sectionTitle}>Detailed Insights</Text>
             {insights.map((insight, index) => (
-              <View key={index} style={[
+              <IOSCard key={index} variant="outlined" style={[
                 styles.insightCard,
                 { backgroundColor: getStatusBackground(insight.status) }
               ]}>
@@ -362,18 +368,20 @@ export default function HealthEvaluationScreen() {
                     • {rec}
                   </Text>
                 ))}
-              </View>
+              </IOSCard>
             ))}
             
             {/* Refresh Button */}
-            <TouchableOpacity 
-              style={styles.refreshButton}
+            <IOSButton 
+              title="Refresh Evaluation"
               onPress={generateHealthEvaluation}
+              variant="secondary"
+              size="large"
               disabled={isLoading}
-            >
-              <Activity size={20} color={colors.text} />
-              <Text style={styles.refreshButtonText}>Refresh Evaluation</Text>
-            </TouchableOpacity>
+              loading={isLoading}
+              icon={<RefreshCw size={18} color={colors.text} />}
+              style={styles.refreshButton}
+            />
           </>
         )}
       </ScrollView>
@@ -397,14 +405,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: 20,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    maxWidth: 400,
+    width: '100%',
+  },
+  emptyIcon: {
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   emptyText: {
@@ -414,22 +429,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 24,
   },
-  connectButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  connectButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  loadingCard: {
     alignItems: 'center',
-    padding: 32,
+    padding: 40,
   },
   loadingText: {
     fontSize: 16,
@@ -438,12 +440,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   evaluationCard: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 16,
-    padding: 20,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
   },
   evaluationTitle: {
     fontSize: 20,
@@ -461,13 +458,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 16,
+    marginTop: 8,
   },
   insightCard: {
-    borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
   },
   insightHeader: {
     flexDirection: 'row',
@@ -509,19 +503,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
     marginTop: 16,
-  },
-  refreshButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
   },
 });
