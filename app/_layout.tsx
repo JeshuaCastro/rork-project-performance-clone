@@ -133,6 +133,26 @@ export default function RootLayout() {
             })
           }} 
         />
+        <Stack.Screen 
+          name="health-evaluation" 
+          options={{ 
+            headerShown: false,
+            ...(Platform.OS === 'ios' && {
+              presentation: 'card',
+              gestureEnabled: true,
+            })
+          }} 
+        />
+        <Stack.Screen 
+          name="trends" 
+          options={{ 
+            headerShown: false,
+            ...(Platform.OS === 'ios' && {
+              presentation: 'card',
+              gestureEnabled: true,
+            })
+          }} 
+        />
       </Stack>
     </View>
   );
