@@ -50,7 +50,8 @@ import {
   TrendingDown,
   Calendar,
   BarChart3,
-  Minus
+  Minus,
+  Moon
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -154,6 +155,27 @@ export default function DashboardScreen() {
   
   // Get today's workout from active programs
   const todaysWorkout = getTodaysWorkout();
+  
+  // Get today's sleep data for daily metrics
+  const todaysSleepData = useMemo(() => {
+    if (!data?.sleep || data.sleep.length === 0) return null;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todaysData = data.sleep.find(sleep => sleep.date === today);
+    
+    // If no data for today, get the most recent data
+    return todaysData || data.sleep[0] || null;
+  }, [data?.sleep]);
+  
+  const todaysRecoveryData = useMemo(() => {
+    if (!data?.recovery || data.recovery.length === 0) return null;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todaysData = data.recovery.find(recovery => recovery.date === today);
+    
+    // If no data for today, get the most recent data
+    return todaysData || data.recovery[0] || null;
+  }, [data?.recovery]);
   
   // Calculate trends data for subpage
   const trendsData = useMemo(() => {
@@ -645,6 +667,91 @@ export default function DashboardScreen() {
   const getTrendText = (trend: number) => {
     if (Math.abs(trend) < 1) return 'Stable';
     return trend > 0 ? `+${trend.toFixed(1)}` : trend.toFixed(1);
+  };
+  
+  // Render today's sleep metrics for dashboard sleep tab
+  const renderDailySleepMetrics = () => {
+    if (!isConnectedToWhoop || !todaysSleepData) {
+      return (
+        <View style={styles.dailyMetricsContainer}>
+          <Text style={styles.dailyMetricsTitle}>Today's Sleep</Text>
+          <View style={styles.noDataCard}>
+            <Moon size={24} color={colors.textSecondary} />
+            <Text style={styles.noDataCardText}>No sleep data available</Text>
+            <Text style={styles.noDataCardSubtext}>Sync your WHOOP to see today's metrics</Text>
+          </View>
+        </View>
+      );
+    }
+    
+    const sleepScore = todaysSleepData.qualityScore || 0;
+    const sleepDuration = todaysSleepData.duration || 0;
+    const sleepEfficiency = todaysSleepData.efficiency || 0;
+    
+    // Calculate sleep debt (assuming 8 hours is optimal)
+    const optimalSleep = 8 * 60; // 8 hours in minutes
+    const sleepDebt = Math.max(0, optimalSleep - sleepDuration);
+    
+    // Get training readiness from recovery data
+    const recoveryScore = todaysRecoveryData?.score || 0;
+    const trainingReadiness = recoveryScore >= 70 ? 'High' : recoveryScore >= 50 ? 'Medium' : 'Low';
+    
+    const formatDuration = (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}h ${mins}m`;
+    };
+    
+    return (
+      <View style={styles.dailyMetricsContainer}>
+        <Text style={styles.dailyMetricsTitle}>Today's Sleep</Text>
+        <View style={styles.metricsGrid}>
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <Moon size={20} color={colors.primary} />
+              <Text style={styles.metricLabel}>Sleep Score</Text>
+            </View>
+            <Text style={styles.metricValue}>{sleepScore}%</Text>
+            <Text style={styles.metricSubtext}>
+              {sleepScore >= 80 ? 'Excellent' : sleepScore >= 60 ? 'Good' : sleepScore >= 40 ? 'Fair' : 'Poor'}
+            </Text>
+          </View>
+          
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <Clock size={20} color={colors.primary} />
+              <Text style={styles.metricLabel}>Duration</Text>
+            </View>
+            <Text style={styles.metricValue}>{formatDuration(sleepDuration)}</Text>
+            <Text style={styles.metricSubtext}>
+              {sleepDebt > 0 ? `${Math.round(sleepDebt / 60 * 10) / 10}h debt` : 'Well rested'}
+            </Text>
+          </View>
+          
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <TrendingUp size={20} color={colors.primary} />
+              <Text style={styles.metricLabel}>Efficiency</Text>
+            </View>
+            <Text style={styles.metricValue}>{sleepEfficiency}%</Text>
+            <Text style={styles.metricSubtext}>
+              {sleepEfficiency >= 85 ? 'Excellent' : sleepEfficiency >= 75 ? 'Good' : 'Needs work'}
+            </Text>
+          </View>
+          
+          <View style={styles.metricCard}>
+            <View style={styles.metricHeader}>
+              <Zap size={20} color={colors.primary} />
+              <Text style={styles.metricLabel}>Readiness</Text>
+            </View>
+            <Text style={styles.metricValue}>{trainingReadiness}</Text>
+            <Text style={styles.metricSubtext}>
+              {recoveryScore}% recovery
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   const renderMiniChart = (data: any[], type: 'recovery' | 'strain') => {
@@ -1190,6 +1297,9 @@ export default function DashboardScreen() {
             </View>
           ) : (
             <View style={styles.trendsContainer}>
+              {/* Daily Sleep Metrics */}
+              {renderDailySleepMetrics()}
+              
               <View style={styles.timeRangeContainer}>
                 <Text style={styles.sectionTitle}>Time Range</Text>
                 <View style={styles.timeRangeButtons}>
@@ -2486,5 +2596,65 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  // Daily Sleep Metrics Styles
+  dailyMetricsContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 16,
+    borderBottomWidth: Platform.OS === 'ios' ? 0.5 : 1,
+    borderBottomColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.1)' : '#2A2A2A',
+    marginBottom: 16,
+  },
+  dailyMetricsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+    letterSpacing: -0.4,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  metricLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  metricSubtext: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  noDataCard: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  noDataCardText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  noDataCardSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
