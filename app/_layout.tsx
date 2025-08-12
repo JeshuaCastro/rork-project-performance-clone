@@ -28,7 +28,7 @@ export default function RootLayout() {
             // Sync data if needed
             await syncWhoopData();
             // Redirect to dashboard
-            router.replace('/(tabs)/index');
+            router.replace('/');
           }
         }
       } catch (error) {
