@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
 import { RecoveryData } from '@/types/whoop';
 import { Activity, Heart } from 'lucide-react-native';
+import { iosSpacing, iosMargins, iosTypography, iosCardShadow } from '@/utils/ios-helpers';
 
 interface RecoveryCardProps {
   recovery: RecoveryData;
@@ -55,40 +56,40 @@ export default function RecoveryCard({ recovery }: RecoveryCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.ios.secondaryGroupedBackground,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    padding: iosMargins.cardPadding,
+    marginBottom: iosMargins.sectionSpacing,
+    ...iosCardShadow,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: iosSpacing.lg,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...iosTypography.headline,
     color: colors.text,
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: iosSpacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
   },
   badgeText: {
+    ...iosTypography.caption1,
     color: colors.text,
-    fontSize: 12,
     fontWeight: '600',
   },
   scoreContainer: {
-    marginBottom: 16,
+    marginBottom: iosSpacing.lg,
   },
   scoreText: {
-    fontSize: 36,
-    fontWeight: '700',
+    ...iosTypography.largeTitle,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: iosSpacing.sm,
+    letterSpacing: -0.8,
   },
   scoreIndicator: {
     height: 8,
@@ -103,13 +104,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricLabel: {
+    ...iosTypography.subhead,
     color: colors.textSecondary,
-    fontSize: 14,
     marginTop: 4,
   },
   metricValue: {
+    ...iosTypography.callout,
     color: colors.text,
-    fontSize: 16,
     fontWeight: '600',
     marginTop: 2,
   },

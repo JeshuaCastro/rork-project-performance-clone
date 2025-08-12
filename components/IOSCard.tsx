@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from '@/constants/colors';
-import { iosCardShadow, iosBorderRadius, isIOS } from '@/utils/ios-helpers';
+import { iosCardShadow, iosBorderRadius, isIOS, iosMargins } from '@/utils/ios-helpers';
 
 interface IOSCardProps {
   children: React.ReactNode;
@@ -14,12 +14,12 @@ export default function IOSCard({
   children, 
   style, 
   variant = 'default',
-  padding = 16 
+  padding = iosMargins.cardPadding 
 }: IOSCardProps) {
   
   const getCardStyle = (): ViewStyle => {
     const baseStyle: ViewStyle = {
-      backgroundColor: colors.card,
+      backgroundColor: colors.ios.secondaryGroupedBackground,
       borderRadius: iosBorderRadius.large,
       padding,
     };
@@ -37,7 +37,8 @@ export default function IOSCard({
         baseStyle.borderColor = colors.ios.separator;
         break;
       default:
-        // Default card style
+        // Apply subtle shadow for default cards
+        Object.assign(baseStyle, iosCardShadow);
         break;
     }
     

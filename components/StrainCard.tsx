@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
 import { StrainData } from '@/types/whoop';
 import { Dumbbell, Flame } from 'lucide-react-native';
+import { iosSpacing, iosMargins, iosTypography, iosCardShadow } from '@/utils/ios-helpers';
 
 interface StrainCardProps {
   strain: StrainData;
@@ -111,49 +112,49 @@ export default function StrainCard({ strain }: StrainCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.ios.secondaryGroupedBackground,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    padding: iosMargins.cardPadding,
+    marginBottom: iosMargins.sectionSpacing,
+    ...iosCardShadow,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: iosSpacing.lg,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...iosTypography.headline,
     color: colors.text,
   },
   scoreContainer: {
-    marginBottom: 16,
+    marginBottom: iosSpacing.lg,
   },
   scoreHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: iosSpacing.sm,
   },
   scoreText: {
-    fontSize: 36,
-    fontWeight: '700',
+    ...iosTypography.largeTitle,
     color: colors.text,
+    letterSpacing: -0.8,
   },
   strainBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: iosSpacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
   },
   strainBadgeText: {
+    ...iosTypography.caption1,
     color: colors.text,
-    fontSize: 12,
     fontWeight: '600',
   },
   scoreBarContainer: {
     height: 8,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.ios.tertiaryBackground,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -164,45 +165,44 @@ const styles = StyleSheet.create({
   totalMetrics: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: iosSpacing.lg,
+    paddingBottom: iosSpacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: colors.ios.separator,
   },
   totalMetricItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   metricLabel: {
+    ...iosTypography.subhead,
     color: colors.textSecondary,
-    fontSize: 14,
     marginRight: 4,
   },
   totalMetricValue: {
+    ...iosTypography.callout,
     color: colors.text,
-    fontSize: 16,
     fontWeight: '500',
     marginLeft: 4,
   },
   workoutSuggestionContainer: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.ios.tertiaryBackground,
     borderRadius: 12,
-    padding: 12,
+    padding: iosSpacing.md,
   },
   workoutSuggestionTitle: {
-    fontSize: 14,
+    ...iosTypography.subhead,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: iosSpacing.sm,
   },
   workoutSuggestionText: {
-    fontSize: 14,
+    ...iosTypography.subhead,
     color: colors.textSecondary,
-    marginBottom: 12,
-    lineHeight: 20,
+    marginBottom: iosSpacing.md,
   },
   workoutTips: {
-    marginTop: 8,
+    marginTop: iosSpacing.sm,
   },
   workoutTip: {
     flexDirection: 'row',
@@ -214,12 +214,11 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.primary,
     marginTop: 6,
-    marginRight: 8,
+    marginRight: iosSpacing.sm,
   },
   workoutTipText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
+    ...iosTypography.caption1,
     color: colors.textSecondary,
   },
 });

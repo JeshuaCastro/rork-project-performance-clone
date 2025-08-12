@@ -130,14 +130,23 @@ export const iosBorderRadius = {
   xlarge: 20,
 };
 
-// iOS-style spacing
+// Apple-standard spacing (iOS Human Interface Guidelines)
 export const iosSpacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 40,
+  md: 12,   // Between cards
+  lg: 16,   // Card padding
+  xl: 20,   // Screen margins
+  xxl: 24,  // Section spacing
+  xxxl: 32, // Large section spacing
+};
+
+// Apple-standard margins
+export const iosMargins = {
+  screen: 20,        // Standard screen edge margin
+  cardPadding: 16,   // Inside card padding
+  sectionSpacing: 16, // Between sections
+  cardSpacing: 12,   // Between cards in same section
 };
 
 // iOS-style typography
