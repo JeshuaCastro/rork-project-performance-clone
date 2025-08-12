@@ -634,6 +634,14 @@ export const useWhoopStore = create<WhoopStore>()(
           // Safely format user input with strict length limit
           const userInput = safeUserInput(lastMessage.content);
           
+          // Check if this is a health evaluation request
+          const isHealthEvaluation = userInput.toLowerCase().includes("health evaluation") ||
+                                    userInput.toLowerCase().includes("comprehensive health") ||
+                                    userInput.toLowerCase().includes("health assessment") ||
+                                    (userInput.toLowerCase().includes("recovery patterns") && 
+                                     userInput.toLowerCase().includes("sleep quality") && 
+                                     userInput.toLowerCase().includes("strain levels"));
+          
           // Check if this is a nutrition/meal request
           const isMealRequest = userInput.toLowerCase().includes("meal") || 
                                userInput.toLowerCase().includes("food") ||
@@ -647,7 +655,52 @@ export const useWhoopStore = create<WhoopStore>()(
           
           let systemPrompt = "";
           
-          if (isMealRequest) {
+          if (isHealthEvaluation) {
+            // Create comprehensive health evaluation prompt
+            const recentRecovery = data.recovery.slice(0, 7);
+            const recentStrain = data.strain.slice(0, 7);
+            const recentSleep = data.sleep.slice(0, 7);
+            
+            const avgRecovery = recentRecovery.reduce((sum, r) => sum + r.score, 0) / recentRecovery.length;
+            const avgStrain = recentStrain.reduce((sum, s) => sum + s.score, 0) / recentStrain.length;
+            const avgSleep = recentSleep.reduce((sum, s) => sum + (s.efficiency || 75), 0) / recentSleep.length;
+            const avgHRV = recentRecovery.reduce((sum, r) => sum + r.hrvMs, 0) / recentRecovery.length;
+            const avgRHR = recentRecovery.reduce((sum, r) => sum + r.restingHeartRate, 0) / recentRecovery.length;
+            
+            // Calculate trends
+            const recoveryTrend = recentRecovery.length >= 4 ? 
+              (recentRecovery.slice(0, 3).reduce((sum, r) => sum + r.score, 0) / 3) - 
+              (recentRecovery.slice(3, 6).reduce((sum, r) => sum + r.score, 0) / 3) : 0;
+            
+            const strainTrend = recentStrain.length >= 4 ? 
+              (recentStrain.slice(0, 3).reduce((sum, s) => sum + s.score, 0) / 3) - 
+              (recentStrain.slice(3, 6).reduce((sum, s) => sum + s.score, 0) / 3) : 0;
+            
+            systemPrompt = `AI Health Coach - Comprehensive Health Evaluation
+            
+User Profile: ${userContext}
+            
+Current Health Metrics (7-day averages):
+            - Recovery Score: ${avgRecovery.toFixed(1)}% (trend: ${recoveryTrend > 0 ? '+' : ''}${recoveryTrend.toFixed(1)})
+            - Strain Score: ${avgStrain.toFixed(1)} (trend: ${strainTrend > 0 ? '+' : ''}${strainTrend.toFixed(1)})
+            - Sleep Efficiency: ${avgSleep.toFixed(1)}%
+            - HRV: ${avgHRV.toFixed(1)}ms
+            - Resting HR: ${avgRHR.toFixed(1)}bpm
+            
+Provide a comprehensive health evaluation covering:
+            1. Overall Health Status (excellent/good/fair/needs attention)
+            2. Key Strengths in current health metrics
+            3. Areas of Concern (if any)
+            4. Recovery Analysis (patterns, quality, consistency)
+            5. Sleep Quality Assessment
+            6. Cardiovascular Health Indicators
+            7. Training Load Balance
+            8. Specific Recommendations for improvement
+            9. Lifestyle factors to focus on
+            10. Warning signs to monitor
+            
+Be thorough but practical. Max 400 words.`;
+          } else if (isMealRequest) {
             systemPrompt = `AI nutrition coach. User: ${userContext}. Recovery: ${recoveryContext}. Provide meal suggestions with macros. Max 150 words.`;
           } else {
             systemPrompt = `AI fitness coach. User: ${userContext}. Recovery: ${recoveryContext}. Provide training advice. Max 100 words.`;

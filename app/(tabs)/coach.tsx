@@ -16,7 +16,7 @@ import {
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
-import { Send, Link, Utensils, Trash2, MoreHorizontal } from 'lucide-react-native';
+import { Send, Link, Utensils, Trash2, MoreHorizontal, Activity, Heart, Brain } from 'lucide-react-native';
 import ChatMessage from '@/components/ChatMessage';
 import { useRouter } from 'expo-router';
 
@@ -116,6 +116,44 @@ export default function CoachScreen() {
         }
       ]
     );
+  };
+
+  const handleHealthEvaluation = async () => {
+    if (!isConnectedToWhoop) {
+      Alert.alert(
+        "WHOOP Connection Required",
+        "To get a comprehensive health evaluation, please connect your WHOOP account first.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Connect WHOOP", 
+            onPress: () => router.push('/connect-whoop')
+          }
+        ]
+      );
+      return;
+    }
+
+    if (!hasWhoopData) {
+      Alert.alert(
+        "Insufficient Data",
+        "We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Sync Data", 
+            onPress: () => syncWhoopData()
+          }
+        ]
+      );
+      return;
+    }
+
+    // Add health evaluation message to chat
+    addChatMessage({
+      role: 'user',
+      content: 'Please provide a comprehensive health evaluation based on my WHOOP data, including recovery patterns, sleep quality, strain levels, and personalized recommendations for improvement.',
+    });
   };
 
   const renderEmptyChat = () => (
@@ -283,8 +321,17 @@ export default function CoachScreen() {
     >
       <StatusBar style="light" />
       
-      {chatMessages.length > 0 && (
-        <View style={styles.headerContainer}>
+      <View style={styles.headerContainer}>
+        {/* Health Evaluation Button */}
+        <TouchableOpacity 
+          style={styles.healthEvaluationButton}
+          onPress={handleHealthEvaluation}
+        >
+          <Activity size={18} color={colors.text} />
+          <Text style={styles.healthEvaluationButtonText}>Health Evaluation</Text>
+        </TouchableOpacity>
+        
+        {chatMessages.length > 0 && (
           <TouchableOpacity 
             style={styles.clearButton}
             onPress={handleClearChat}
@@ -292,8 +339,8 @@ export default function CoachScreen() {
             <Trash2 size={18} color={colors.textSecondary} />
             <Text style={styles.clearButtonText}>Clear Chat</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
       
       {chatMessages.length === 0 ? (
         renderEmptyChat()
@@ -471,10 +518,33 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#2A2A2A',
+  },
+  healthEvaluationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  healthEvaluationButtonText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   clearButton: {
     flexDirection: 'row',
