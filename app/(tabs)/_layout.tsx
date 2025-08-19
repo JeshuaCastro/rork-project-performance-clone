@@ -44,14 +44,13 @@ export default function TabLayout() {
     useNativeDriver: Platform.OS !== 'web',
   }), []);
   
-  const animateTabTransition = useCallback((newTab: string) => {
-    if (newTab === activeTab) return;
-    
+  // Handle tab transitions with animation
+  useEffect(() => {
     const animations: Animated.CompositeAnimation[] = [];
     
     // Animate all tabs
     Object.keys(tabAnimations).forEach((tab) => {
-      const targetValue = tab === newTab ? 1 : 0.8;
+      const targetValue = tab === activeTab ? 1 : 0.8;
       
       if (Platform.OS === 'web') {
         // Use timing animation for web compatibility
@@ -74,8 +73,7 @@ export default function TabLayout() {
     
     // Run all animations in parallel
     Animated.parallel(animations).start();
-    setActiveTab(newTab);
-  }, [activeTab, timingConfig, springConfig]);
+  }, [activeTab, timingConfig, springConfig, tabAnimations]);
   
   // Custom tab bar icon wrapper with animation
   const AnimatedTabIcon = React.memo(({ 
@@ -89,9 +87,10 @@ export default function TabLayout() {
   }) => {
     const scaleAnim = tabAnimations[tabName as keyof typeof tabAnimations];
     
+    // Update active tab when focused changes
     React.useEffect(() => {
       if (focused && tabName !== activeTab) {
-        animateTabTransition(tabName);
+        setActiveTab(tabName);
       }
     }, [focused, tabName]);
     
