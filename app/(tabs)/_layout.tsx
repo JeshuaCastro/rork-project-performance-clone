@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { 
   LayoutDashboard, 
@@ -11,107 +11,13 @@ import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Platform, View, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
+import { Platform, View, StyleSheet, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { checkWhoopConnection, syncWhoopData } = useWhoopStore();
-  
-  // Animation refs for smooth tab transitions
-  const tabAnimations = useRef({
-    index: new Animated.Value(1),
-    coach: new Animated.Value(0.8),
-    programs: new Animated.Value(0.8),
-    nutrition: new Animated.Value(0.8),
-    settings: new Animated.Value(0.8),
-  }).current;
-  
-  const [activeTab, setActiveTab] = useState('index');
-  
-  // Spring animation configuration for native feel
-  const springConfig = useMemo(() => ({
-    tension: 300,
-    friction: 20,
-    useNativeDriver: Platform.OS !== 'web',
-  }), []);
-  
-  // Ease-out timing configuration for web fallback
-  const timingConfig = useMemo(() => ({
-    duration: 250,
-    easing: Easing.out(Easing.cubic),
-    useNativeDriver: Platform.OS !== 'web',
-  }), []);
-  
-  // Handle tab transitions with animation
-  useEffect(() => {
-    const animations: Animated.CompositeAnimation[] = [];
-    
-    // Animate all tabs
-    Object.keys(tabAnimations).forEach((tab) => {
-      const targetValue = tab === activeTab ? 1 : 0.8;
-      
-      if (Platform.OS === 'web') {
-        // Use timing animation for web compatibility
-        animations.push(
-          Animated.timing(tabAnimations[tab as keyof typeof tabAnimations], {
-            toValue: targetValue,
-            ...timingConfig,
-          })
-        );
-      } else {
-        // Use spring animation for native platforms
-        animations.push(
-          Animated.spring(tabAnimations[tab as keyof typeof tabAnimations], {
-            toValue: targetValue,
-            ...springConfig,
-          })
-        );
-      }
-    });
-    
-    // Run all animations in parallel
-    Animated.parallel(animations).start();
-  }, [activeTab, timingConfig, springConfig, tabAnimations]);
-  
-  // Callback to handle tab changes without circular dependency
-  const handleTabChange = useCallback((tabName: string) => {
-    setActiveTab(prev => prev !== tabName ? tabName : prev);
-  }, []);
-  
-  // Custom tab bar icon wrapper with animation
-  const AnimatedTabIcon = React.memo(({ 
-    children, 
-    tabName, 
-    focused 
-  }: { 
-    children: React.ReactNode; 
-    tabName: string; 
-    focused: boolean;
-  }) => {
-    const scaleAnim = tabAnimations[tabName as keyof typeof tabAnimations];
-    
-    // Update active tab when focused changes - using callback to avoid circular dependency
-    React.useEffect(() => {
-      if (focused) {
-        handleTabChange(tabName);
-      }
-    }, [focused, tabName, handleTabChange]);
-    
-    return (
-      <Animated.View
-        style={[
-          styles.tabIconContainer,
-          {
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        {children}
-      </Animated.View>
-    );
-  });
   
   useEffect(() => {
     // Check if we need to redirect after a successful WHOOP connection
@@ -139,7 +45,7 @@ export default function TabLayout() {
     };
     
     checkPreviousConnection();
-  }, [checkWhoopConnection, syncWhoopData]);
+  }, []);
   
   // Get device dimensions for responsive sizing
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -222,13 +128,11 @@ export default function TabLayout() {
           options={{
             title: 'Dashboard',
             tabBarIcon: ({ color, focused }) => (
-              <AnimatedTabIcon tabName="index" focused={focused}>
-                <LayoutDashboard 
-                  size={isSmallDevice ? 20 : 24} 
-                  color={color}
-                  strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-                />
-              </AnimatedTabIcon>
+              <LayoutDashboard 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
             ),
             headerTitle: 'WHOOP AI Coach',
           }}
@@ -239,13 +143,11 @@ export default function TabLayout() {
           options={{
             title: 'Coach',
             tabBarIcon: ({ color, focused }) => (
-              <AnimatedTabIcon tabName="coach" focused={focused}>
-                <MessageSquare 
-                  size={isSmallDevice ? 20 : 24} 
-                  color={color}
-                  strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-                />
-              </AnimatedTabIcon>
+              <MessageSquare 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
             ),
           }}
         />
@@ -254,13 +156,11 @@ export default function TabLayout() {
           options={{
             title: 'Programs',
             tabBarIcon: ({ color, focused }) => (
-              <AnimatedTabIcon tabName="programs" focused={focused}>
-                <Dumbbell 
-                  size={isSmallDevice ? 20 : 24} 
-                  color={color}
-                  strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-                />
-              </AnimatedTabIcon>
+              <Dumbbell 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
             ),
           }}
         />
@@ -269,13 +169,11 @@ export default function TabLayout() {
           options={{
             title: 'Nutrition',
             tabBarIcon: ({ color, focused }) => (
-              <AnimatedTabIcon tabName="nutrition" focused={focused}>
-                <Apple 
-                  size={isSmallDevice ? 20 : 24} 
-                  color={color}
-                  strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-                />
-              </AnimatedTabIcon>
+              <Apple 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
             ),
           }}
         />
@@ -284,13 +182,11 @@ export default function TabLayout() {
           options={{
             title: 'Settings',
             tabBarIcon: ({ color, focused }) => (
-              <AnimatedTabIcon tabName="settings" focused={focused}>
-                <Settings 
-                  size={isSmallDevice ? 20 : 24} 
-                  color={color}
-                  strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-                />
-              </AnimatedTabIcon>
+              <Settings 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
             ),
           }}
         />
@@ -303,9 +199,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  tabIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  }
 });
