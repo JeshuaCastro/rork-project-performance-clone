@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Tabs } from 'expo-router';
 import { 
   LayoutDashboard, 
@@ -31,20 +31,20 @@ export default function TabLayout() {
   const [activeTab, setActiveTab] = useState('index');
   
   // Spring animation configuration for native feel
-  const springConfig = {
+  const springConfig = useMemo(() => ({
     tension: 300,
     friction: 20,
     useNativeDriver: Platform.OS !== 'web',
-  };
+  }), []);
   
   // Ease-out timing configuration for web fallback
-  const timingConfig = {
+  const timingConfig = useMemo(() => ({
     duration: 250,
     easing: Easing.out(Easing.cubic),
     useNativeDriver: Platform.OS !== 'web',
-  };
+  }), []);
   
-  const animateTabTransition = (newTab: string) => {
+  const animateTabTransition = useCallback((newTab: string) => {
     if (newTab === activeTab) return;
     
     const animations: Animated.CompositeAnimation[] = [];
@@ -75,10 +75,10 @@ export default function TabLayout() {
     // Run all animations in parallel
     Animated.parallel(animations).start();
     setActiveTab(newTab);
-  };
+  }, [activeTab, tabAnimations, timingConfig, springConfig]);
   
   // Custom tab bar icon wrapper with animation
-  const AnimatedTabIcon = ({ 
+  const AnimatedTabIcon = React.memo(({ 
     children, 
     tabName, 
     focused 
@@ -93,7 +93,7 @@ export default function TabLayout() {
       if (focused) {
         animateTabTransition(tabName);
       }
-    }, [focused, tabName]);
+    }, [focused, tabName, animateTabTransition]);
     
     return (
       <Animated.View
@@ -107,7 +107,7 @@ export default function TabLayout() {
         {children}
       </Animated.View>
     );
-  };
+  });
   
   useEffect(() => {
     // Check if we need to redirect after a successful WHOOP connection
@@ -135,7 +135,7 @@ export default function TabLayout() {
     };
     
     checkPreviousConnection();
-  }, []);
+  }, [checkWhoopConnection, syncWhoopData]);
   
   // Get device dimensions for responsive sizing
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

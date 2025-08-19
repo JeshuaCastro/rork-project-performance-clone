@@ -52,7 +52,7 @@ export default function RootLayout() {
         document.removeEventListener('visibilitychange', handleAppStateChange);
       };
     }
-  }, []);
+  }, [checkWhoopConnection, syncWhoopData, router]);
   
   return (
     <View style={styles.container}>
