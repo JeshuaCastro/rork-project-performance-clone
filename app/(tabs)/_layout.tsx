@@ -75,6 +75,11 @@ export default function TabLayout() {
     Animated.parallel(animations).start();
   }, [activeTab, timingConfig, springConfig, tabAnimations]);
   
+  // Callback to handle tab changes without circular dependency
+  const handleTabChange = useCallback((tabName: string) => {
+    setActiveTab(prev => prev !== tabName ? tabName : prev);
+  }, []);
+  
   // Custom tab bar icon wrapper with animation
   const AnimatedTabIcon = React.memo(({ 
     children, 
@@ -87,12 +92,12 @@ export default function TabLayout() {
   }) => {
     const scaleAnim = tabAnimations[tabName as keyof typeof tabAnimations];
     
-    // Update active tab when focused changes
+    // Update active tab when focused changes - using callback to avoid circular dependency
     React.useEffect(() => {
-      if (focused && tabName !== activeTab) {
-        setActiveTab(tabName);
+      if (focused) {
+        handleTabChange(tabName);
       }
-    }, [focused, tabName]);
+    }, [focused, tabName, handleTabChange]);
     
     return (
       <Animated.View
