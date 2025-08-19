@@ -75,7 +75,7 @@ export default function TabLayout() {
     // Run all animations in parallel
     Animated.parallel(animations).start();
     setActiveTab(newTab);
-  }, [activeTab, tabAnimations, timingConfig, springConfig]);
+  }, [activeTab, timingConfig, springConfig]);
   
   // Custom tab bar icon wrapper with animation
   const AnimatedTabIcon = React.memo(({ 
@@ -90,10 +90,10 @@ export default function TabLayout() {
     const scaleAnim = tabAnimations[tabName as keyof typeof tabAnimations];
     
     React.useEffect(() => {
-      if (focused) {
+      if (focused && tabName !== activeTab) {
         animateTabTransition(tabName);
       }
-    }, [focused, tabName, animateTabTransition]);
+    }, [focused, tabName]);
     
     return (
       <Animated.View
