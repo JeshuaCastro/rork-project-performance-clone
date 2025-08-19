@@ -343,44 +343,58 @@ export default function NutritionScreen() {
     setIsGeneratingMealPlan(true);
     
     try {
-      const restrictionsText = mealPlanPreferences.dietaryRestrictions.length > 0 
-        ? `Dietary restrictions: ${mealPlanPreferences.dietaryRestrictions.join(', ')}` 
-        : '';
-      const allergiesText = mealPlanPreferences.allergies.length > 0 
-        ? `Allergies: ${mealPlanPreferences.allergies.join(', ')}` 
-        : '';
-      const cuisinesText = mealPlanPreferences.cuisinePreferences.length > 0 
-        ? `Preferred cuisines: ${mealPlanPreferences.cuisinePreferences.join(', ')}` 
-        : '';
-      const dislikesText = mealPlanPreferences.dislikedFoods 
-        ? `Foods to avoid: ${mealPlanPreferences.dislikedFoods}` 
-        : '';
-      const foodPreferencesText = mealPlanPreferences.foodPreferences 
-        ? `Food preferences: ${mealPlanPreferences.foodPreferences}` 
-        : '';
+      // Build comprehensive user preferences
+      const userPreferences = {
+        dietary: mealPlanPreferences.dietaryRestrictions,
+        allergies: mealPlanPreferences.allergies,
+        cuisines: mealPlanPreferences.cuisinePreferences,
+        dislikes: mealPlanPreferences.dislikedFoods,
+        preferences: mealPlanPreferences.foodPreferences,
+        cookingTime: mealPlanPreferences.cookingTime,
+        budget: mealPlanPreferences.budgetRange,
+        mealPrep: mealPlanPreferences.mealPrepPreference,
+        goal: mealPlanPreferences.primaryGoal,
+        duration: mealPlanPreferences.mealPlanDuration,
+        mealsPerDay: mealPlanPreferences.mealsPerDay,
+        snacksPerDay: mealPlanPreferences.snacksPerDay
+      };
 
-      const prompt = `Create a personalized meal plan based on:
+      // Create a structured prompt that emphasizes user inputs
+      const prompt = `You are a professional nutritionist creating a personalized meal plan. You MUST incorporate ALL of the following user requirements:
 
-Profile:
-- Age: ${userProfile.age}, Gender: ${userProfile.gender}
+**USER PROFILE:**
+- ${userProfile.age} year old ${userProfile.gender}
 - Weight: ${userProfile.weight}kg, Height: ${userProfile.height}cm
-- Activity: ${userProfile.activityLevel}, Goal: ${userProfile.fitnessGoal}
-- Calories: ${macroTargets?.calories || 2000}, Protein: ${macroTargets?.protein || 150}g
+- Activity Level: ${userProfile.activityLevel}
+- Fitness Goal: ${userProfile.fitnessGoal}
+- Daily Targets: ${macroTargets?.calories || 2000} calories, ${macroTargets?.protein || 150}g protein, ${macroTargets?.carbs || 200}g carbs, ${macroTargets?.fat || 70}g fat
 
-Preferences:
-- ${mealPlanPreferences.mealsPerDay} meals + ${mealPlanPreferences.snacksPerDay} snacks daily
-- Cooking time: ${mealPlanPreferences.cookingTime}
-- Budget: ${mealPlanPreferences.budgetRange}
-- Meal prep: ${mealPlanPreferences.mealPrepPreference}
-- Primary goal: ${mealPlanPreferences.primaryGoal}
-- Duration: ${mealPlanPreferences.mealPlanDuration}
-${restrictionsText ? `- ${restrictionsText}` : ''}
-${allergiesText ? `- ${allergiesText}` : ''}
-${cuisinesText ? `- ${cuisinesText}` : ''}
-${dislikesText ? `- ${dislikesText}` : ''}
-${foodPreferencesText ? `- ${foodPreferencesText}` : ''}
+**MANDATORY USER REQUIREMENTS:**
+${userPreferences.dietary.length > 0 ? `- DIETARY RESTRICTIONS (MUST FOLLOW): ${userPreferences.dietary.join(', ')}\n` : ''}
+${userPreferences.allergies.length > 0 ? `- ALLERGIES (MUST AVOID): ${userPreferences.allergies.join(', ')}\n` : ''}
+${userPreferences.dislikes ? `- FOODS TO AVOID: ${userPreferences.dislikes}\n` : ''}
+${userPreferences.preferences ? `- FOOD PREFERENCES (PRIORITIZE): ${userPreferences.preferences}\n` : ''}
+${userPreferences.cuisines.length > 0 ? `- PREFERRED CUISINES: ${userPreferences.cuisines.join(', ')}\n` : ''}
+- MEAL STRUCTURE: ${userPreferences.mealsPerDay} meals + ${userPreferences.snacksPerDay} snacks per day
+- COOKING TIME LIMIT: ${userPreferences.cookingTime}
+- BUDGET RANGE: ${userPreferences.budget}
+- MEAL PREP STYLE: ${userPreferences.mealPrep}
+- PRIMARY NUTRITION GOAL: ${userPreferences.goal}
+- PLAN DURATION: ${userPreferences.duration}
 
-Provide a complete ${mealPlanPreferences.mealPlanDuration} meal plan with specific foods, portions, and macros for each meal.`;
+**INSTRUCTIONS:**
+1. Create a detailed ${userPreferences.duration} meal plan
+2. STRICTLY adhere to all dietary restrictions and allergies
+3. Include foods the user specifically mentioned liking
+4. Avoid foods the user dislikes
+5. Respect the cooking time and budget constraints
+6. Match the preferred meal prep style
+7. Align with their primary nutrition goal
+8. Provide specific portion sizes and macro breakdowns
+9. Include shopping lists if creating multi-day plans
+10. Suggest meal prep tips based on their preferences
+
+Generate a comprehensive meal plan that demonstrates you've considered every user input above.`;
       
       const plan = await generateMealSuggestion(prompt);
       setMealPlan(plan);
