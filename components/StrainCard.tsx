@@ -178,17 +178,21 @@ const styles = StyleSheet.create({
   totalMetricItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
   metricLabel: {
     ...iosTypography.subhead,
     color: colors.textSecondary,
     marginRight: 4,
+    flexWrap: 'wrap',
   },
   totalMetricValue: {
     ...iosTypography.callout,
     color: colors.text,
     fontWeight: '500',
     marginLeft: 4,
+    flexWrap: 'wrap',
   },
   workoutSuggestionContainer: {
     backgroundColor: colors.ios.tertiaryBackground,
@@ -205,6 +209,7 @@ const styles = StyleSheet.create({
     ...iosTypography.subhead,
     color: colors.textSecondary,
     marginBottom: iosSpacing.md,
+    flexWrap: 'wrap',
   },
   workoutTips: {
     marginTop: iosSpacing.sm,
@@ -212,6 +217,7 @@ const styles = StyleSheet.create({
   workoutTip: {
     flexDirection: 'row',
     marginBottom: 6,
+    alignItems: 'flex-start',
   },
   tipBullet: {
     width: 6,
@@ -225,5 +231,6 @@ const styles = StyleSheet.create({
     flex: 1,
     ...iosTypography.caption1,
     color: colors.textSecondary,
+    flexWrap: 'wrap',
   },
 });

@@ -116,16 +116,21 @@ const styles = StyleSheet.create({
   metricItem: {
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   metricLabel: {
     ...iosTypography.subhead,
     color: colors.textSecondary,
     marginTop: 4,
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
   metricValue: {
     ...iosTypography.callout,
     color: colors.text,
     fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });

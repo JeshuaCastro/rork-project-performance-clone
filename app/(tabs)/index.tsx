@@ -1762,6 +1762,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     marginRight: 12,
+    minWidth: 0,
   },
   workoutTitle: {
     ...iosTypography.headline,
@@ -1769,6 +1770,7 @@ const styles = StyleSheet.create({
     marginLeft: iosSpacing.sm,
     flex: 1,
     letterSpacing: -0.2,
+    flexWrap: 'wrap',
   },
   intensityBadge: {
     paddingHorizontal: 12,
@@ -1790,6 +1792,7 @@ const styles = StyleSheet.create({
     ...iosTypography.subhead,
     color: colors.textSecondary,
     marginBottom: iosSpacing.md,
+    flexWrap: 'wrap',
   },
   workoutMetaRow: {
     flexDirection: 'row',
@@ -1805,6 +1808,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginLeft: 6,
+    flexWrap: 'wrap',
   },
   completionBadge: {
     flexDirection: 'row',
@@ -1819,6 +1823,7 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontWeight: '600',
     marginLeft: 4,
+    flexWrap: 'wrap',
   },
   clickHint: {
     flexDirection: 'row',
@@ -1865,6 +1870,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: iosSpacing.sm,
     letterSpacing: -0.2,
+    flexWrap: 'wrap',
   },
   viewProgramButton: {
     flexDirection: 'row',
@@ -1884,6 +1890,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginRight: 6,
+    flexWrap: 'wrap',
   },
   // No Program Section Styles
   noProgramSection: {
@@ -2033,6 +2040,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 12,
     flex: 1,
+    flexWrap: 'wrap',
   },
   workoutOverviewContainer: {
     backgroundColor: colors.ios.secondaryGroupedBackground,
@@ -2050,6 +2058,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 24,
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
   quickStatsContainer: {
     flexDirection: 'row',
@@ -2070,6 +2079,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     textAlign: 'center',
+    flexWrap: 'wrap',
   },
   detailSection: {
     backgroundColor: colors.ios.secondaryGroupedBackground,
@@ -2106,6 +2116,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   exerciseList: {
     marginTop: 8,
@@ -2126,6 +2137,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 8,
+    flexWrap: 'wrap',
   },
   exerciseDetails: {
     flexDirection: 'row',
@@ -2143,6 +2155,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontStyle: 'italic',
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   tipsList: {
     marginTop: 8,
@@ -2157,6 +2170,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   modificationsList: {
     marginTop: 8,
@@ -2171,6 +2185,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   recoveryAdjustmentContainer: {
     backgroundColor: 'rgba(255, 193, 7, 0.1)',
@@ -2182,6 +2197,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.warning,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   workoutDetailActions: {
     flexDirection: 'row',
@@ -2410,6 +2426,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textSecondary,
     marginLeft: 6,
+    flexWrap: 'wrap',
   },
   overviewValue: {
     ...iosTypography.largeTitle,
@@ -2547,6 +2564,7 @@ const styles = StyleSheet.create({
     ...iosTypography.subhead,
     color: colors.text,
     marginBottom: iosSpacing.md,
+    flexWrap: 'wrap',
   },
   insightHighlight: {
     flexDirection: 'row',
@@ -2562,6 +2580,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: iosSpacing.sm,
     flex: 1,
+    flexWrap: 'wrap',
   },
   // No Data
   noDataTitle: {

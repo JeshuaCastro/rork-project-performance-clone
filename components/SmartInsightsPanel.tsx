@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
   },
   tabHeader: {
     width: 100,
-    height: 90,
+    minHeight: 90,
     backgroundColor: colors.ios.secondaryBackground,
     borderRadius: 12,
     padding: 8,
@@ -935,6 +935,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     lineHeight: 14,
+    flexWrap: 'wrap',
   },
   selectedTabHeaderText: {
     color: colors.text,
@@ -982,6 +983,7 @@ const styles = StyleSheet.create({
   },
   tabContentTitleContainer: {
     flex: 1,
+    minWidth: 0,
   },
   tabContentTitle: {
     fontSize: 20,
@@ -989,6 +991,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
     lineHeight: 24,
+    flexWrap: 'wrap',
   },
   followedContentTitle: {
     color: colors.success,
@@ -998,6 +1001,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: 4,
   },
   tabContentCategory: {
     fontSize: 14,
@@ -1035,6 +1039,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 22,
     marginBottom: 20,
+    flexWrap: 'wrap',
   },
   tabWhySection: {
     backgroundColor: colors.ios.tertiaryBackground,
@@ -1057,6 +1062,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   tabImpactContainer: {
     backgroundColor: colors.ios.tertiaryBackground,
@@ -1072,16 +1078,19 @@ const styles = StyleSheet.create({
   },
   tabImpactContent: {
     flex: 1,
+    minWidth: 0,
   },
   tabImpactLabel: {
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 2,
+    flexWrap: 'wrap',
   },
   tabImpactValue: {
     fontSize: 15,
     color: colors.text,
     fontWeight: '600',
+    flexWrap: 'wrap',
   },
   tabActionButtonsContainer: {
     flexDirection: 'row',
@@ -1109,6 +1118,7 @@ const styles = StyleSheet.create({
   tabActionButtonText: {
     fontSize: 15,
     fontWeight: '600',
+    flexWrap: 'wrap',
   },
   tabPrimaryActionText: {
     color: colors.text,
@@ -1147,6 +1157,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
     fontWeight: '500',
+    flexWrap: 'wrap',
   },
 });
 
