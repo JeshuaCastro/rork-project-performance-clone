@@ -96,86 +96,7 @@ export default function HealthEvaluationScreen() {
     router.back();
   };
 
-  const generateAIHealthAnalysis = async (healthData: HealthData): Promise<AIAnalysisResult> => {
-    try {
-      const prompt = `You are an expert health and fitness coach analyzing WHOOP data. Based on the following health metrics, provide personalized, actionable insights:
-
-Recent Data (last 7 days):
-- Average Recovery: ${healthData.avgRecovery.toFixed(1)}%
-- Average Strain: ${healthData.avgStrain.toFixed(1)}
-- Average Sleep Score: ${healthData.avgSleepScore.toFixed(1)}%
-- Average Sleep Duration: ${healthData.avgSleepHours.toFixed(1)} hours
-
-Detailed Recovery Scores: ${healthData.recovery.map(r => r.score).join(', ')}
-Detailed Strain Scores: ${healthData.strain.map(s => s.score).join(', ')}
-
-Provide:
-1. An overall health evaluation (2-3 sentences)
-2. 2-3 specific, actionable insights with:
-   - Category (Recovery, Training, Sleep, or Nutrition)
-   - Status (good, warning, or critical)
-   - Title (concise)
-   - Description (specific to their data)
-   - 2-3 immediate actionable steps with:
-     * What to do (specific action)
-     * Why it matters (physiological reason)
-     * How to do it (exact steps)
-     * When to do it (timing)
-     * Duration (how long)
-     * Priority (high, medium, low)
-
-Focus on:
-- Specific numbers from their data
-- Actionable steps they can take TODAY
-- Physiological explanations
-- Realistic timeframes for results
-- Personalized advice based on their patterns
-
-Avoid generic advice. Be specific to their actual metrics.`;
-
-      const response = await fetch('https://toolkit.rork.com/text/llm/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert health and fitness coach specializing in WHOOP data analysis. Provide specific, actionable, and personalized health recommendations based on biometric data.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('AI analysis failed');
-      }
-
-      const data = await response.json();
-      const aiResponse = data.completion;
-
-      // Parse AI response and convert to structured format
-      const parsedInsights = parseAIResponse(aiResponse, healthData);
-      
-      return {
-        insights: parsedInsights.insights,
-        overallEvaluation: parsedInsights.evaluation
-      };
-    } catch (error) {
-      console.error('AI analysis error:', error);
-      return {
-        insights: [],
-        overallEvaluation: ''
-      };
-    }
-  };
-
-  const parseAIResponse = (aiResponse: string, healthData: HealthData): { insights: HealthInsight[], evaluation: string } => {
+  const parseAIResponse = useCallback((aiResponse: string, healthData: HealthData): { insights: HealthInsight[], evaluation: string } => {
     // Extract evaluation (first paragraph)
     const lines = aiResponse.split('\n').filter(line => line.trim());
     const evaluation = lines.slice(0, 3).join(' ').trim();
@@ -367,9 +288,88 @@ Avoid generic advice. Be specific to their actual metrics.`;
     }
     
     return { insights, evaluation };
-  };
+  }, []);
 
-  const generateFallbackEvaluation = (insights: HealthInsight[]): string => {
+  const generateAIHealthAnalysis = useCallback(async (healthData: HealthData): Promise<AIAnalysisResult> => {
+    try {
+      const prompt = `You are an expert health and fitness coach analyzing WHOOP data. Based on the following health metrics, provide personalized, actionable insights:
+
+Recent Data (last 7 days):
+- Average Recovery: ${healthData.avgRecovery.toFixed(1)}%
+- Average Strain: ${healthData.avgStrain.toFixed(1)}
+- Average Sleep Score: ${healthData.avgSleepScore.toFixed(1)}%
+- Average Sleep Duration: ${healthData.avgSleepHours.toFixed(1)} hours
+
+Detailed Recovery Scores: ${healthData.recovery.map(r => r.score).join(', ')}
+Detailed Strain Scores: ${healthData.strain.map(s => s.score).join(', ')}
+
+Provide:
+1. An overall health evaluation (2-3 sentences)
+2. 2-3 specific, actionable insights with:
+   - Category (Recovery, Training, Sleep, or Nutrition)
+   - Status (good, warning, or critical)
+   - Title (concise)
+   - Description (specific to their data)
+   - 2-3 immediate actionable steps with:
+     * What to do (specific action)
+     * Why it matters (physiological reason)
+     * How to do it (exact steps)
+     * When to do it (timing)
+     * Duration (how long)
+     * Priority (high, medium, low)
+
+Focus on:
+- Specific numbers from their data
+- Actionable steps they can take TODAY
+- Physiological explanations
+- Realistic timeframes for results
+- Personalized advice based on their patterns
+
+Avoid generic advice. Be specific to their actual metrics.`;
+
+      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert health and fitness coach specializing in WHOOP data analysis. Provide specific, actionable, and personalized health recommendations based on biometric data.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI analysis failed');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.completion;
+
+      // Parse AI response and convert to structured format
+      const parsedInsights = parseAIResponse(aiResponse, healthData);
+      
+      return {
+        insights: parsedInsights.insights,
+        overallEvaluation: parsedInsights.evaluation
+      };
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      return {
+        insights: [],
+        overallEvaluation: ''
+      };
+    }
+  }, [parseAIResponse]);
+
+  const generateFallbackEvaluation = useCallback((insights: HealthInsight[]): string => {
     const overallStatus = insights.some(i => i.status === 'critical') ? 'critical' :
                          insights.some(i => i.status === 'warning') ? 'warning' : 'good';
     
@@ -380,7 +380,7 @@ Avoid generic advice. Be specific to their actual metrics.`;
     } else {
       return 'Your health metrics suggest you need to prioritize recovery immediately. Your body is showing signs of significant stress or fatigue. Consider reducing training intensity and focusing heavily on sleep and stress management.';
     }
-  };
+  }, []);
 
 
   const generateHealthEvaluation = useCallback(async () => {
@@ -886,7 +886,7 @@ Avoid generic advice. Be specific to their actual metrics.`;
     } finally {
       setIsLoading(false);
     }
-  }, [hasWhoopData, data, generateAIHealthAnalysis, parseAIResponse, generateFallbackEvaluation]);
+  }, [hasWhoopData, data, generateAIHealthAnalysis, generateFallbackEvaluation]);
 
   useEffect(() => {
     if (isConnectedToWhoop && hasWhoopData) {
