@@ -452,8 +452,8 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     if (onPress) {
       onPress();
     } else {
-      // Navigate to health evaluation page
-      router.push('/health-evaluation');
+      // Navigate to coach tab to show health evaluation modal
+      router.push('/(tabs)/coach');
     }
   };
 
