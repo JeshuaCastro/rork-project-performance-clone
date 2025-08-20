@@ -69,6 +69,19 @@ export default function CoachScreen() {
   const [healthEvaluation, setHealthEvaluation] = useState<string>('');
   const [healthInsights, setHealthInsights] = useState<HealthInsight[]>([]);
   const [isLoadingHealth, setIsLoadingHealth] = useState(false);
+  const [actionableSteps, setActionableSteps] = useState<Array<{
+    category: 'recovery' | 'nutrition' | 'training' | 'sleep' | 'supplements';
+    action: string;
+    reason: string;
+    priority: 'high' | 'medium' | 'low';
+    completed?: boolean;
+  }>>([]);
+  const [nutritionAdvice, setNutritionAdvice] = useState<{
+    calorieGuidance?: string;
+    proteinFocus?: string;
+    hydrationTarget?: string;
+    mealTiming?: string;
+  }>({});
 
   // Check if we have WHOOP data to provide coaching
   const hasWhoopData = data && data.recovery.length > 0 && data.strain.length > 0;
@@ -347,17 +360,135 @@ export default function CoachScreen() {
       
       setHealthInsights(generatedInsights);
       
+      // Generate actionable steps based on insights
+      const steps: Array<{
+        category: 'recovery' | 'nutrition' | 'training' | 'sleep' | 'supplements';
+        action: string;
+        reason: string;
+        priority: 'high' | 'medium' | 'low';
+      }> = [];
+      
+      // Recovery-based actions
+      if (avgRecovery < 50) {
+        steps.push({
+          category: 'sleep',
+          action: 'Get 8+ hours of sleep tonight',
+          reason: 'Low recovery needs immediate sleep prioritization',
+          priority: 'high'
+        });
+        steps.push({
+          category: 'training',
+          action: 'Reduce workout intensity by 30%',
+          reason: 'Allow body to recover from accumulated stress',
+          priority: 'high'
+        });
+        steps.push({
+          category: 'nutrition',
+          action: 'Increase protein to 2.0g per kg body weight',
+          reason: 'Support muscle recovery and repair',
+          priority: 'medium'
+        });
+      } else if (avgRecovery >= 75) {
+        steps.push({
+          category: 'training',
+          action: 'Take advantage with high-intensity session',
+          reason: 'Excellent recovery allows for performance gains',
+          priority: 'high'
+        });
+        steps.push({
+          category: 'nutrition',
+          action: 'Fuel properly 2-3 hours before training',
+          reason: 'Optimize energy for high-intensity work',
+          priority: 'medium'
+        });
+      }
+      
+      // Sleep-based actions
+      if (avgSleepHours < 7 || avgSleepScore < 70) {
+        steps.push({
+          category: 'sleep',
+          action: 'Set consistent bedtime 30 minutes earlier',
+          reason: 'Improve sleep duration and quality',
+          priority: 'high'
+        });
+        steps.push({
+          category: 'supplements',
+          action: 'Consider magnesium 1-2 hours before bed',
+          reason: 'Support sleep quality and muscle relaxation',
+          priority: 'low'
+        });
+      }
+      
+      // Strain-based actions
+      if (avgStrain > 18) {
+        steps.push({
+          category: 'recovery',
+          action: 'Add 10-minute meditation or breathing',
+          reason: 'High strain requires active stress management',
+          priority: 'medium'
+        });
+        steps.push({
+          category: 'nutrition',
+          action: 'Increase water intake to 3-4L today',
+          reason: 'Support recovery from high training load',
+          priority: 'medium'
+        });
+      } else if (avgStrain < 8) {
+        steps.push({
+          category: 'training',
+          action: 'Add 20-minute walk or light activity',
+          reason: 'Increase daily movement for better health',
+          priority: 'medium'
+        });
+      }
+      
+      // HRV-based actions
+      if (latestRecovery.hrvMs && latestRecovery.hrvMs < 30) {
+        steps.push({
+          category: 'recovery',
+          action: 'Practice 5-minute deep breathing',
+          reason: 'Low HRV indicates need for stress reduction',
+          priority: 'high'
+        });
+        steps.push({
+          category: 'supplements',
+          action: 'Consider omega-3 supplement',
+          reason: 'Support heart rate variability and recovery',
+          priority: 'low'
+        });
+      }
+      
+      setActionableSteps(steps);
+      
+      // Generate nutrition advice
+      const nutrition = {
+        calorieGuidance: avgRecovery < 50 ? 'Maintain calorie intake - don\'t restrict during recovery' : 
+                        avgRecovery >= 75 ? 'Increase calories by 200-300 for high-intensity training' :
+                        'Stay consistent with current calorie targets',
+        proteinFocus: avgRecovery < 50 ? '2.0-2.2g per kg body weight for repair' :
+                     avgStrain > 15 ? '1.8-2.0g per kg body weight for recovery' :
+                     '1.6-1.8g per kg body weight for maintenance',
+        hydrationTarget: avgStrain > 15 ? '3.5-4L water today' :
+                        avgRecovery < 50 ? '3-3.5L water for recovery' :
+                        '2.5-3L water daily',
+        mealTiming: avgRecovery >= 75 ? 'Eat 2-3 hours before high-intensity training' :
+                   avgRecovery < 50 ? 'Frequent small meals to support recovery' :
+                   'Regular meal timing supports consistent energy'
+      };
+      
+      setNutritionAdvice(nutrition);
+      
       // Generate overall evaluation summary
       const overallStatus = generatedInsights.some(i => i.status === 'critical') ? 'critical' :
                            generatedInsights.some(i => i.status === 'warning') ? 'warning' : 'good';
       
       let evaluationText = '';
       if (overallStatus === 'good') {
-        evaluationText = 'Your health metrics show excellent balance and recovery. You\'re managing training stress well and maintaining good sleep quality. Continue your current approach while staying mindful of your body\'s signals.';
+        evaluationText = `Excellent health status! Your body is ready for performance. Focus on the ${steps.length} action items below to maintain this momentum.`;
       } else if (overallStatus === 'warning') {
-        evaluationText = 'Your health metrics indicate some areas for improvement. Focus on the recommendations below to optimize your recovery and performance. Small adjustments to sleep, training, or stress management can make a significant difference.';
+        evaluationText = `Good progress with room for improvement. Complete the ${steps.filter(s => s.priority === 'high').length} high-priority actions below to optimize your recovery.`;
       } else {
-        evaluationText = 'Your health metrics suggest you need to prioritize recovery immediately. Your body is showing signs of significant stress or fatigue. Consider reducing training intensity and focusing heavily on sleep and stress management.';
+        evaluationText = `Your body needs immediate attention. Focus on the ${steps.filter(s => s.priority === 'high').length} critical actions below before your next training session.`;
       }
       
       setHealthEvaluation(evaluationText);
@@ -694,42 +825,131 @@ export default function CoachScreen() {
                       <Text style={healthStyles.evaluationSummary}>{healthEvaluation}</Text>
                     </View>
 
-                    {/* Insights Grid */}
-                    <View style={healthStyles.insightsGrid}>
-                      {healthInsights.map((insight, index) => (
-                        <View key={index} style={[
-                          healthStyles.insightItem,
-                          { borderLeftColor: getStatusColor(insight.status) }
-                        ]}>
-                          <View style={healthStyles.insightItemHeader}>
+                    {/* Today's Action Plan */}
+                    {actionableSteps.length > 0 && (
+                      <View style={healthStyles.actionPlanContainer}>
+                        <View style={healthStyles.actionPlanHeader}>
+                          <Target size={20} color={colors.primary} />
+                          <Text style={healthStyles.actionPlanTitle}>Today's Action Plan</Text>
+                          <Text style={healthStyles.actionPlanSubtitle}>
+                            {actionableSteps.filter(s => s.priority === 'high').length} high priority
+                          </Text>
+                        </View>
+                        
+                        {actionableSteps.map((step, index) => (
+                          <TouchableOpacity 
+                            key={index} 
+                            style={[
+                              healthStyles.actionItem,
+                              step.completed && healthStyles.actionItemCompleted
+                            ]}
+                            onPress={() => {
+                              const updatedSteps = [...actionableSteps];
+                              updatedSteps[index].completed = !updatedSteps[index].completed;
+                              setActionableSteps(updatedSteps);
+                            }}
+                          >
                             <View style={[
-                              healthStyles.insightIconContainer,
-                              { backgroundColor: getStatusBackground(insight.status) }
-                            ]}>
-                              {insight.icon}
-                            </View>
-                            <View style={healthStyles.insightItemContent}>
-                              <Text style={healthStyles.insightItemCategory}>{insight.category}</Text>
-                              <Text style={healthStyles.insightItemTitle}>{insight.title}</Text>
-                            </View>
-                          </View>
-                          <Text style={healthStyles.insightItemDescription}>{insight.description}</Text>
-                          
-                          {insight.recommendations.length > 0 && (
-                            <View style={healthStyles.recommendationsContainer}>
-                              <Text style={healthStyles.recommendationsHeader}>Key Actions:</Text>
-                              {insight.recommendations.slice(0, 2).map((rec, recIndex) => (
-                                <Text key={recIndex} style={healthStyles.recommendationItem}>
-                                  • {rec}
+                              healthStyles.priorityDot,
+                              { backgroundColor: step.priority === 'high' ? colors.danger : 
+                                               step.priority === 'medium' ? colors.warning : colors.success }
+                            ]} />
+                            
+                            <View style={healthStyles.actionContent}>
+                              <View style={healthStyles.actionHeader}>
+                                <Text style={[
+                                  healthStyles.actionCategory,
+                                  { color: step.priority === 'high' ? colors.danger : 
+                                          step.priority === 'medium' ? colors.warning : colors.success }
+                                ]}>
+                                  {step.category.toUpperCase()}
                                 </Text>
-                              ))}
-                              {insight.recommendations.length > 2 && (
-                                <Text style={healthStyles.moreRecommendations}>
-                                  +{insight.recommendations.length - 2} more recommendations
-                                </Text>
-                              )}
+                                <View style={[
+                                  healthStyles.checkBox,
+                                  step.completed && healthStyles.checkBoxCompleted
+                                ]}>
+                                  {step.completed && (
+                                    <Text style={healthStyles.checkMark}>✓</Text>
+                                  )}
+                                </View>
+                              </View>
+                              
+                              <Text style={[
+                                healthStyles.actionText,
+                                step.completed && healthStyles.actionTextCompleted
+                              ]}>
+                                {step.action}
+                              </Text>
+                              
+                              <Text style={healthStyles.actionReason}>
+                                {step.reason}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                    
+                    {/* Nutrition Focus */}
+                    {Object.keys(nutritionAdvice).length > 0 && (
+                      <View style={healthStyles.nutritionContainer}>
+                        <View style={healthStyles.nutritionHeader}>
+                          <Utensils size={20} color={colors.success} />
+                          <Text style={healthStyles.nutritionTitle}>Nutrition Focus</Text>
+                        </View>
+                        
+                        <View style={healthStyles.nutritionGrid}>
+                          {nutritionAdvice.calorieGuidance && (
+                            <View style={healthStyles.nutritionItem}>
+                              <Text style={healthStyles.nutritionLabel}>Calories</Text>
+                              <Text style={healthStyles.nutritionText}>{nutritionAdvice.calorieGuidance}</Text>
                             </View>
                           )}
+                          
+                          {nutritionAdvice.proteinFocus && (
+                            <View style={healthStyles.nutritionItem}>
+                              <Text style={healthStyles.nutritionLabel}>Protein</Text>
+                              <Text style={healthStyles.nutritionText}>{nutritionAdvice.proteinFocus}</Text>
+                            </View>
+                          )}
+                          
+                          {nutritionAdvice.hydrationTarget && (
+                            <View style={healthStyles.nutritionItem}>
+                              <Text style={healthStyles.nutritionLabel}>Hydration</Text>
+                              <Text style={healthStyles.nutritionText}>{nutritionAdvice.hydrationTarget}</Text>
+                            </View>
+                          )}
+                          
+                          {nutritionAdvice.mealTiming && (
+                            <View style={healthStyles.nutritionItem}>
+                              <Text style={healthStyles.nutritionLabel}>Timing</Text>
+                              <Text style={healthStyles.nutritionText}>{nutritionAdvice.mealTiming}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                    
+                    {/* Quick Insights Summary */}
+                    <View style={healthStyles.insightsSummary}>
+                      <Text style={healthStyles.insightsSummaryTitle}>Key Insights</Text>
+                      {healthInsights.slice(0, 3).map((insight, index) => (
+                        <View key={index} style={healthStyles.insightSummaryItem}>
+                          <View style={[
+                            healthStyles.insightSummaryIcon,
+                            { backgroundColor: getStatusBackground(insight.status) }
+                          ]}>
+                            {insight.icon}
+                          </View>
+                          <View style={healthStyles.insightSummaryContent}>
+                            <Text style={healthStyles.insightSummaryTitle}>{insight.title}</Text>
+                            <Text style={healthStyles.insightSummaryDescription}>
+                              {insight.description.length > 80 ? 
+                                insight.description.substring(0, 80) + '...' : 
+                                insight.description
+                              }
+                            </Text>
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -743,6 +963,20 @@ export default function CoachScreen() {
                       >
                         <RefreshCw size={18} color={colors.primary} />
                         <Text style={healthStyles.refreshButtonText}>Refresh Analysis</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={healthStyles.coachButton} 
+                        onPress={() => {
+                          closeHealthEvaluation();
+                          addChatMessage({
+                            role: 'user',
+                            content: 'Based on my health evaluation, what should I focus on today?'
+                          });
+                        }}
+                      >
+                        <Brain size={18} color={colors.text} />
+                        <Text style={healthStyles.coachButtonText}>Ask Coach</Text>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -1222,5 +1456,199 @@ const healthStyles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 16,
     textAlign: 'center',
+  },
+  // Action Plan Styles
+  actionPlanContainer: {
+    backgroundColor: colors.ios?.secondaryBackground || '#2A2A2A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  actionPlanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    justifyContent: 'space-between',
+  },
+  actionPlanTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+    flex: 1,
+  },
+  actionPlanSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    backgroundColor: colors.ios?.systemFill || '#1A1A1A',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.ios?.tertiaryBackground || '#1A1A1A',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  actionItemCompleted: {
+    opacity: 0.6,
+  },
+  priorityDot: {
+    width: 4,
+    height: '100%',
+    borderRadius: 2,
+    marginRight: 12,
+    minHeight: 50,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  actionCategory: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  checkBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.textSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBoxCompleted: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  checkMark: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  actionTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: colors.textSecondary,
+  },
+  actionReason: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  // Nutrition Styles
+  nutritionContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  nutritionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  nutritionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.success,
+    marginLeft: 8,
+  },
+  nutritionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  nutritionItem: {
+    width: '48%',
+    marginBottom: 12,
+  },
+  nutritionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  nutritionText: {
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 18,
+  },
+  // Insights Summary Styles
+  insightsSummary: {
+    backgroundColor: colors.ios?.secondaryBackground || '#2A2A2A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  insightsSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  insightSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  insightSummaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  insightSummaryContent: {
+    flex: 1,
+  },
+  insightSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  insightSummaryDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  // Coach Button
+  coachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  coachButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
   },
 });
