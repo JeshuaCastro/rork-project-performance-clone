@@ -452,8 +452,8 @@ Focus on ACTIONABLE steps the user can take TODAY to improve recovery, performan
     if (onPress) {
       onPress();
     } else {
-      // Show detailed evaluation modal
-      setShowDetailedModal(true);
+      // Navigate to health evaluation page
+      router.push('/health-evaluation');
     }
   };
 
