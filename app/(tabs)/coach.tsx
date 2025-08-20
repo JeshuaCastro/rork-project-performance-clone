@@ -174,10 +174,7 @@ export default function CoachScreen() {
   };
 
   const handleHealthEvaluation = () => {
-    setShowHealthEvaluation(true);
-    if (isConnectedToWhoop && hasWhoopData) {
-      generateHealthEvaluation();
-    }
+    router.push('/health-evaluation');
   };
 
   const closeHealthEvaluation = () => {
