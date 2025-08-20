@@ -82,6 +82,14 @@ export default function CoachScreen() {
     hydrationTarget?: string;
     mealTiming?: string;
   }>({});
+  const [avgRecovery, setAvgRecovery] = useState<number>(0);
+  const [avgStrain, setAvgStrain] = useState<number>(0);
+  const [smartInsights, setSmartInsights] = useState<{
+    workoutPlan?: string;
+    nutritionPlan?: string;
+    recoveryPlan?: string;
+    sleepPlan?: string;
+  }>({});
 
   // Check if we have WHOOP data to provide coaching
   const hasWhoopData = data && data.recovery.length > 0 && data.strain.length > 0;
@@ -190,8 +198,11 @@ export default function CoachScreen() {
       const recentStrain = data.strain.slice(-7);
       const recentSleep = data.sleep.slice(-7);
       
-      const avgRecovery = recentRecovery.reduce((sum, r) => sum + r.score, 0) / recentRecovery.length;
-      const avgStrain = recentStrain.reduce((sum, s) => sum + s.score, 0) / recentStrain.length;
+      const calculatedAvgRecovery = recentRecovery.reduce((sum, r) => sum + r.score, 0) / recentRecovery.length;
+      const calculatedAvgStrain = recentStrain.reduce((sum, s) => sum + s.score, 0) / recentStrain.length;
+      
+      setAvgRecovery(calculatedAvgRecovery);
+      setAvgStrain(calculatedAvgStrain);
       const avgSleepScore = recentSleep.reduce((sum, s) => sum + s.qualityScore, 0) / recentSleep.length;
       const avgSleepHours = recentSleep.reduce((sum, s) => sum + s.duration, 0) / recentSleep.length / 60; // Convert to hours
       
@@ -199,12 +210,12 @@ export default function CoachScreen() {
       const generatedInsights: HealthInsight[] = [];
       
       // Recovery Analysis
-      if (avgRecovery >= 67) {
+      if (calculatedAvgRecovery >= 67) {
         generatedInsights.push({
           category: 'Recovery',
           status: 'good',
           title: 'Excellent Recovery',
-          description: `Your average recovery score of ${avgRecovery.toFixed(0)}% indicates your body is adapting well to training stress.`,
+          description: `Your average recovery score of ${calculatedAvgRecovery.toFixed(0)}% indicates your body is adapting well to training stress.`,
           recommendations: [
             'Maintain your current recovery routine',
             'Consider gradually increasing training intensity',
@@ -212,12 +223,12 @@ export default function CoachScreen() {
           ],
           icon: <Shield size={28} color={colors.success} />
         });
-      } else if (avgRecovery >= 34) {
+      } else if (calculatedAvgRecovery >= 34) {
         generatedInsights.push({
           category: 'Recovery',
           status: 'warning',
           title: 'Moderate Recovery',
-          description: `Your average recovery score of ${avgRecovery.toFixed(0)}% suggests room for improvement in your recovery practices.`,
+          description: `Your average recovery score of ${calculatedAvgRecovery.toFixed(0)}% suggests room for improvement in your recovery practices.`,
           recommendations: [
             'Focus on getting 7-9 hours of quality sleep',
             'Consider reducing training intensity temporarily',
@@ -231,7 +242,7 @@ export default function CoachScreen() {
           category: 'Recovery',
           status: 'critical',
           title: 'Low Recovery',
-          description: `Your average recovery score of ${avgRecovery.toFixed(0)}% indicates significant recovery debt that needs attention.`,
+          description: `Your average recovery score of ${calculatedAvgRecovery.toFixed(0)}% indicates significant recovery debt that needs attention.`,
           recommendations: [
             'Prioritize sleep - aim for 8-9 hours nightly',
             'Reduce training intensity and volume',
@@ -275,12 +286,12 @@ export default function CoachScreen() {
       }
       
       // Strain Analysis
-      if (avgStrain > 18) {
+      if (calculatedAvgStrain > 18) {
         generatedInsights.push({
           category: 'Training',
           status: 'warning',
           title: 'High Training Load',
-          description: `Your average strain of ${avgStrain.toFixed(1)} indicates very high training stress. Monitor recovery closely.`,
+          description: `Your average strain of ${calculatedAvgStrain.toFixed(1)} indicates very high training stress. Monitor recovery closely.`,
           recommendations: [
             'Ensure adequate recovery between sessions',
             'Consider periodizing your training',
@@ -289,12 +300,12 @@ export default function CoachScreen() {
           ],
           icon: <Zap size={28} color={colors.warning} />
         });
-      } else if (avgStrain < 8) {
+      } else if (calculatedAvgStrain < 8) {
         generatedInsights.push({
           category: 'Training',
           status: 'warning',
           title: 'Low Activity Level',
-          description: `Your average strain of ${avgStrain.toFixed(1)} suggests you might benefit from increased activity.`,
+          description: `Your average strain of ${calculatedAvgStrain.toFixed(1)} suggests you might benefit from increased activity.`,
           recommendations: [
             'Gradually increase daily activity',
             'Add 2-3 structured workouts per week',
@@ -308,7 +319,7 @@ export default function CoachScreen() {
           category: 'Training',
           status: 'good',
           title: 'Balanced Training Load',
-          description: `Your average strain of ${avgStrain.toFixed(1)} indicates a well-balanced training approach.`,
+          description: `Your average strain of ${calculatedAvgStrain.toFixed(1)} indicates a well-balanced training approach.`,
           recommendations: [
             'Continue your current training approach',
             'Vary intensity throughout the week',
@@ -369,7 +380,7 @@ export default function CoachScreen() {
       }> = [];
       
       // Recovery-based actions
-      if (avgRecovery < 50) {
+      if (calculatedAvgRecovery < 50) {
         steps.push({
           category: 'sleep',
           action: 'Get 8+ hours of sleep tonight',
@@ -388,7 +399,7 @@ export default function CoachScreen() {
           reason: 'Support muscle recovery and repair',
           priority: 'medium'
         });
-      } else if (avgRecovery >= 75) {
+      } else if (calculatedAvgRecovery >= 75) {
         steps.push({
           category: 'training',
           action: 'Take advantage with high-intensity session',
@@ -420,7 +431,7 @@ export default function CoachScreen() {
       }
       
       // Strain-based actions
-      if (avgStrain > 18) {
+      if (calculatedAvgStrain > 18) {
         steps.push({
           category: 'recovery',
           action: 'Add 10-minute meditation or breathing',
@@ -433,7 +444,7 @@ export default function CoachScreen() {
           reason: 'Support recovery from high training load',
           priority: 'medium'
         });
-      } else if (avgStrain < 8) {
+      } else if (calculatedAvgStrain < 8) {
         steps.push({
           category: 'training',
           action: 'Add 20-minute walk or light activity',
@@ -462,17 +473,17 @@ export default function CoachScreen() {
       
       // Generate nutrition advice
       const nutrition = {
-        calorieGuidance: avgRecovery < 50 ? 'Maintain calorie intake - don\'t restrict during recovery' : 
-                        avgRecovery >= 75 ? 'Increase calories by 200-300 for high-intensity training' :
+        calorieGuidance: calculatedAvgRecovery < 50 ? 'Maintain calorie intake - don\'t restrict during recovery' : 
+                        calculatedAvgRecovery >= 75 ? 'Increase calories by 200-300 for high-intensity training' :
                         'Stay consistent with current calorie targets',
-        proteinFocus: avgRecovery < 50 ? '2.0-2.2g per kg body weight for repair' :
-                     avgStrain > 15 ? '1.8-2.0g per kg body weight for recovery' :
+        proteinFocus: calculatedAvgRecovery < 50 ? '2.0-2.2g per kg body weight for repair' :
+                     calculatedAvgStrain > 15 ? '1.8-2.0g per kg body weight for recovery' :
                      '1.6-1.8g per kg body weight for maintenance',
-        hydrationTarget: avgStrain > 15 ? '3.5-4L water today' :
-                        avgRecovery < 50 ? '3-3.5L water for recovery' :
+        hydrationTarget: calculatedAvgStrain > 15 ? '3.5-4L water today' :
+                        calculatedAvgRecovery < 50 ? '3-3.5L water for recovery' :
                         '2.5-3L water daily',
-        mealTiming: avgRecovery >= 75 ? 'Eat 2-3 hours before high-intensity training' :
-                   avgRecovery < 50 ? 'Frequent small meals to support recovery' :
+        mealTiming: calculatedAvgRecovery >= 75 ? 'Eat 2-3 hours before high-intensity training' :
+                   calculatedAvgRecovery < 50 ? 'Frequent small meals to support recovery' :
                    'Regular meal timing supports consistent energy'
       };
       
@@ -500,6 +511,71 @@ export default function CoachScreen() {
       setIsLoadingHealth(false);
     }
   }, [hasWhoopData, data]);
+
+  // Smart coach insight generator
+  const getSmartCoachInsight = (insights: HealthInsight[], steps: any[], recovery: number, strain: number): string => {
+    if (insights.length === 0) return 'Complete your health analysis to get personalized insights.';
+    
+    const criticalInsights = insights.filter(i => i.status === 'critical');
+    const warningInsights = insights.filter(i => i.status === 'warning');
+    const goodInsights = insights.filter(i => i.status === 'good');
+    
+    if (criticalInsights.length > 0) {
+      return `Your body is showing signs of stress. Focus on ${criticalInsights[0].category.toLowerCase()} - specifically ${criticalInsights[0].recommendations[0].toLowerCase()}. This should be your top priority today.`;
+    } else if (warningInsights.length > 0) {
+      return `You're making good progress! Your ${warningInsights[0].category.toLowerCase()} needs attention. Try ${warningInsights[0].recommendations[0].toLowerCase()} to optimize your performance.`;
+    } else {
+      return `Excellent work! Your health metrics are strong. With recovery at ${recovery.toFixed(0)}% and balanced strain, you're ready to push your limits or maintain this excellent momentum.`;
+    }
+  };
+
+  // Generate specific recommendations
+  const generateWorkoutRecommendation = () => {
+    if (avgRecovery >= 75) {
+      setSmartInsights(prev => ({
+        ...prev,
+        workoutPlan: 'High-intensity training recommended. Consider strength training or HIIT. Your body is ready for performance gains.'
+      }));
+    } else if (avgRecovery >= 50) {
+      setSmartInsights(prev => ({
+        ...prev,
+        workoutPlan: 'Moderate intensity training. Focus on technique and form. Consider yoga or light cardio to maintain fitness.'
+      }));
+    } else {
+      setSmartInsights(prev => ({
+        ...prev,
+        workoutPlan: 'Active recovery recommended. Light walking, gentle stretching, or restorative yoga. Avoid high-intensity training.'
+      }));
+    }
+  };
+
+  const generateNutritionPlan = () => {
+    const plan = avgRecovery < 50 ? 
+      'Focus on anti-inflammatory foods: salmon, berries, leafy greens. Increase protein to 2.0g/kg body weight for recovery.' :
+      avgRecovery >= 75 ? 
+      'Fuel for performance: complex carbs 2-3 hours before training, protein within 30 minutes after. Stay hydrated.' :
+      'Balanced nutrition: lean proteins, complex carbs, healthy fats. Time meals around your training schedule.';
+    
+    setSmartInsights(prev => ({ ...prev, nutritionPlan: plan }));
+  };
+
+  const generateRecoveryPlan = () => {
+    const plan = avgStrain > 15 ? 
+      'Active recovery focus: 10-minute meditation, gentle stretching, cold shower. Prioritize sleep quality tonight.' :
+      avgRecovery < 50 ?
+      'Deep recovery needed: 8+ hours sleep, magnesium supplement, avoid screens 1 hour before bed. Consider massage.' :
+      'Maintain recovery: consistent sleep schedule, light stretching, stay hydrated. You\'re doing great!';
+    
+    setSmartInsights(prev => ({ ...prev, recoveryPlan: plan }));
+  };
+
+  const generateSleepPlan = () => {
+    const plan = avgRecovery < 50 ?
+      'Sleep optimization critical: Go to bed 30 minutes earlier, keep room at 65-68°F, blackout curtains, no caffeine after 2 PM.' :
+      'Sleep maintenance: Stick to your current schedule, consider blue light blocking glasses, keep bedroom cool and dark.';
+    
+    setSmartInsights(prev => ({ ...prev, sleepPlan: plan }));
+  };
 
   const renderEmptyChat = () => (
     <View style={styles.emptyContainer}>
@@ -954,6 +1030,99 @@ export default function CoachScreen() {
                       ))}
                     </View>
 
+                    {/* Smart Recommendations */}
+                    <View style={healthStyles.smartRecommendationsContainer}>
+                      <View style={healthStyles.smartRecommendationsHeader}>
+                        <Brain size={20} color={colors.primary} />
+                        <Text style={healthStyles.smartRecommendationsTitle}>AI Coach Insights</Text>
+                      </View>
+                      
+                      <View style={healthStyles.coachInsightCard}>
+                        <Text style={healthStyles.coachInsightText}>
+                          {getSmartCoachInsight(healthInsights, actionableSteps, avgRecovery, avgStrain)}
+                        </Text>
+                      </View>
+                      
+                      <View style={healthStyles.quickActionsGrid}>
+                        <TouchableOpacity 
+                          style={healthStyles.quickActionButton}
+                          onPress={() => generateWorkoutRecommendation()}
+                        >
+                          <Zap size={16} color={colors.warning} />
+                          <Text style={healthStyles.quickActionText}>Workout Plan</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={healthStyles.quickActionButton}
+                          onPress={() => generateNutritionPlan()}
+                        >
+                          <Utensils size={16} color={colors.success} />
+                          <Text style={healthStyles.quickActionText}>Meal Plan</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={healthStyles.quickActionButton}
+                          onPress={() => generateRecoveryPlan()}
+                        >
+                          <Moon size={16} color={colors.textSecondary} />
+                          <Text style={healthStyles.quickActionText}>Recovery</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={healthStyles.quickActionButton}
+                          onPress={() => generateSleepPlan()}
+                        >
+                          <Shield size={16} color={colors.primary} />
+                          <Text style={healthStyles.quickActionText}>Sleep Plan</Text>
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {/* Display Generated Insights */}
+                      {(smartInsights.workoutPlan || smartInsights.nutritionPlan || smartInsights.recoveryPlan || smartInsights.sleepPlan) && (
+                        <View style={healthStyles.generatedInsightsContainer}>
+                          {smartInsights.workoutPlan && (
+                            <View style={healthStyles.generatedInsightItem}>
+                              <View style={healthStyles.generatedInsightHeader}>
+                                <Zap size={16} color={colors.warning} />
+                                <Text style={healthStyles.generatedInsightTitle}>Workout Plan</Text>
+                              </View>
+                              <Text style={healthStyles.generatedInsightText}>{smartInsights.workoutPlan}</Text>
+                            </View>
+                          )}
+                          
+                          {smartInsights.nutritionPlan && (
+                            <View style={healthStyles.generatedInsightItem}>
+                              <View style={healthStyles.generatedInsightHeader}>
+                                <Utensils size={16} color={colors.success} />
+                                <Text style={healthStyles.generatedInsightTitle}>Nutrition Plan</Text>
+                              </View>
+                              <Text style={healthStyles.generatedInsightText}>{smartInsights.nutritionPlan}</Text>
+                            </View>
+                          )}
+                          
+                          {smartInsights.recoveryPlan && (
+                            <View style={healthStyles.generatedInsightItem}>
+                              <View style={healthStyles.generatedInsightHeader}>
+                                <Moon size={16} color={colors.textSecondary} />
+                                <Text style={healthStyles.generatedInsightTitle}>Recovery Plan</Text>
+                              </View>
+                              <Text style={healthStyles.generatedInsightText}>{smartInsights.recoveryPlan}</Text>
+                            </View>
+                          )}
+                          
+                          {smartInsights.sleepPlan && (
+                            <View style={healthStyles.generatedInsightItem}>
+                              <View style={healthStyles.generatedInsightHeader}>
+                                <Shield size={16} color={colors.primary} />
+                                <Text style={healthStyles.generatedInsightTitle}>Sleep Plan</Text>
+                              </View>
+                              <Text style={healthStyles.generatedInsightText}>{smartInsights.sleepPlan}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                    
                     {/* Action Buttons */}
                     <View style={healthStyles.actionButtons}>
                       <TouchableOpacity 
@@ -963,20 +1132,6 @@ export default function CoachScreen() {
                       >
                         <RefreshCw size={18} color={colors.primary} />
                         <Text style={healthStyles.refreshButtonText}>Refresh Analysis</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={healthStyles.coachButton} 
-                        onPress={() => {
-                          closeHealthEvaluation();
-                          addChatMessage({
-                            role: 'user',
-                            content: 'Based on my health evaluation, what should I focus on today?'
-                          });
-                        }}
-                      >
-                        <Brain size={18} color={colors.text} />
-                        <Text style={healthStyles.coachButtonText}>Ask Coach</Text>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -1650,5 +1805,88 @@ const healthStyles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginLeft: 8,
+  },
+  // Smart Recommendations Styles
+  smartRecommendationsContainer: {
+    backgroundColor: colors.ios?.secondaryBackground || '#2A2A2A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  smartRecommendationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  smartRecommendationsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  coachInsightCard: {
+    backgroundColor: colors.ios?.tertiaryBackground || '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  coachInsightText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickActionButton: {
+    width: '48%',
+    backgroundColor: colors.ios?.tertiaryBackground || '#1A1A1A',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.ios?.separator || '#2A2A2A',
+  },
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  // Generated Insights Styles
+  generatedInsightsContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.ios?.separator || '#2A2A2A',
+  },
+  generatedInsightItem: {
+    backgroundColor: colors.ios?.tertiaryBackground || '#1A1A1A',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  generatedInsightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  generatedInsightTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  generatedInsightText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
