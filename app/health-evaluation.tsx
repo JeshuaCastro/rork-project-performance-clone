@@ -7,14 +7,31 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Modal,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
-import { Activity, Heart, TrendingUp, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react-native';
+import { 
+  Activity, 
+  Heart, 
+  TrendingUp, 
+  AlertTriangle, 
+  RefreshCw, 
+  X,
+  Moon,
+  Zap,
+  Shield,
+  Target,
+  Brain,
+  Sparkles
+} from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
-import IOSCard from '@/components/IOSCard';
-import IOSButton from '@/components/IOSButton';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 interface HealthInsight {
   category: string;
@@ -31,8 +48,14 @@ export default function HealthEvaluationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [evaluation, setEvaluation] = useState<string>('');
   const [insights, setInsights] = useState<HealthInsight[]>([]);
+  const [modalVisible, setModalVisible] = useState(true);
 
   const hasWhoopData = data && data.recovery.length > 0 && data.strain.length > 0;
+
+  const closeModal = () => {
+    setModalVisible(false);
+    router.back();
+  };
 
 
   const generateHealthEvaluation = useCallback(async () => {
@@ -69,7 +92,7 @@ export default function HealthEvaluationScreen() {
             'Consider gradually increasing training intensity',
             'Continue prioritizing sleep and nutrition'
           ],
-          icon: <CheckCircle size={24} color={colors.success} />
+          icon: <Shield size={28} color={colors.success} />
         });
       } else if (avgRecovery >= 34) {
         generatedInsights.push({
@@ -83,7 +106,7 @@ export default function HealthEvaluationScreen() {
             'Incorporate more active recovery sessions',
             'Evaluate stress management techniques'
           ],
-          icon: <AlertTriangle size={24} color={colors.warning} />
+          icon: <Target size={28} color={colors.warning} />
         });
       } else {
         generatedInsights.push({
@@ -98,7 +121,7 @@ export default function HealthEvaluationScreen() {
             'Focus on stress reduction and relaxation',
             'Evaluate nutrition and hydration habits'
           ],
-          icon: <AlertTriangle size={24} color={colors.danger} />
+          icon: <AlertTriangle size={28} color={colors.danger} />
         });
       }
       
@@ -114,7 +137,7 @@ export default function HealthEvaluationScreen() {
             'Continue your bedtime routine',
             'Keep your sleep environment optimized'
           ],
-          icon: <CheckCircle size={24} color={colors.success} />
+          icon: <Moon size={28} color={colors.success} />
         });
       } else if (avgSleepHours < 7 || avgSleepScore < 70) {
         generatedInsights.push({
@@ -129,7 +152,7 @@ export default function HealthEvaluationScreen() {
             'Keep bedroom cool (65-68°F) and dark',
             'Avoid caffeine after 2 PM'
           ],
-          icon: <AlertTriangle size={24} color={colors.warning} />
+          icon: <Moon size={28} color={colors.warning} />
         });
       }
       
@@ -146,7 +169,7 @@ export default function HealthEvaluationScreen() {
             'Include more low-intensity activities',
             'Monitor recovery scores daily'
           ],
-          icon: <AlertTriangle size={24} color={colors.warning} />
+          icon: <Zap size={28} color={colors.warning} />
         });
       } else if (avgStrain < 8) {
         generatedInsights.push({
@@ -160,7 +183,7 @@ export default function HealthEvaluationScreen() {
             'Include both cardio and strength training',
             'Start with low-intensity activities'
           ],
-          icon: <TrendingUp size={24} color={colors.primary} />
+          icon: <TrendingUp size={28} color={colors.primary} />
         });
       } else {
         generatedInsights.push({
@@ -173,7 +196,7 @@ export default function HealthEvaluationScreen() {
             'Vary intensity throughout the week',
             'Listen to your body and adjust as needed'
           ],
-          icon: <CheckCircle size={24} color={colors.success} />
+          icon: <Sparkles size={28} color={colors.success} />
         });
       }
       
@@ -197,7 +220,7 @@ export default function HealthEvaluationScreen() {
                 'Maintain consistent sleep schedule',
                 'Keep stress management techniques'
               ],
-              icon: <Heart size={24} color={colors.success} />
+              icon: <Heart size={28} color={colors.success} />
             });
           } else if (hrvTrend < -2) {
             generatedInsights.push({
@@ -211,7 +234,7 @@ export default function HealthEvaluationScreen() {
                 'Focus on relaxation techniques',
                 'Ensure adequate sleep quality'
               ],
-              icon: <AlertTriangle size={24} color={colors.warning} />
+              icon: <Brain size={28} color={colors.warning} />
             });
           }
         }
@@ -266,243 +289,403 @@ export default function HealthEvaluationScreen() {
     }
   };
 
-  if (!isConnectedToWhoop) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ title: 'Health Evaluation', headerShown: true }} />
-        <StatusBar style="light" />
-        
-        <View style={styles.emptyContainer}>
-          <IOSCard variant="elevated" style={styles.emptyCard}>
-            <Activity size={64} color={colors.textSecondary} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>WHOOP Connection Required</Text>
-            <Text style={styles.emptyText}>
-              To get a comprehensive health evaluation, please connect your WHOOP account first.
-            </Text>
-            <IOSButton 
-              title="Connect WHOOP"
-              onPress={() => router.push('/connect-whoop')}
-              variant="primary"
-              size="large"
-              icon={<Activity size={18} color={colors.text} />}
-            />
-          </IOSCard>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const renderEmptyState = (title: string, description: string, buttonTitle: string, onPress: () => void, icon: React.ReactNode) => (
+    <View style={styles.emptyStateContainer}>
+      <View style={styles.emptyStateIcon}>
+        <Text>{icon}</Text>
+      </View>
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      <Text style={styles.emptyStateDescription}>{description}</Text>
+      <TouchableOpacity style={styles.emptyStateButton} onPress={onPress}>
+        <Text style={styles.emptyStateButtonText}>{buttonTitle}</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-  if (!hasWhoopData) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ title: 'Health Evaluation', headerShown: true }} />
-        <StatusBar style="light" />
-        
-        <View style={styles.emptyContainer}>
-          <IOSCard variant="elevated" style={styles.emptyCard}>
-            <Activity size={64} color={colors.textSecondary} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>Insufficient Data</Text>
-            <Text style={styles.emptyText}>
-              We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.
-            </Text>
-            <IOSButton 
-              title="Sync Data"
-              onPress={() => {
-                syncWhoopData();
-                router.back();
-              }}
-              variant="primary"
-              size="large"
-              icon={<RefreshCw size={18} color={colors.text} />}
-            />
-          </IOSCard>
+  const renderContent = () => {
+    if (!isConnectedToWhoop) {
+      return renderEmptyState(
+        'WHOOP Connection Required',
+        'To get a comprehensive health evaluation, please connect your WHOOP account first.',
+        'Connect WHOOP',
+        () => {
+          closeModal();
+          router.push('/connect-whoop');
+        },
+        <Activity size={48} color={colors.primary} />
+      );
+    }
+
+    if (!hasWhoopData) {
+      return renderEmptyState(
+        'Insufficient Data',
+        'We need more WHOOP data to provide a comprehensive health evaluation. Please sync your data first.',
+        'Sync Data',
+        () => {
+          syncWhoopData();
+          closeModal();
+        },
+        <RefreshCw size={48} color={colors.primary} />
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Analyzing your health data...</Text>
         </View>
-      </SafeAreaView>
+      );
+    }
+
+    return (
+      <>
+        {/* Header */}
+        <View style={styles.modalHeader}>
+          <View style={styles.headerIconContainer}>
+            <Activity size={32} color={colors.primary} />
+          </View>
+          <Text style={styles.modalTitle}>Health Analysis</Text>
+          <Text style={styles.modalSubtitle}>Comprehensive wellness overview</Text>
+        </View>
+
+        {/* Overall Status */}
+        <View style={styles.overallStatusContainer}>
+          <View style={[
+            styles.overallStatusBadge,
+            { backgroundColor: getStatusBackground(insights.some(i => i.status === 'critical') ? 'critical' : insights.some(i => i.status === 'warning') ? 'warning' : 'good') }
+          ]}>
+            <Text style={[
+              styles.overallStatusText,
+              { color: getStatusColor(insights.some(i => i.status === 'critical') ? 'critical' : insights.some(i => i.status === 'warning') ? 'warning' : 'good') }
+            ]}>
+              {insights.some(i => i.status === 'critical') ? 'Needs Attention' : insights.some(i => i.status === 'warning') ? 'Good Progress' : 'Excellent Health'}
+            </Text>
+          </View>
+          <Text style={styles.evaluationSummary}>{evaluation}</Text>
+        </View>
+
+        {/* Insights Grid */}
+        <View style={styles.insightsGrid}>
+          {insights.map((insight, index) => (
+            <View key={index} style={[
+              styles.insightItem,
+              { borderLeftColor: getStatusColor(insight.status) }
+            ]}>
+              <View style={styles.insightItemHeader}>
+                <View style={[
+                  styles.insightIconContainer,
+                  { backgroundColor: getStatusBackground(insight.status) }
+                ]}>
+                  {insight.icon}
+                </View>
+                <View style={styles.insightItemContent}>
+                  <Text style={styles.insightItemCategory}>{insight.category}</Text>
+                  <Text style={styles.insightItemTitle}>{insight.title}</Text>
+                </View>
+              </View>
+              <Text style={styles.insightItemDescription}>{insight.description}</Text>
+              
+              {insight.recommendations.length > 0 && (
+                <View style={styles.recommendationsContainer}>
+                  <Text style={styles.recommendationsHeader}>Key Actions:</Text>
+                  {insight.recommendations.slice(0, 2).map((rec, recIndex) => (
+                    <Text key={recIndex} style={styles.recommendationItem}>
+                      • {rec}
+                    </Text>
+                  ))}
+                  {insight.recommendations.length > 2 && (
+                    <Text style={styles.moreRecommendations}>
+                      +{insight.recommendations.length - 2} more recommendations
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={generateHealthEvaluation}
+            disabled={isLoading}
+          >
+            <RefreshCw size={18} color={colors.primary} />
+            <Text style={styles.refreshButtonText}>Refresh Analysis</Text>
+          </TouchableOpacity>
+        </View>
+      </>
     );
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'Health Evaluation', headerShown: true }} />
-      <StatusBar style="light" />
-      
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {isLoading ? (
-          <IOSCard variant="elevated" style={styles.loadingCard}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Analyzing your health data...</Text>
-          </IOSCard>
-        ) : (
-          <>
-            {/* Overall Evaluation */}
-            <IOSCard variant="elevated" style={styles.evaluationCard}>
-              <Text style={styles.evaluationTitle}>Overall Health Assessment</Text>
-              <Text style={styles.evaluationText}>{evaluation}</Text>
-            </IOSCard>
-            
-            {/* Insights */}
-            <Text style={styles.sectionTitle}>Detailed Insights</Text>
-            {insights.map((insight, index) => (
-              <IOSCard key={index} variant="outlined" style={[
-                styles.insightCard,
-                { backgroundColor: getStatusBackground(insight.status) }
-              ]}>
-                <View style={styles.insightHeader}>
-                  {insight.icon}
-                  <View style={styles.insightHeaderText}>
-                    <Text style={styles.insightCategory}>{insight.category}</Text>
-                    <Text style={[
-                      styles.insightTitle,
-                      { color: getStatusColor(insight.status) }
-                    ]}>
-                      {insight.title}
-                    </Text>
-                  </View>
-                </View>
-                
-                <Text style={styles.insightDescription}>{insight.description}</Text>
-                
-                <Text style={styles.recommendationsTitle}>Recommendations:</Text>
-                {insight.recommendations.map((rec, recIndex) => (
-                  <Text key={recIndex} style={styles.recommendation}>
-                    • {rec}
-                  </Text>
-                ))}
-              </IOSCard>
-            ))}
-            
-            {/* Refresh Button */}
-            <IOSButton 
-              title="Refresh Evaluation"
-              onPress={generateHealthEvaluation}
-              variant="secondary"
-              size="large"
-              disabled={isLoading}
-              loading={isLoading}
-              icon={<RefreshCw size={18} color={colors.text} />}
-              style={styles.refreshButton}
-            />
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <StatusBar style="light" />
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {/* Close Button */}
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <X size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+              
+              <ScrollView 
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {renderContent()}
+              </ScrollView>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  emptyContainer: {
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: Platform.OS === 'ios' ? 60 : 40,
   },
-  emptyCard: {
-    alignItems: 'center',
-    maxWidth: 400,
+  modalContent: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
     width: '100%',
+    maxWidth: 420,
+    maxHeight: screenHeight * 0.85,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
+    overflow: 'hidden',
   },
-  emptyIcon: {
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.ios.quaternaryBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    padding: 24,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  headerIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.ios.systemFill,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  emptyTitle: {
-    fontSize: 24,
+  modalTitle: {
+    fontSize: 28,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 12,
     textAlign: 'center',
+    marginBottom: 4,
   },
-  emptyText: {
+  modalSubtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
   },
-  loadingCard: {
+  overallStatusContainer: {
     alignItems: 'center',
-    padding: 40,
+    marginBottom: 32,
+  },
+  overallStatusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  overallStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  evaluationSummary: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 8,
+  },
+  insightsGrid: {
+    gap: 16,
+  },
+  insightItem: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 16,
+    padding: 16,
+    borderLeftWidth: 4,
+  },
+  insightItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  insightIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  insightItemContent: {
+    flex: 1,
+  },
+  insightItemCategory: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  insightItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  insightItemDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  recommendationsContainer: {
+    backgroundColor: colors.ios.tertiaryBackground,
+    borderRadius: 12,
+    padding: 12,
+  },
+  recommendationsHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  recommendationItem: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  moreRecommendations: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  actionButtons: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.ios.separator,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.ios.systemFill,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  refreshButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 8,
+  },
+  // Empty States
+  emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.ios.systemFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyStateDescription: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  emptyStateButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  emptyStateButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
   loadingText: {
     fontSize: 16,
     color: colors.textSecondary,
     marginTop: 16,
     textAlign: 'center',
-  },
-  evaluationCard: {
-    marginBottom: 24,
-  },
-  evaluationTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  evaluationText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  insightCard: {
-    marginBottom: 16,
-  },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  insightHeaderText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  insightCategory: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  insightTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  insightDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  recommendationsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  recommendation: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  refreshButton: {
-    marginTop: 16,
   },
 });
