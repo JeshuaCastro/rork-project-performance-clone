@@ -25,11 +25,32 @@ import {
   Shield,
   Target,
   Brain,
-  Sparkles
+  Sparkles,
+  Clock,
+  CheckCircle2
 } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 
 
+
+interface ActionableStep {
+  action: string;
+  why: string;
+  how: string;
+  when: string;
+  duration: string;
+  priority: 'high' | 'medium' | 'low';
+  category: 'immediate' | 'today' | 'this-week';
+}
+
+interface SpecificRecommendation {
+  title: string;
+  description: string;
+  steps: ActionableStep[];
+  expectedOutcome: string;
+  timeToSeeResults: string;
+  difficulty: 'easy' | 'moderate' | 'challenging';
+}
 
 interface HealthInsight {
   category: string;
@@ -38,6 +59,14 @@ interface HealthInsight {
   description: string;
   recommendations: string[];
   icon: React.ReactNode;
+  specificRecommendations: SpecificRecommendation[];
+  actionableSteps: ActionableStep[];
+  keyMetrics: {
+    current: number;
+    target: number;
+    unit: string;
+    trend: 'improving' | 'stable' | 'declining';
+  };
 }
 
 export default function HealthEvaluationScreen() {
@@ -76,6 +105,19 @@ export default function HealthEvaluationScreen() {
       const avgSleepScore = recentSleep.reduce((sum, s) => sum + s.qualityScore, 0) / recentSleep.length;
       const avgSleepHours = recentSleep.reduce((sum, s) => sum + s.duration, 0) / recentSleep.length / 60; // Convert to hours
       
+      // Calculate recovery trend
+      const getRecoveryTrend = () => {
+        if (recentRecovery.length < 6) return 'stable';
+        const recent3Days = recentRecovery.slice(-3).reduce((sum, r) => sum + r.score, 0) / 3;
+        const previous3Days = recentRecovery.slice(-6, -3).reduce((sum, r) => sum + r.score, 0) / 3;
+        const difference = recent3Days - previous3Days;
+        if (difference > 5) return 'improving';
+        if (difference < -5) return 'declining';
+        return 'stable';
+      };
+      
+      const recoveryTrend = getRecoveryTrend();
+      
       // Generate insights based on data
       const generatedInsights: HealthInsight[] = [];
       
@@ -91,7 +133,53 @@ export default function HealthEvaluationScreen() {
             'Consider gradually increasing training intensity',
             'Continue prioritizing sleep and nutrition'
           ],
-          icon: <Shield size={28} color={colors.success} />
+          icon: <Shield size={28} color={colors.success} />,
+          specificRecommendations: [
+            {
+              title: 'Optimize Training Load Progression',
+              description: 'Your excellent recovery allows for strategic training increases',
+              steps: [
+                {
+                  action: 'Increase training intensity by 5-10%',
+                  why: 'Your body is ready to handle more stress and adapt',
+                  how: 'Add 2-3 minutes to cardio sessions or 5-10lbs to strength exercises',
+                  when: 'Next 2 training sessions',
+                  duration: '1-2 weeks',
+                  priority: 'medium',
+                  category: 'this-week'
+                },
+                {
+                  action: 'Track performance metrics closely',
+                  why: 'Monitor how your body responds to increased load',
+                  how: 'Log workout performance, energy levels, and next-day recovery',
+                  when: 'During each workout',
+                  duration: 'Ongoing',
+                  priority: 'high',
+                  category: 'immediate'
+                }
+              ],
+              expectedOutcome: 'Improved fitness gains while maintaining recovery',
+              timeToSeeResults: '2-3 weeks',
+              difficulty: 'moderate'
+            }
+          ],
+          actionableSteps: [
+            {
+              action: 'Schedule your most challenging workout',
+              why: 'High recovery means your body can handle peak performance demands',
+              how: 'Plan your hardest training session within the next 48 hours',
+              when: 'Within 48 hours',
+              duration: '1 session',
+              priority: 'high',
+              category: 'today'
+            }
+          ],
+          keyMetrics: {
+            current: avgRecovery,
+            target: 70,
+            unit: '%',
+            trend: recoveryTrend === 'improving' ? 'improving' : recoveryTrend === 'declining' ? 'declining' : 'stable'
+          }
         });
       } else if (avgRecovery >= 34) {
         generatedInsights.push({
@@ -105,7 +193,98 @@ export default function HealthEvaluationScreen() {
             'Incorporate more active recovery sessions',
             'Evaluate stress management techniques'
           ],
-          icon: <Target size={28} color={colors.warning} />
+          icon: <Target size={28} color={colors.warning} />,
+          specificRecommendations: [
+            {
+              title: 'Sleep Optimization Protocol',
+              description: 'Systematic approach to improve sleep quality and recovery',
+              steps: [
+                {
+                  action: 'Set a consistent bedtime routine',
+                  why: 'Consistent sleep schedule improves sleep quality by 15-20%',
+                  how: 'Go to bed and wake up at the same time daily, even weekends',
+                  when: 'Starting tonight',
+                  duration: '2-3 weeks to establish habit',
+                  priority: 'high',
+                  category: 'immediate'
+                },
+                {
+                  action: 'Create optimal sleep environment',
+                  why: 'Room temperature and darkness significantly impact deep sleep',
+                  how: 'Set room to 65-68°F, use blackout curtains, remove electronics',
+                  when: 'Before tonight\'s sleep',
+                  duration: 'One-time setup',
+                  priority: 'high',
+                  category: 'today'
+                },
+                {
+                  action: 'Implement pre-sleep wind-down',
+                  why: 'Reduces cortisol and prepares body for deep sleep',
+                  how: '30-60 min routine: dim lights, read, gentle stretching, no screens',
+                  when: '1 hour before target bedtime',
+                  duration: 'Daily habit',
+                  priority: 'medium',
+                  category: 'today'
+                }
+              ],
+              expectedOutcome: '10-15% improvement in recovery score within 2 weeks',
+              timeToSeeResults: '1-2 weeks',
+              difficulty: 'easy'
+            },
+            {
+              title: 'Strategic Training Adjustment',
+              description: 'Optimize training load to support recovery improvement',
+              steps: [
+                {
+                  action: 'Reduce training intensity by 15-20%',
+                  why: 'Allows body to catch up on recovery debt',
+                  how: 'Lower weights by 15%, reduce cardio pace by 30 seconds/mile',
+                  when: 'Next 3 training sessions',
+                  duration: '1-2 weeks',
+                  priority: 'high',
+                  category: 'immediate'
+                },
+                {
+                  action: 'Add active recovery sessions',
+                  why: 'Promotes blood flow and recovery without adding stress',
+                  how: '20-30 min walks, gentle yoga, or light swimming',
+                  when: 'On rest days',
+                  duration: '2-3 times per week',
+                  priority: 'medium',
+                  category: 'this-week'
+                }
+              ],
+              expectedOutcome: 'Improved recovery scores and reduced fatigue',
+              timeToSeeResults: '1 week',
+              difficulty: 'easy'
+            }
+          ],
+          actionableSteps: [
+            {
+              action: 'Set phone to Do Not Disturb 1 hour before bed',
+              why: 'Blue light disrupts melatonin production',
+              how: 'Enable automatic Do Not Disturb from 9 PM to 7 AM',
+              when: 'Right now',
+              duration: '2 minutes to set up',
+              priority: 'high',
+              category: 'immediate'
+            },
+            {
+              action: 'Plan tomorrow\'s workout at 80% intensity',
+              why: 'Moderate recovery requires strategic load management',
+              how: 'Reduce planned weights/pace by 20% from your usual',
+              when: 'Before tomorrow\'s workout',
+              duration: '5 minutes planning',
+              priority: 'high',
+              category: 'today'
+            }
+          ],
+          keyMetrics: {
+            current: avgRecovery,
+            target: 60,
+            unit: '%',
+            trend: recoveryTrend === 'improving' ? 'improving' : recoveryTrend === 'declining' ? 'declining' : 'stable'
+          }
         });
       } else {
         generatedInsights.push({
@@ -120,7 +299,98 @@ export default function HealthEvaluationScreen() {
             'Focus on stress reduction and relaxation',
             'Evaluate nutrition and hydration habits'
           ],
-          icon: <AlertTriangle size={28} color={colors.danger} />
+          icon: <AlertTriangle size={28} color={colors.danger} />,
+          specificRecommendations: [
+            {
+              title: 'Emergency Recovery Protocol',
+              description: 'Immediate actions to address critical recovery debt',
+              steps: [
+                {
+                  action: 'Take complete rest day today',
+                  why: 'Critical recovery debt requires immediate intervention',
+                  how: 'No structured exercise, only gentle walking if needed',
+                  when: 'Today',
+                  duration: '24-48 hours',
+                  priority: 'high',
+                  category: 'immediate'
+                },
+                {
+                  action: 'Extend sleep by 1-2 hours tonight',
+                  why: 'Sleep is the most powerful recovery tool available',
+                  how: 'Go to bed 1 hour earlier, sleep in 1 hour later if possible',
+                  when: 'Tonight',
+                  duration: 'Next 3-5 nights',
+                  priority: 'high',
+                  category: 'immediate'
+                },
+                {
+                  action: 'Implement stress reduction techniques',
+                  why: 'High stress blocks recovery and keeps cortisol elevated',
+                  how: '10 min meditation, deep breathing, or gentle yoga',
+                  when: '2-3 times today',
+                  duration: '10 minutes each session',
+                  priority: 'high',
+                  category: 'immediate'
+                }
+              ],
+              expectedOutcome: '5-10% recovery improvement within 48 hours',
+              timeToSeeResults: '2-3 days',
+              difficulty: 'easy'
+            },
+            {
+              title: 'Nutrition Recovery Support',
+              description: 'Targeted nutrition to accelerate recovery',
+              steps: [
+                {
+                  action: 'Increase water intake to 3-4 liters today',
+                  why: 'Dehydration significantly impairs recovery processes',
+                  how: 'Drink 500ml upon waking, 250ml every hour',
+                  when: 'Starting now',
+                  duration: 'Today and ongoing',
+                  priority: 'high',
+                  category: 'immediate'
+                },
+                {
+                  action: 'Consume anti-inflammatory foods',
+                  why: 'Reduces systemic inflammation blocking recovery',
+                  how: 'Berries, fatty fish, leafy greens, turmeric, ginger',
+                  when: 'With each meal today',
+                  duration: 'Next 3-5 days',
+                  priority: 'medium',
+                  category: 'today'
+                }
+              ],
+              expectedOutcome: 'Reduced inflammation and faster recovery',
+              timeToSeeResults: '2-4 days',
+              difficulty: 'easy'
+            }
+          ],
+          actionableSteps: [
+            {
+              action: 'Cancel today\'s planned workout',
+              why: 'Training with critical recovery debt risks injury and further decline',
+              how: 'Replace with 20-30 minute gentle walk or complete rest',
+              when: 'Right now',
+              duration: 'Today only',
+              priority: 'high',
+              category: 'immediate'
+            },
+            {
+              action: 'Set 3 water intake reminders on phone',
+              why: 'Consistent hydration is crucial for recovery',
+              how: 'Set alarms for 10 AM, 2 PM, and 6 PM to drink 500ml',
+              when: 'Next 5 minutes',
+              duration: '2 minutes to set up',
+              priority: 'high',
+              category: 'immediate'
+            }
+          ],
+          keyMetrics: {
+            current: avgRecovery,
+            target: 50,
+            unit: '%',
+            trend: recoveryTrend === 'improving' ? 'improving' : recoveryTrend === 'declining' ? 'declining' : 'stable'
+          }
         });
       }
       
@@ -136,7 +406,15 @@ export default function HealthEvaluationScreen() {
             'Continue your bedtime routine',
             'Keep your sleep environment optimized'
           ],
-          icon: <Moon size={28} color={colors.success} />
+          icon: <Moon size={28} color={colors.success} />,
+          specificRecommendations: [],
+          actionableSteps: [],
+          keyMetrics: {
+            current: avgSleepScore,
+            target: 85,
+            unit: '%',
+            trend: 'stable'
+          }
         });
       } else if (avgSleepHours < 7 || avgSleepScore < 70) {
         generatedInsights.push({
@@ -151,7 +429,15 @@ export default function HealthEvaluationScreen() {
             'Keep bedroom cool (65-68°F) and dark',
             'Avoid caffeine after 2 PM'
           ],
-          icon: <Moon size={28} color={colors.warning} />
+          icon: <Moon size={28} color={colors.warning} />,
+          specificRecommendations: [],
+          actionableSteps: [],
+          keyMetrics: {
+            current: avgSleepScore,
+            target: 75,
+            unit: '%',
+            trend: 'declining'
+          }
         });
       }
       
@@ -168,7 +454,15 @@ export default function HealthEvaluationScreen() {
             'Include more low-intensity activities',
             'Monitor recovery scores daily'
           ],
-          icon: <Zap size={28} color={colors.warning} />
+          icon: <Zap size={28} color={colors.warning} />,
+          specificRecommendations: [],
+          actionableSteps: [],
+          keyMetrics: {
+            current: avgStrain,
+            target: 15,
+            unit: '',
+            trend: 'stable'
+          }
         });
       } else if (avgStrain < 8) {
         generatedInsights.push({
@@ -182,7 +476,15 @@ export default function HealthEvaluationScreen() {
             'Include both cardio and strength training',
             'Start with low-intensity activities'
           ],
-          icon: <TrendingUp size={28} color={colors.primary} />
+          icon: <TrendingUp size={28} color={colors.primary} />,
+          specificRecommendations: [],
+          actionableSteps: [],
+          keyMetrics: {
+            current: avgStrain,
+            target: 10,
+            unit: '',
+            trend: 'stable'
+          }
         });
       } else {
         generatedInsights.push({
@@ -195,7 +497,15 @@ export default function HealthEvaluationScreen() {
             'Vary intensity throughout the week',
             'Listen to your body and adjust as needed'
           ],
-          icon: <Sparkles size={28} color={colors.success} />
+          icon: <Sparkles size={28} color={colors.success} />,
+          specificRecommendations: [],
+          actionableSteps: [],
+          keyMetrics: {
+            current: avgStrain,
+            target: 12,
+            unit: '',
+            trend: 'stable'
+          }
         });
       }
       
@@ -219,7 +529,15 @@ export default function HealthEvaluationScreen() {
                 'Maintain consistent sleep schedule',
                 'Keep stress management techniques'
               ],
-              icon: <Heart size={28} color={colors.success} />
+              icon: <Heart size={28} color={colors.success} />,
+              specificRecommendations: [],
+              actionableSteps: [],
+              keyMetrics: {
+                current: avgHRV,
+                target: avgHRV + 5,
+                unit: 'ms',
+                trend: 'improving'
+              }
             });
           } else if (hrvTrend < -2) {
             generatedInsights.push({
@@ -233,7 +551,15 @@ export default function HealthEvaluationScreen() {
                 'Focus on relaxation techniques',
                 'Ensure adequate sleep quality'
               ],
-              icon: <Brain size={28} color={colors.warning} />
+              icon: <Brain size={28} color={colors.warning} />,
+              specificRecommendations: [],
+              actionableSteps: [],
+              keyMetrics: {
+                current: avgHRV,
+                target: avgHRV + 10,
+                unit: 'ms',
+                trend: 'declining'
+              }
             });
           }
         }
@@ -368,6 +694,35 @@ export default function HealthEvaluationScreen() {
           <Text style={styles.evaluationSummary}>{evaluation}</Text>
         </View>
 
+        {/* Immediate Actions */}
+        {insights.some(insight => insight.actionableSteps.length > 0) && (
+          <View style={styles.immediateActionsContainer}>
+            <View style={styles.sectionHeader}>
+              <Zap size={20} color={colors.danger} />
+              <Text style={styles.sectionTitle}>Immediate Actions</Text>
+            </View>
+            {insights.flatMap(insight => 
+              insight.actionableSteps.filter(step => step.category === 'immediate')
+            ).slice(0, 3).map((step, index) => (
+              <View key={index} style={styles.immediateActionItem}>
+                <View style={[styles.priorityDot, { 
+                  backgroundColor: step.priority === 'high' ? colors.danger : 
+                                 step.priority === 'medium' ? colors.warning : colors.success 
+                }]} />
+                <View style={styles.actionContent}>
+                  <Text style={styles.actionTitle}>{step.action}</Text>
+                  <Text style={styles.actionWhy}>{step.why}</Text>
+                  <Text style={styles.actionHow}>{step.how}</Text>
+                  <View style={styles.actionTiming}>
+                    <Text style={styles.actionWhen}>{step.when}</Text>
+                    <Text style={styles.actionDuration}>• {step.duration}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Insights Grid */}
         <View style={styles.insightsGrid}>
           {insights.map((insight, index) => (
@@ -385,11 +740,60 @@ export default function HealthEvaluationScreen() {
                 <View style={styles.insightItemContent}>
                   <Text style={styles.insightItemCategory}>{insight.category}</Text>
                   <Text style={styles.insightItemTitle}>{insight.title}</Text>
+                  <View style={styles.metricsRow}>
+                    <Text style={styles.currentMetric}>
+                      {insight.keyMetrics.current.toFixed(1)}{insight.keyMetrics.unit}
+                    </Text>
+                    <Text style={styles.targetMetric}>
+                      → {insight.keyMetrics.target.toFixed(1)}{insight.keyMetrics.unit}
+                    </Text>
+                    <View style={[styles.trendIndicator, {
+                      backgroundColor: insight.keyMetrics.trend === 'improving' ? colors.success :
+                                     insight.keyMetrics.trend === 'declining' ? colors.danger : colors.textSecondary
+                    }]} />
+                  </View>
                 </View>
               </View>
               <Text style={styles.insightItemDescription}>{insight.description}</Text>
               
-              {insight.recommendations.length > 0 && (
+              {/* Specific Recommendations */}
+              {insight.specificRecommendations.length > 0 && (
+                <View style={styles.specificRecommendationsContainer}>
+                  {insight.specificRecommendations.map((rec, recIndex) => (
+                    <View key={recIndex} style={styles.specificRecommendation}>
+                      <View style={styles.recommendationHeader}>
+                        <Text style={styles.recommendationTitle}>{rec.title}</Text>
+                        <View style={[styles.difficultyBadge, {
+                          backgroundColor: rec.difficulty === 'easy' ? 'rgba(34, 197, 94, 0.2)' :
+                                         rec.difficulty === 'moderate' ? 'rgba(251, 191, 36, 0.2)' :
+                                         'rgba(239, 68, 68, 0.2)'
+                        }]}>
+                          <Text style={[styles.difficultyText, {
+                            color: rec.difficulty === 'easy' ? colors.success :
+                                   rec.difficulty === 'moderate' ? colors.warning : colors.danger
+                          }]}>{rec.difficulty}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.recommendationDescription}>{rec.description}</Text>
+                      
+                      {/* Steps */}
+                      {rec.steps.slice(0, 2).map((step, stepIndex) => (
+                        <View key={stepIndex} style={styles.stepItem}>
+                          <Text style={styles.stepAction}>• {step.action}</Text>
+                          <Text style={styles.stepHow}>{step.how}</Text>
+                        </View>
+                      ))}
+                      
+                      <View style={styles.outcomeContainer}>
+                        <Text style={styles.expectedOutcome}>Expected: {rec.expectedOutcome}</Text>
+                        <Text style={styles.timeToResults}>Results in: {rec.timeToSeeResults}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {insight.recommendations.length > 0 && insight.specificRecommendations.length === 0 && (
                 <View style={styles.recommendationsContainer}>
                   <Text style={styles.recommendationsHeader}>Key Actions:</Text>
                   {insight.recommendations.slice(0, 2).map((rec, recIndex) => (
@@ -691,5 +1095,163 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 16,
     textAlign: 'center',
+  },
+  // Immediate Actions
+  immediateActionsContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  immediateActionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingLeft: 4,
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+    marginRight: 12,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  actionWhy: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 6,
+    fontStyle: 'italic',
+  },
+  actionHow: {
+    fontSize: 13,
+    color: colors.text,
+    marginBottom: 6,
+  },
+  actionTiming: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionWhen: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  actionDuration: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
+  },
+  // Metrics Row
+  metricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  currentMetric: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  targetMetric: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  trendIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginLeft: 8,
+  },
+  // Specific Recommendations
+  specificRecommendationsContainer: {
+    marginTop: 12,
+  },
+  specificRecommendation: {
+    backgroundColor: colors.ios.tertiaryBackground,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  recommendationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recommendationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    flex: 1,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  difficultyText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  recommendationDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  stepItem: {
+    marginBottom: 6,
+  },
+  stepAction: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  stepHow: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginLeft: 8,
+    lineHeight: 14,
+  },
+  outcomeContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.ios.separator,
+  },
+  expectedOutcome: {
+    fontSize: 11,
+    color: colors.success,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  timeToResults: {
+    fontSize: 10,
+    color: colors.textSecondary,
   },
 });
