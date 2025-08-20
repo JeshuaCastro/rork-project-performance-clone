@@ -6,12 +6,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   Modal,
   TouchableOpacity,
-  Dimensions,
-  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
@@ -31,7 +29,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 
-const { height: screenHeight } = Dimensions.get('window');
+
 
 interface HealthInsight {
   category: string;
@@ -44,6 +42,7 @@ interface HealthInsight {
 
 export default function HealthEvaluationScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data, isConnectedToWhoop, syncWhoopData } = useWhoopStore();
   const [isLoading, setIsLoading] = useState(false);
   const [evaluation, setEvaluation] = useState<string>('');
@@ -432,10 +431,11 @@ export default function HealthEvaluationScreen() {
         transparent={true}
         visible={modalVisible}
         onRequestClose={closeModal}
+        statusBarTranslucent={true}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingTop: insets.top }]}>
           <StatusBar style="light" />
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { paddingBottom: insets.bottom }]}>
             <View style={styles.modalContent}>
               {/* Close Button */}
               <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
@@ -450,7 +450,7 @@ export default function HealthEvaluationScreen() {
                 {renderContent()}
               </ScrollView>
             </View>
-          </SafeAreaView>
+          </View>
         </View>
       </Modal>
     </>
@@ -460,7 +460,7 @@ export default function HealthEvaluationScreen() {
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -469,14 +469,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: Platform.OS === 'ios' ? 60 : 40,
+    paddingVertical: 20,
   },
   modalContent: {
     backgroundColor: colors.card,
     borderRadius: 24,
     width: '100%',
     maxWidth: 420,
-    maxHeight: screenHeight * 0.85,
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
