@@ -980,20 +980,21 @@ const healthStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 40,
   },
   modalContainer: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '90%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
   },
   modalContent: {
     backgroundColor: colors.card,
     borderRadius: 24,
     width: '100%',
-    maxWidth: 420,
-    maxHeight: '90%',
+    height: '100%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1003,6 +1004,7 @@ const healthStyles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 20,
     overflow: 'hidden',
+    position: 'relative',
   },
   closeButton: {
     position: 'absolute',
@@ -1070,6 +1072,8 @@ const healthStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: 8,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   insightsGrid: {
     gap: 16,
@@ -1095,6 +1099,8 @@ const healthStyles = StyleSheet.create({
   },
   insightItemContent: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   insightItemCategory: {
     fontSize: 12,
@@ -1109,6 +1115,7 @@ const healthStyles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   insightItemDescription: {
     fontSize: 14,
@@ -1116,6 +1123,7 @@ const healthStyles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   recommendationsContainer: {
     backgroundColor: colors.ios?.tertiaryBackground || '#1A1A1A',
@@ -1134,6 +1142,7 @@ const healthStyles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 4,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   moreRecommendations: {
     fontSize: 12,
@@ -1191,6 +1200,7 @@ const healthStyles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 16,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   emptyStateButton: {
     backgroundColor: colors.primary,
