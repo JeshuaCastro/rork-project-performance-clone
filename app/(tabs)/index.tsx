@@ -52,8 +52,7 @@ import {
   Calendar,
   BarChart3,
   Minus,
-  Moon,
-  Brain
+  Moon
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -1091,48 +1090,6 @@ export default function DashboardScreen() {
 
           
 
-          
-          {/* Health Evaluation Button */}
-          <View style={styles.healthEvaluationSection}>
-            <Text style={styles.sectionTitle}>AI Health Coach</Text>
-            <TouchableOpacity 
-              style={styles.healthEvaluationCard}
-              onPress={() => router.push('/health-evaluation')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.healthEvaluationHeader}>
-                <View style={styles.healthEvaluationIconContainer}>
-                  <Brain size={28} color={colors.primary} />
-                </View>
-                <View style={styles.healthEvaluationContent}>
-                  <Text style={styles.healthEvaluationTitle}>Complete Health Analysis</Text>
-                  <Text style={styles.healthEvaluationDescription}>
-                    Get personalized insights and actionable recommendations based on your WHOOP data
-                  </Text>
-                </View>
-                <ArrowRight size={20} color={colors.textSecondary} />
-              </View>
-              
-              <View style={styles.healthEvaluationFeatures}>
-                <View style={styles.featureItem}>
-                  <Activity size={16} color={colors.success} />
-                  <Text style={styles.featureText}>Recovery Analysis</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Target size={16} color={colors.warning} />
-                  <Text style={styles.featureText}>Training Recommendations</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Moon size={16} color={colors.info} />
-                  <Text style={styles.featureText}>Sleep Optimization</Text>
-                </View>
-              </View>
-              
-              <View style={styles.healthEvaluationCTA}>
-                <Text style={styles.healthEvaluationCTAText}>Get Your Health Evaluation</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
           
           {/* Smart Insights Panel */}
           <SmartInsightsPanel />
@@ -2691,81 +2648,5 @@ const styles = StyleSheet.create({
     ...iosTypography.subhead,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  // Health Evaluation Section
-  healthEvaluationSection: {
-    marginBottom: iosSpacing.xxl,
-  },
-  healthEvaluationCard: {
-    backgroundColor: colors.ios.secondaryGroupedBackground,
-    borderRadius: 16,
-    padding: iosMargins.cardPadding,
-    ...iosCardShadow,
-    borderWidth: 1,
-    borderColor: 'rgba(93, 95, 239, 0.2)',
-  },
-  healthEvaluationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  healthEvaluationIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(93, 95, 239, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  healthEvaluationContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  healthEvaluationTitle: {
-    ...iosTypography.headline,
-    color: colors.text,
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  healthEvaluationDescription: {
-    ...iosTypography.subhead,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  healthEvaluationFeatures: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  featureText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 6,
-    fontWeight: '500',
-  },
-  healthEvaluationCTA: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  healthEvaluationCTAText: {
-    ...iosTypography.headline,
-    color: colors.text,
-    fontWeight: '600',
-    letterSpacing: -0.1,
   },
 });
