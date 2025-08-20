@@ -360,7 +360,9 @@ export default function NutritionScreen() {
       };
 
       // Create a structured prompt that emphasizes user inputs
-      const prompt = `You are a professional nutritionist creating a personalized meal plan. You MUST incorporate ALL of the following user requirements:
+      const systemPrompt = `You are a professional nutritionist creating personalized meal plans. You MUST incorporate ALL user requirements and preferences provided.`;
+      
+      const userPrompt = `Create a personalized meal plan based on these requirements:
 
 **USER PROFILE:**
 - ${userProfile.age} year old ${userProfile.gender}
@@ -384,19 +386,41 @@ ${userPreferences.cuisines.length > 0 ? `- PREFERRED CUISINES: ${userPreferences
 
 **INSTRUCTIONS:**
 1. Create a detailed ${userPreferences.duration} meal plan
-2. STRICTLY adhere to all dietary restrictions and allergies
-3. Include foods the user specifically mentioned liking
-4. Avoid foods the user dislikes
+2. STRICTLY adhere to all dietary restrictions and allergies listed above
+3. Include foods the user specifically mentioned liking in their preferences
+4. Completely avoid foods the user dislikes
 5. Respect the cooking time and budget constraints
 6. Match the preferred meal prep style
 7. Align with their primary nutrition goal
-8. Provide specific portion sizes and macro breakdowns
+8. Provide specific portion sizes and macro breakdowns for each meal
 9. Include shopping lists if creating multi-day plans
 10. Suggest meal prep tips based on their preferences
 
-Generate a comprehensive meal plan that demonstrates you've considered every user input above.`;
+Generate a comprehensive meal plan that demonstrates you've carefully considered every user input above. Make sure the plan is practical and follows all their restrictions and preferences.`;
       
-      const plan = await generateMealSuggestion(prompt);
+      // Call the AI API directly instead of using the simplified generateMealSuggestion function
+      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ]
+        }),
+      });
+      
+      const result = await response.json();
+      const plan = result.completion || "I'm sorry, I couldn't generate a meal plan at the moment. Please try again later.";
+      
       setMealPlan(plan);
       setMealPlannerVisible(true);
       setShowQuestionnaire(false);
