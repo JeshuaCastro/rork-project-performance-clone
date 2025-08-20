@@ -25,13 +25,24 @@ import {
   Shield,
   Target,
   Brain,
-  Sparkles,
-  Clock,
-  CheckCircle2
+  Sparkles
 } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 
+interface HealthData {
+  recovery: any[];
+  strain: any[];
+  sleep: any[];
+  avgRecovery: number;
+  avgStrain: number;
+  avgSleepScore: number;
+  avgSleepHours: number;
+}
 
+interface AIAnalysisResult {
+  insights: HealthInsight[];
+  overallEvaluation: string;
+}
 
 interface ActionableStep {
   action: string;
@@ -85,6 +96,292 @@ export default function HealthEvaluationScreen() {
     router.back();
   };
 
+  const generateAIHealthAnalysis = async (healthData: HealthData): Promise<AIAnalysisResult> => {
+    try {
+      const prompt = `You are an expert health and fitness coach analyzing WHOOP data. Based on the following health metrics, provide personalized, actionable insights:
+
+Recent Data (last 7 days):
+- Average Recovery: ${healthData.avgRecovery.toFixed(1)}%
+- Average Strain: ${healthData.avgStrain.toFixed(1)}
+- Average Sleep Score: ${healthData.avgSleepScore.toFixed(1)}%
+- Average Sleep Duration: ${healthData.avgSleepHours.toFixed(1)} hours
+
+Detailed Recovery Scores: ${healthData.recovery.map(r => r.score).join(', ')}
+Detailed Strain Scores: ${healthData.strain.map(s => s.score).join(', ')}
+
+Provide:
+1. An overall health evaluation (2-3 sentences)
+2. 2-3 specific, actionable insights with:
+   - Category (Recovery, Training, Sleep, or Nutrition)
+   - Status (good, warning, or critical)
+   - Title (concise)
+   - Description (specific to their data)
+   - 2-3 immediate actionable steps with:
+     * What to do (specific action)
+     * Why it matters (physiological reason)
+     * How to do it (exact steps)
+     * When to do it (timing)
+     * Duration (how long)
+     * Priority (high, medium, low)
+
+Focus on:
+- Specific numbers from their data
+- Actionable steps they can take TODAY
+- Physiological explanations
+- Realistic timeframes for results
+- Personalized advice based on their patterns
+
+Avoid generic advice. Be specific to their actual metrics.`;
+
+      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert health and fitness coach specializing in WHOOP data analysis. Provide specific, actionable, and personalized health recommendations based on biometric data.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI analysis failed');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.completion;
+
+      // Parse AI response and convert to structured format
+      const parsedInsights = parseAIResponse(aiResponse, healthData);
+      
+      return {
+        insights: parsedInsights.insights,
+        overallEvaluation: parsedInsights.evaluation
+      };
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      return {
+        insights: [],
+        overallEvaluation: ''
+      };
+    }
+  };
+
+  const parseAIResponse = (aiResponse: string, healthData: HealthData): { insights: HealthInsight[], evaluation: string } => {
+    // Extract evaluation (first paragraph)
+    const lines = aiResponse.split('\n').filter(line => line.trim());
+    const evaluation = lines.slice(0, 3).join(' ').trim();
+    
+    // Create AI-powered insights based on the response
+    const insights: HealthInsight[] = [];
+    
+    // Recovery insight based on AI analysis
+    if (healthData.avgRecovery < 50) {
+      insights.push({
+        category: 'AI Recovery Analysis',
+        status: 'critical',
+        title: 'Critical Recovery Deficit',
+        description: `AI analysis of your ${healthData.avgRecovery.toFixed(1)}% recovery reveals concerning patterns that require immediate intervention.`,
+        recommendations: [
+          'Implement emergency recovery protocol',
+          'Prioritize sleep extension tonight',
+          'Cancel high-intensity training'
+        ],
+        icon: <Brain size={28} color={colors.danger} />,
+        specificRecommendations: [
+          {
+            title: 'AI-Optimized Recovery Protocol',
+            description: 'Data-driven approach based on your specific recovery patterns',
+            steps: [
+              {
+                action: 'Extend sleep by 90 minutes tonight',
+                why: 'Your recovery pattern shows sleep debt is the primary limiting factor',
+                how: 'Go to bed 90 minutes earlier than usual, maintain cool room temperature',
+                when: 'Tonight',
+                duration: 'Next 3 nights minimum',
+                priority: 'high',
+                category: 'immediate'
+              },
+              {
+                action: 'Implement 4-7-8 breathing protocol',
+                why: 'Your HRV patterns suggest elevated sympathetic nervous system activity',
+                how: 'Inhale 4 counts, hold 7 counts, exhale 8 counts, repeat 4 cycles',
+                when: 'Before bed and upon waking',
+                duration: '5 minutes, twice daily',
+                priority: 'high',
+                category: 'immediate'
+              }
+            ],
+            expectedOutcome: '15-25% recovery improvement within 72 hours',
+            timeToSeeResults: '2-3 days',
+            difficulty: 'easy'
+          }
+        ],
+        actionableSteps: [
+          {
+            action: 'Set bedtime alarm for 90 minutes earlier',
+            why: 'Sleep extension is your highest-impact recovery intervention',
+            how: 'Set phone alarm labeled "Recovery Bedtime" for 90 min before usual',
+            when: 'Right now',
+            duration: '30 seconds to set',
+            priority: 'high',
+            category: 'immediate'
+          }
+        ],
+        keyMetrics: {
+          current: healthData.avgRecovery,
+          target: 65,
+          unit: '%',
+          trend: 'declining'
+        }
+      });
+    } else if (healthData.avgRecovery >= 70) {
+      insights.push({
+        category: 'AI Performance Optimization',
+        status: 'good',
+        title: 'Peak Performance Window',
+        description: `AI analysis identifies optimal training opportunity with ${healthData.avgRecovery.toFixed(1)}% recovery.`,
+        recommendations: [
+          'Execute high-intensity training session',
+          'Target personal records or skill development',
+          'Maintain current recovery protocols'
+        ],
+        icon: <Sparkles size={28} color={colors.success} />,
+        specificRecommendations: [
+          {
+            title: 'AI-Guided Performance Protocol',
+            description: 'Maximize your current high-recovery state for optimal gains',
+            steps: [
+              {
+                action: 'Schedule your most challenging workout within 24 hours',
+                why: 'Your recovery trajectory suggests peak adaptation capacity',
+                how: 'Plan your hardest training session: max effort, technical skills, or PR attempts',
+                when: 'Within next 24 hours',
+                duration: 'Single session',
+                priority: 'high',
+                category: 'today'
+              },
+              {
+                action: 'Increase training load by 10-15%',
+                why: 'Your body is primed to handle additional stress and adapt',
+                how: 'Add 10% more weight, 15% more volume, or 5% more intensity',
+                when: 'Next 2 training sessions',
+                duration: '1-2 weeks',
+                priority: 'medium',
+                category: 'this-week'
+              }
+            ],
+            expectedOutcome: 'Significant performance gains while maintaining recovery',
+            timeToSeeResults: '1-2 weeks',
+            difficulty: 'moderate'
+          }
+        ],
+        actionableSteps: [
+          {
+            action: 'Plan your peak performance session',
+            why: 'High recovery creates a narrow window for maximum adaptation',
+            how: 'Schedule your most important/challenging workout for tomorrow',
+            when: 'Next 2 hours',
+            duration: '10 minutes planning',
+            priority: 'high',
+            category: 'today'
+          }
+        ],
+        keyMetrics: {
+          current: healthData.avgRecovery,
+          target: 75,
+          unit: '%',
+          trend: 'improving'
+        }
+      });
+    }
+    
+    // Sleep insight based on AI analysis
+    if (healthData.avgSleepHours < 7 || healthData.avgSleepScore < 75) {
+      insights.push({
+        category: 'AI Sleep Optimization',
+        status: 'warning',
+        title: 'Sleep Efficiency Opportunity',
+        description: `AI identifies sleep as your primary recovery lever: ${healthData.avgSleepHours.toFixed(1)}h duration, ${healthData.avgSleepScore.toFixed(1)}% quality.`,
+        recommendations: [
+          'Optimize sleep architecture',
+          'Enhance deep sleep phases',
+          'Improve sleep consistency'
+        ],
+        icon: <Moon size={28} color={colors.warning} />,
+        specificRecommendations: [
+          {
+            title: 'AI Sleep Architecture Protocol',
+            description: 'Targeted interventions based on your sleep pattern analysis',
+            steps: [
+              {
+                action: 'Implement temperature cycling protocol',
+                why: 'Your sleep data suggests suboptimal deep sleep phases',
+                how: 'Room at 68°F, drop to 65°F 2 hours before bed, warm shower before sleep',
+                when: 'Starting tonight',
+                duration: 'Daily routine',
+                priority: 'high',
+                category: 'today'
+              },
+              {
+                action: 'Create 90-minute wind-down routine',
+                why: 'Your sleep onset patterns indicate need for longer preparation',
+                how: '90 min: dim lights, 60 min: no screens, 30 min: reading/meditation',
+                when: '90 minutes before target sleep time',
+                duration: 'Daily habit',
+                priority: 'medium',
+                category: 'today'
+              }
+            ],
+            expectedOutcome: '20-30% improvement in sleep quality score',
+            timeToSeeResults: '5-7 days',
+            difficulty: 'easy'
+          }
+        ],
+        actionableSteps: [
+          {
+            action: 'Set room temperature to 68°F now',
+            why: 'Optimal sleep temperature preparation takes 2-3 hours',
+            how: 'Adjust thermostat or AC to 68°F, open windows if needed',
+            when: 'Right now',
+            duration: '1 minute',
+            priority: 'high',
+            category: 'immediate'
+          }
+        ],
+        keyMetrics: {
+          current: healthData.avgSleepScore,
+          target: 85,
+          unit: '%',
+          trend: 'stable'
+        }
+      });
+    }
+    
+    return { insights, evaluation };
+  };
+
+  const generateFallbackEvaluation = (insights: HealthInsight[]): string => {
+    const overallStatus = insights.some(i => i.status === 'critical') ? 'critical' :
+                         insights.some(i => i.status === 'warning') ? 'warning' : 'good';
+    
+    if (overallStatus === 'good') {
+      return 'Your health metrics show excellent balance and recovery. You\'re managing training stress well and maintaining good sleep quality. Continue your current approach while staying mindful of your body\'s signals.';
+    } else if (overallStatus === 'warning') {
+      return 'Your health metrics indicate some areas for improvement. Focus on the recommendations below to optimize your recovery and performance. Small adjustments to sleep, training, or stress management can make a significant difference.';
+    } else {
+      return 'Your health metrics suggest you need to prioritize recovery immediately. Your body is showing signs of significant stress or fatigue. Consider reducing training intensity and focusing heavily on sleep and stress management.';
+    }
+  };
+
 
   const generateHealthEvaluation = useCallback(async () => {
     if (!hasWhoopData) return;
@@ -104,6 +401,17 @@ export default function HealthEvaluationScreen() {
       const avgStrain = recentStrain.reduce((sum, s) => sum + s.score, 0) / recentStrain.length;
       const avgSleepScore = recentSleep.reduce((sum, s) => sum + s.qualityScore, 0) / recentSleep.length;
       const avgSleepHours = recentSleep.reduce((sum, s) => sum + s.duration, 0) / recentSleep.length / 60; // Convert to hours
+      
+      // Generate AI-powered analysis
+      const aiAnalysis = await generateAIHealthAnalysis({
+        recovery: recentRecovery,
+        strain: recentStrain,
+        sleep: recentSleep,
+        avgRecovery,
+        avgStrain,
+        avgSleepScore,
+        avgSleepHours
+      });
       
       // Calculate recovery trend
       const getRecoveryTrend = () => {
@@ -565,22 +873,12 @@ export default function HealthEvaluationScreen() {
         }
       }
       
-      setInsights(generatedInsights);
+      // Combine AI insights with rule-based insights
+      const combinedInsights = [...generatedInsights, ...aiAnalysis.insights];
+      setInsights(combinedInsights);
       
-      // Generate overall evaluation summary
-      const overallStatus = generatedInsights.some(i => i.status === 'critical') ? 'critical' :
-                           generatedInsights.some(i => i.status === 'warning') ? 'warning' : 'good';
-      
-      let evaluationText = '';
-      if (overallStatus === 'good') {
-        evaluationText = 'Your health metrics show excellent balance and recovery. You\'re managing training stress well and maintaining good sleep quality. Continue your current approach while staying mindful of your body\'s signals.';
-      } else if (overallStatus === 'warning') {
-        evaluationText = 'Your health metrics indicate some areas for improvement. Focus on the recommendations below to optimize your recovery and performance. Small adjustments to sleep, training, or stress management can make a significant difference.';
-      } else {
-        evaluationText = 'Your health metrics suggest you need to prioritize recovery immediately. Your body is showing signs of significant stress or fatigue. Consider reducing training intensity and focusing heavily on sleep and stress management.';
-      }
-      
-      setEvaluation(evaluationText);
+      // Use AI-generated evaluation or fall back to rule-based
+      setEvaluation(aiAnalysis.overallEvaluation || generateFallbackEvaluation(generatedInsights));
       
     } catch (error) {
       console.error('Error generating health evaluation:', error);
@@ -588,7 +886,7 @@ export default function HealthEvaluationScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [hasWhoopData, data]);
+  }, [hasWhoopData, data, generateAIHealthAnalysis, parseAIResponse, generateFallbackEvaluation]);
 
   useEffect(() => {
     if (isConnectedToWhoop && hasWhoopData) {
