@@ -48,7 +48,7 @@ export default function HealthEvaluationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [evaluation, setEvaluation] = useState<string>('');
   const [insights, setInsights] = useState<HealthInsight[]>([]);
-  const [modalVisible, setModalVisible] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const hasWhoopData = data && data.recovery.length > 0 && data.strain.length > 0;
 
@@ -266,6 +266,7 @@ export default function HealthEvaluationScreen() {
   }, [hasWhoopData, data]);
 
   useEffect(() => {
+    setModalVisible(true);
     if (isConnectedToWhoop && hasWhoopData) {
       generateHealthEvaluation();
     }
