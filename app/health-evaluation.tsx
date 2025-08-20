@@ -9,7 +9,7 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
@@ -82,12 +82,12 @@ interface HealthInsight {
 
 export default function HealthEvaluationScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+
   const { data, isConnectedToWhoop, syncWhoopData } = useWhoopStore();
   const [isLoading, setIsLoading] = useState(false);
   const [evaluation, setEvaluation] = useState<string>('');
   const [insights, setInsights] = useState<HealthInsight[]>([]);
-  const [modalVisible, setModalVisible] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const hasWhoopData = data && data.recovery.length > 0 && data.strain.length > 0;
 
@@ -895,7 +895,11 @@ Avoid generic advice. Be specific to their actual metrics.`;
   }, [isConnectedToWhoop, hasWhoopData, generateHealthEvaluation]);
 
   useEffect(() => {
-    setModalVisible(true);
+    // Small delay to ensure proper mounting
+    const timer = setTimeout(() => {
+      setModalVisible(true);
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -1135,9 +1139,9 @@ Avoid generic advice. Be specific to their actual metrics.`;
         onRequestClose={closeModal}
         statusBarTranslucent={true}
       >
-        <View style={[styles.modalOverlay, { paddingTop: insets.top }]}>
+        <View style={styles.modalOverlay}>
           <StatusBar style="light" />
-          <View style={[styles.modalContainer, { paddingBottom: insets.bottom }]}>
+          <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               {/* Close Button */}
               <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
@@ -1162,27 +1166,25 @@ Avoid generic advice. Be specific to their actual metrics.`;
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   modalContent: {
     backgroundColor: colors.card,
-    borderRadius: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     width: '100%',
-    maxWidth: 420,
-    maxHeight: '90%',
+    height: '92%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: -4,
     },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -1207,6 +1209,7 @@ const styles = StyleSheet.create({
   modalScrollContent: {
     padding: 24,
     paddingTop: 60,
+    paddingBottom: 40,
   },
   modalHeader: {
     alignItems: 'center',
