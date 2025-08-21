@@ -666,13 +666,14 @@ export default function ProgramsScreen() {
         </View>
         {/* Dashboard Visual Overhaul */}
         <View style={styles.dashboardGrid} testID="dashboard-visuals">
-          <View style={styles.gridRow}>
-            <View style={styles.gridCard}>
-              <Text style={styles.gridTitle}>Recovery</Text>
-              <View style={styles.recoveryContent}>
+          {/* Recovery Card - Full Width */}
+          <View style={styles.metricsCard}>
+            <Text style={styles.metricsTitle}>Recovery</Text>
+            <View style={styles.metricsContent}>
+              <View style={styles.ringSection}>
                 <ProgressRing
-                  size={80}
-                  strokeWidth={8}
+                  size={100}
+                  strokeWidth={10}
                   progress={(() => {
                     const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
                     return Math.max(0, Math.min(100, Math.round(score)));
@@ -680,30 +681,40 @@ export default function ProgramsScreen() {
                   label={'Today'}
                   sublabel={(() => {
                     const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
-                    return typeof hrv === 'number' ? `${hrv}ms` : undefined;
+                    return typeof hrv === 'number' ? `${hrv}ms HRV` : undefined;
                   })()}
                   testID={'recovery-ring'}
                 />
-                <View style={styles.recoveryStats}>
-                  <Text style={styles.metricLine}>Yesterday: {(() => { const v = useWhoopStore.getState().data.recovery[1]?.score; return typeof v === 'number' ? Math.round(v) + '%' : '-'; })()}</Text>
-                  <Text style={styles.metricLine}>7d Avg: {(() => {
+              </View>
+              <View style={styles.metricsStats}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Yesterday</Text>
+                  <Text style={styles.statValue}>{(() => { const v = useWhoopStore.getState().data.recovery[1]?.score; return typeof v === 'number' ? Math.round(v) + '%' : '-'; })()}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>7-Day Average</Text>
+                  <Text style={styles.statValue}>{(() => {
                     const arr = useWhoopStore.getState().data.recovery.slice(0,7);
                     if (!arr.length) return '-';
                     const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
                     return Math.round(avg) + '%';
                   })()}</Text>
-                  <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="recovery-trends-btn">
-                    <Text style={styles.smallActionText}>View Trends</Text>
-                  </TouchableOpacity>
                 </View>
+                <TouchableOpacity style={styles.metricsActionBtn} onPress={() => router.push('/trends')} testID="recovery-trends-btn">
+                  <Text style={styles.metricsActionText}>View Trends</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.gridCard}>
-              <Text style={styles.gridTitle}>Strain</Text>
-              <View style={styles.inlineRingRow}>
+          </View>
+
+          {/* Strain Card - Full Width */}
+          <View style={styles.metricsCard}>
+            <Text style={styles.metricsTitle}>Strain</Text>
+            <View style={styles.metricsContent}>
+              <View style={styles.ringSection}>
                 <ProgressRing
-                  size={80}
-                  strokeWidth={8}
+                  size={100}
+                  strokeWidth={10}
                   progress={(() => {
                     const strain = (useWhoopStore.getState().data.strain[0]?.score ?? 0) * 10;
                     return Math.max(0, Math.min(100, Math.round(strain)));
@@ -711,40 +722,48 @@ export default function ProgramsScreen() {
                   label={'Today'}
                   sublabel={(() => {
                     const s = useWhoopStore.getState().data.strain[0]?.score;
-                    return typeof s === 'number' ? `${s.toFixed(1)}` : undefined;
+                    return typeof s === 'number' ? `${s.toFixed(1)} Strain` : undefined;
                   })()}
                   testID={'strain-ring'}
                 />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.metricLine}>Yesterday: {(() => { const v = useWhoopStore.getState().data.strain[1]?.score; return typeof v === 'number' ? v.toFixed(1) : '-'; })()}</Text>
-                  <Text style={styles.metricLine}>7d Avg: {(() => {
+              </View>
+              <View style={styles.metricsStats}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Yesterday</Text>
+                  <Text style={styles.statValue}>{(() => { const v = useWhoopStore.getState().data.strain[1]?.score; return typeof v === 'number' ? v.toFixed(1) : '-'; })()}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>7-Day Average</Text>
+                  <Text style={styles.statValue}>{(() => {
                     const arr = useWhoopStore.getState().data.strain.slice(0,7);
                     if (!arr.length) return '-';
                     const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
                     return avg.toFixed(1);
                   })()}</Text>
-                  <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="strain-trends-btn">
-                    <Text style={styles.smallActionText}>View Trends</Text>
-                  </TouchableOpacity>
                 </View>
+                <TouchableOpacity style={styles.metricsActionBtn} onPress={() => router.push('/trends')} testID="strain-trends-btn">
+                  <Text style={styles.metricsActionText}>View Trends</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
 
-          <View style={styles.gridRow}>
-            <View style={styles.gridCardWide}>
-              <Text style={styles.gridTitle}>Quick Actions</Text>
-              <View style={styles.quickActionsRow}>
-                <TouchableOpacity style={styles.quickAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)} testID="qa-program">
-                  <Text style={styles.quickActionText}>Open Program</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/coach')} testID="qa-coach">
-                  <Text style={styles.quickActionText}>Ask Coach</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/nutrition')} testID="qa-nutrition">
-                  <Text style={styles.quickActionText}>Log Meal</Text>
-                </TouchableOpacity>
-              </View>
+          {/* Quick Actions Card - Full Width */}
+          <View style={styles.quickActionsCard}>
+            <Text style={styles.metricsTitle}>Quick Actions</Text>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)} testID="qa-program">
+                <Text style={styles.quickActionLargeText}>Open Program</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push('/coach')} testID="qa-coach">
+                <Text style={styles.quickActionLargeText}>Ask Coach</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push('/nutrition')} testID="qa-nutrition">
+                <Text style={styles.quickActionLargeText}>Log Meal</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.milestonesSection}>
+              <Text style={styles.milestonesLabel}>Milestones</Text>
               <View style={styles.milestonesRow}>
                 {['Week 1 Complete','50% Journey','Goal Day'].map((m, idx) => (
                   <View key={idx} style={styles.milestonePill} testID={`milestone-${idx}`}>
@@ -1643,74 +1662,120 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 0,
   },
-  gridRow: {
-    flexDirection: 'row',
+  // New metrics card styles for full-width recovery and strain
+  metricsCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    padding: 24,
     marginBottom: 20,
-    marginHorizontal: -8,
-  },
-  gridCard: {
-    flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 8,
-    minHeight: 160,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  gridCardWide: {
+  metricsTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+    letterSpacing: 0.3,
+  },
+  metricsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ringSection: {
+    marginRight: 24,
+  },
+  metricsStats: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 8,
-    minHeight: 180,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  gridTitle: {
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statLabel: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  statValue: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 16,
-    letterSpacing: 0.3,
   },
-  inlineRingRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-  },
-  metricLine: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginBottom: 8,
-    fontWeight: '500',
-    lineHeight: 18,
-  },
-  smallActionBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  metricsActionBtn: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     backgroundColor: 'rgba(93, 95, 239, 0.15)',
     alignSelf: 'flex-start',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  smallActionText: {
+  metricsActionText: {
     color: colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
+  },
+  // Quick actions card styles
+  quickActionsCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    marginHorizontal: -8,
+    marginBottom: 24,
+  },
+  quickActionLarge: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginHorizontal: 8,
+    minHeight: 60,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickActionLargeText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+  milestonesSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 20,
+  },
+  milestonesLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    letterSpacing: 0.2,
   },
   milestonesRow: {
     flexDirection: 'row',
@@ -1719,9 +1784,9 @@ const styles = StyleSheet.create({
   },
   milestonePill: {
     backgroundColor: 'rgba(93, 95, 239, 0.12)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     marginHorizontal: 4,
     marginBottom: 8,
     borderWidth: 1,
@@ -1730,32 +1795,6 @@ const styles = StyleSheet.create({
   milestoneText: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    marginHorizontal: -6,
-    marginBottom: 16,
-  },
-  quickAction: {
-    flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginHorizontal: 6,
-    minHeight: 48,
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickActionText: {
-    color: colors.text,
-    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
@@ -2419,15 +2458,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
   },
-  // Recovery section styles
-  recoveryContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-  },
-  recoveryStats: {
-    flex: 1,
-    marginLeft: 12,
-    paddingTop: 2,
-  },
+
 });
