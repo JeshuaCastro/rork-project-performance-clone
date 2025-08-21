@@ -4,7 +4,8 @@ import {
   MessageSquare, 
   Dumbbell, 
   Apple,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  TrendingUp
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
@@ -115,6 +116,19 @@ export default function TabLayout() {
             title: 'Programs',
             tabBarIcon: ({ color, focused }) => (
               <Dumbbell 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="progress"
+          options={{
+            title: 'Progress',
+            tabBarIcon: ({ color, focused }) => (
+              <TrendingUp 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
