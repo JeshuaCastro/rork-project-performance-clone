@@ -68,14 +68,6 @@ export const PROGRAM_METRICS: MetricDefinition[] = [
     direction: 'increase',
   },
   {
-    key: 'bodyweight_skills',
-    label: 'Bodyweight Skills',
-    unit: 'reps',
-    description: 'Number of advanced bodyweight movement reps',
-    goalTypes: ['strength'],
-    direction: 'increase',
-  },
-  {
     key: 'weekly_training_adherence',
     label: 'Plan Adherence',
     unit: '%',
