@@ -676,27 +676,81 @@ export default function ProgramsScreen() {
             </View>
             <Text style={styles.focusRecommendation}>
               {(() => {
-                const recovery = useWhoopStore.getState().data.recovery[0]?.score ?? 0;
                 const program = activePrograms[0];
                 if (!program) return "No active program - Start a program to see today's workout";
                 
-                // Get workout type based on program and recovery
-                let workoutType = "Strength Training";
-                if (program.type === 'marathon' || program.type === 'half-marathon') {
-                  workoutType = recovery > 70 ? "Interval Training" : recovery > 40 ? "Tempo Run" : "Easy Recovery Run";
-                } else if (program.type === 'cycling') {
-                  workoutType = recovery > 70 ? "High Intensity Intervals" : recovery > 40 ? "Sweet Spot Training" : "Zone 2 Endurance";
-                } else if (program.type === 'powerlifting') {
-                  workoutType = recovery > 70 ? "Heavy Compound Lifts" : recovery > 40 ? "Accessory Work" : "Light Technique Work";
-                } else if (program.type === 'hypertrophy') {
-                  workoutType = recovery > 70 ? "High Volume Training" : recovery > 40 ? "Moderate Volume" : "Light Pump Work";
-                }
+                // Get today's actual workout from the program
+                const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
                 
-                return workoutType;
+                // Generate today's workout plan based on the program
+                const generateTodaysWorkout = () => {
+                  const recovery = useWhoopStore.getState().data.recovery[0]?.score ?? 0;
+                  
+                  // If we have an AI plan, use it to get today's workout
+                  if (program.aiPlan && program.aiPlan.phases && program.aiPlan.phases.length > 0) {
+                    // Calculate current week
+                    const startDate = new Date(program.startDate);
+                    const currentDate = new Date();
+                    const diffTime = Math.abs(currentDate.getTime() - startDate.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const currentWeek = Math.floor(diffDays / 7) + 1;
+                    
+                    // Find current phase
+                    let currentPhase = program.aiPlan.phases[0];
+                    let weekCounter = 0;
+                    
+                    for (const phase of program.aiPlan.phases) {
+                      const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+                      if (currentWeek > weekCounter && currentWeek <= weekCounter + phaseDuration) {
+                        currentPhase = phase;
+                        break;
+                      }
+                      weekCounter += phaseDuration;
+                    }
+                    
+                    // Find today's workout from the weekly structure
+                    if (currentPhase.weeklyStructure && Array.isArray(currentPhase.weeklyStructure)) {
+                      const todaysWorkouts = currentPhase.weeklyStructure.filter((workout: any) => workout.day === todayDay);
+                      if (todaysWorkouts.length > 0) {
+                        // Return the first (primary) workout for today
+                        const workout = todaysWorkouts[0];
+                        let description = workout.title;
+                        if (workout.adjustedForRecovery && recovery < 50) {
+                          description += " (Recovery Adjusted)";
+                        }
+                        return description;
+                      }
+                    }
+                  }
+                  
+                  // Fallback to generic workout type based on program and recovery
+                  if (program.type === 'marathon' || program.type === 'half-marathon') {
+                    return recovery > 70 ? "Interval Training" : recovery > 40 ? "Tempo Run" : "Easy Recovery Run";
+                  } else if (program.type === 'cycling') {
+                    return recovery > 70 ? "High Intensity Intervals" : recovery > 40 ? "Sweet Spot Training" : "Zone 2 Endurance";
+                  } else if (program.type === 'powerlifting') {
+                    return recovery > 70 ? "Heavy Compound Lifts" : recovery > 40 ? "Accessory Work" : "Light Technique Work";
+                  } else if (program.type === 'hypertrophy') {
+                    return recovery > 70 ? "High Volume Training" : recovery > 40 ? "Moderate Volume" : "Light Pump Work";
+                  } else {
+                    return "Training Session";
+                  }
+                };
+                
+                return generateTodaysWorkout();
               })()}
             </Text>
-            <TouchableOpacity style={styles.focusAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)}>
-              <Text style={styles.focusActionText}>Start Workout</Text>
+            <TouchableOpacity 
+              style={styles.focusAction} 
+              onPress={() => {
+                const program = activePrograms[0];
+                if (program) {
+                  // Navigate directly to the program detail page where they can see and start today's workout
+                  router.push(`/program-detail?id=${program.id}`);
+                }
+              }}
+            >
+              <Text style={styles.focusActionText}>View Today's Workout</Text>
               <ChevronRightIcon size={16} color={colors.text} />
             </TouchableOpacity>
           </View>
