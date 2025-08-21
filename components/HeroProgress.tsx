@@ -33,8 +33,8 @@ const HeroProgress = React.memo(function HeroProgress({
     <View style={styles.container} testID={testID ?? 'hero-progress'}>
       <View style={styles.left}>
         <ProgressRing
-          size={110}
-          strokeWidth={12}
+          size={120}
+          strokeWidth={14}
           progress={clamped}
           label="Progress"
           sublabel={milestoneLabel}
@@ -71,30 +71,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   left: {
-    marginRight: 16,
+    marginRight: 20,
   },
   right: {
     flex: 1,
   },
   title: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 12,
+    letterSpacing: 0.3,
   },
   milestoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   milestoneText: {
     color: colors.textSecondary,
-    marginLeft: 8,
-    fontSize: 13,
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: '500',
   },
   actions: {
     flexDirection: 'row',
@@ -104,26 +111,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    marginHorizontal: 8,
+    marginHorizontal: 10,
+    letterSpacing: 0.2,
   },
   secondaryBtn: {
-    marginLeft: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    marginLeft: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: '#2A2A2A',
   },
   secondaryText: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

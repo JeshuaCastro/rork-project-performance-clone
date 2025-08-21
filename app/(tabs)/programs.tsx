@@ -669,20 +669,34 @@ export default function ProgramsScreen() {
           <View style={styles.gridRow}>
             <View style={styles.gridCard}>
               <Text style={styles.gridTitle}>Recovery</Text>
-              <HeroProgress
-                title={"Recovery"}
-                percentComplete={(() => {
-                  const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
-                  return Math.max(0, Math.min(100, Math.round(score)));
-                })()}
-                milestoneLabel={(() => {
-                  const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
-                  return typeof hrv === 'number' ? `${hrv} ms HRV` : undefined;
-                })()}
-                nextMilestone={"Stay green 3 days"}
-                primaryActionLabel={'View Trends'}
-                onPrimaryAction={() => router.push('/trends')}
-              />
+              <View style={styles.recoveryContent}>
+                <ProgressRing
+                  size={90}
+                  strokeWidth={10}
+                  progress={(() => {
+                    const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
+                    return Math.max(0, Math.min(100, Math.round(score)));
+                  })()}
+                  label={'Today'}
+                  sublabel={(() => {
+                    const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
+                    return typeof hrv === 'number' ? `${hrv}ms HRV` : undefined;
+                  })()}
+                  testID={'recovery-ring'}
+                />
+                <View style={styles.recoveryStats}>
+                  <Text style={styles.metricLine}>Yesterday: {(() => { const v = useWhoopStore.getState().data.recovery[1]?.score; return typeof v === 'number' ? Math.round(v) + '%' : '-'; })()}</Text>
+                  <Text style={styles.metricLine}>7d Avg: {(() => {
+                    const arr = useWhoopStore.getState().data.recovery.slice(0,7);
+                    if (!arr.length) return '-';
+                    const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
+                    return Math.round(avg) + '%';
+                  })()}</Text>
+                  <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="recovery-trends-btn">
+                    <Text style={styles.smallActionText}>View Recovery</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
             <View style={styles.gridCard}>
               <Text style={styles.gridTitle}>Strain</Text>
@@ -1626,80 +1640,100 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   dashboardGrid: {
-    marginBottom: 16,
+    marginBottom: 24,
+    paddingHorizontal: 4,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 12 as any,
-    marginBottom: 12,
+    gap: 16 as any,
+    marginBottom: 16,
   },
   gridCard: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   gridCardWide: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   gridTitle: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
   inlineRingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   metricLine: {
     color: colors.textSecondary,
-    fontSize: 12,
-    marginBottom: 6,
+    fontSize: 13,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   smallActionBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#2A2A2A',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(93, 95, 239, 0.15)',
     alignSelf: 'flex-start',
   },
   smallActionText: {
-    color: colors.text,
-    fontSize: 12,
+    color: colors.primary,
+    fontSize: 13,
     fontWeight: '600',
   },
   milestonesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8 as any,
-    marginBottom: 10,
+    gap: 10 as any,
+    marginBottom: 16,
   },
   milestonePill: {
-    backgroundColor: 'rgba(93, 95, 239, 0.15)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(93, 95, 239, 0.2)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 95, 239, 0.3)',
   },
   milestoneText: {
     color: colors.text,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 8 as any,
+    gap: 12 as any,
   },
   quickAction: {
     flex: 1,
     backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 16,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   quickActionText: {
     color: colors.text,
@@ -1733,21 +1767,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: bottomPadding, // Consistent padding for iOS
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 32,
+    marginBottom: 20,
+    letterSpacing: 0.5,
   },
   programCard: {
-    height: 160,
-    borderRadius: 16,
-    marginBottom: 16,
+    height: 180,
+    borderRadius: 20,
+    marginBottom: 20,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   programImage: {
     width: '100%',
@@ -1760,62 +1800,78 @@ const styles = StyleSheet.create({
   },
   programContent: {
     flex: 1,
-    padding: 16,
+    padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(93, 95, 239, 0.3)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(93, 95, 239, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 20,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
   programInfo: {
     flex: 1,
   },
   programTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
   programDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
-    opacity: 0.8,
+    opacity: 0.85,
+    lineHeight: 22,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    marginTop: 40,
+    padding: 32,
+    marginTop: 60,
+    marginHorizontal: 20,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    lineHeight: 26,
+    marginBottom: 32,
+    maxWidth: 280,
   },
   browseButton: {
     backgroundColor: colors.primary,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   browseButtonText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   customProgramButton: {
     flexDirection: 'row',
@@ -1828,7 +1884,8 @@ const styles = StyleSheet.create({
     marginBottom: bottomPadding - 16, // Adjusted for consistent bottom padding
   },
   heroSection: {
-    marginBottom: 20,
+    marginBottom: 32,
+    paddingHorizontal: 4,
   },
   customProgramText: {
     color: colors.text,
@@ -2341,5 +2398,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 12,
+  },
+  // Recovery section styles
+  recoveryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  recoveryStats: {
+    flex: 1,
+    marginLeft: 16,
   },
 });
