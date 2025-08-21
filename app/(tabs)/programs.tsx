@@ -885,7 +885,7 @@ export default function ProgramsScreen() {
 
   // Get device dimensions for responsive sizing
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
-  const isSmallDevice = SCREEN_WIDTH < 375;
+  const isSmallDevice = SCREEN_WIDTH < 380;
   const bottomPadding = Platform.OS === 'ios' ? (isSmallDevice ? 80 : 100) : 32;
 
   return (
@@ -1617,7 +1617,7 @@ export default function ProgramsScreen() {
 
 // Get device dimensions for responsive sizing
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const isSmallDevice = SCREEN_WIDTH < 375;
+const isSmallDevice = SCREEN_WIDTH < 380;
 const bottomPadding = Platform.OS === 'ios' ? (isSmallDevice ? 80 : 100) : 32;
 
 const styles = StyleSheet.create({
