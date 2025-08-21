@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { 
-  LayoutDashboard, 
   MessageSquare, 
   Dumbbell, 
   Apple,
-  Settings
+  Settings as SettingsIcon
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useWhoopStore } from '@/store/whoopStore';
@@ -20,21 +19,14 @@ export default function TabLayout() {
   const { checkWhoopConnection, syncWhoopData } = useWhoopStore();
   
   useEffect(() => {
-    // Check if we need to redirect after a successful WHOOP connection
     const checkPreviousConnection = async () => {
       try {
         const connectionSuccessful = await AsyncStorage.getItem('whoop_connection_successful');
-        
         if (connectionSuccessful === 'true') {
           console.log('Previous connection was successful, already in tabs layout');
-          // Clear the flag to prevent future automatic redirects
           await AsyncStorage.removeItem('whoop_connection_successful');
-          
-          // Check connection status
           const isConnected = await checkWhoopConnection();
-          
           if (isConnected) {
-            // Sync data if needed
             await syncWhoopData();
             console.log('Already in tabs layout, data synced');
           }
@@ -43,33 +35,30 @@ export default function TabLayout() {
         console.error('Error checking previous connection in tabs layout:', error);
       }
     };
-    
     checkPreviousConnection();
   }, []);
   
-  // Get device dimensions for responsive sizing
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
   const isSmallDevice = SCREEN_WIDTH < 375;
-  const isLargeDevice = SCREEN_WIDTH >= 414; // iPhone 11 Pro Max and larger
-  const hasNotch = SCREEN_HEIGHT >= 812; // Devices with notch/Dynamic Island
+  const hasNotch = SCREEN_HEIGHT >= 812;
   
-  // Calculate tab bar height based on device
   const getTabBarHeight = () => {
     if (Platform.OS === 'ios') {
       if (hasNotch) {
-        return isSmallDevice ? 85 : 90; // Devices with notch
+        return isSmallDevice ? 85 : 90;
       } else {
-        return isSmallDevice ? 70 : 80; // Older devices without notch
+        return isSmallDevice ? 70 : 80;
       }
     }
-    return 60; // Android
+    return 60;
   };
   
   const tabBarHeight = getTabBarHeight();
   
   return (
-    <View style={[styles.container, { paddingBottom: Platform.OS === 'ios' ? 0 : insets.bottom }]}>
+    <View style={[styles.container, { paddingBottom: Platform.OS === 'ios' ? 0 : insets.bottom }]}>      
       <Tabs
+        initialRouteName="programs"
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
@@ -79,7 +68,6 @@ export default function TabLayout() {
             borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
             paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
             height: tabBarHeight,
-            // iOS-specific styling
             ...(Platform.OS === 'ios' && {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -1 },
@@ -100,7 +88,6 @@ export default function TabLayout() {
             backgroundColor: colors.background,
             borderBottomColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.1)' : '#2A2A2A',
             borderBottomWidth: Platform.OS === 'ios' ? 0.5 : 1,
-            // iOS-specific header styling
             ...(Platform.OS === 'ios' && {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 1 },
@@ -115,7 +102,6 @@ export default function TabLayout() {
             fontWeight: Platform.OS === 'ios' ? '700' : '600',
           },
           headerTintColor: colors.text,
-          // iOS-specific tab styling
           ...(Platform.OS === 'ios' && {
             tabBarItemStyle: {
               paddingVertical: 4,
@@ -124,39 +110,24 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="index"
+          name="programs"
           options={{
-            title: 'Dashboard',
+            title: 'Programs',
             tabBarIcon: ({ color, focused }) => (
-              <LayoutDashboard 
+              <Dumbbell 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
               />
             ),
-            headerTitle: 'WHOOP AI Coach',
           }}
         />
-
         <Tabs.Screen
           name="coach"
           options={{
             title: 'Coach',
             tabBarIcon: ({ color, focused }) => (
               <MessageSquare 
-                size={isSmallDevice ? 20 : 24} 
-                color={color}
-                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
-              />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="programs"
-          options={{
-            title: 'Programs',
-            tabBarIcon: ({ color, focused }) => (
-              <Dumbbell 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
@@ -182,7 +153,7 @@ export default function TabLayout() {
           options={{
             title: 'Settings',
             tabBarIcon: ({ color, focused }) => (
-              <Settings 
+              <SettingsIcon 
                 size={isSmallDevice ? 20 : 24} 
                 color={color}
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
