@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -50,6 +50,7 @@ import {
   NutritionPreferences 
 } from '@/types/whoop';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import HeroProgress from '@/components/HeroProgress';
 
 // Training program templates with evidence-based approaches
 const programTemplates = [
@@ -641,6 +642,27 @@ export default function ProgramsScreen() {
     
     return (
       <View>
+        {/* Hero Section: Goal progress as hero element */}
+        <View style={styles.heroSection} testID="programs-hero">
+          <HeroProgress
+            title={activePrograms[0]?.name ?? 'Your Program'}
+            percentComplete={(() => {
+              const p = activePrograms[0];
+              if (!p?.startDate || !p?.goalDate) return 0;
+              const start = new Date(p.startDate).getTime();
+              const goal = new Date(p.goalDate).getTime();
+              const now = Date.now();
+              if (goal <= start) return 0;
+              return Math.min(100, Math.max(0, Math.round(((now - start) / (goal - start)) * 100)));
+            })()}
+            milestoneLabel={activePrograms[0]?.targetMetric ?? undefined}
+            nextMilestone={activePrograms[0]?.goalDate ? `Goal ${activePrograms[0]?.goalDate}` : undefined}
+            primaryActionLabel={'Open Program'}
+            onPrimaryAction={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)}
+            secondaryActionLabel={activePrograms.length > 1 ? 'Switch' : undefined}
+            onSecondaryAction={activePrograms.length > 1 ? () => setActiveTab('browse') : undefined}
+          />
+        </View>
         {activePrograms.map(program => {
           // Find the template for this program to get the image
           const template = programTemplates.find(t => t.type === program.type);
@@ -1644,6 +1666,9 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 24,
     marginBottom: bottomPadding - 16, // Adjusted for consistent bottom padding
+  },
+  heroSection: {
+    marginBottom: 20,
   },
   customProgramText: {
     color: colors.text,
