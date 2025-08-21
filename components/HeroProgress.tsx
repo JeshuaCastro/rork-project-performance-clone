@@ -33,8 +33,8 @@ const HeroProgress = React.memo(function HeroProgress({
     <View style={styles.container} testID={testID ?? 'hero-progress'}>
       <View style={styles.left}>
         <ProgressRing
-          size={120}
-          strokeWidth={14}
+          size={130}
+          strokeWidth={16}
           progress={clamped}
           label="Progress"
           sublabel={milestoneLabel}
@@ -71,37 +71,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1A1A1A',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 28,
+    padding: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   left: {
-    marginRight: 20,
+    marginRight: 24,
   },
   right: {
     flex: 1,
   },
   title: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-    letterSpacing: 0.3,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 16,
+    letterSpacing: 0.2,
+    lineHeight: 28,
   },
   milestoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   milestoneText: {
     color: colors.textSecondary,
-    marginLeft: 10,
-    fontSize: 14,
+    marginLeft: 12,
+    fontSize: 15,
     fontWeight: '500',
+    letterSpacing: 0.1,
   },
   actions: {
     flexDirection: 'row',
@@ -111,33 +113,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   primaryText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    marginHorizontal: 10,
-    letterSpacing: 0.2,
+    marginHorizontal: 12,
+    letterSpacing: 0.3,
   },
   secondaryBtn: {
-    marginLeft: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    marginLeft: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     backgroundColor: '#2A2A2A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   secondaryText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });
 
