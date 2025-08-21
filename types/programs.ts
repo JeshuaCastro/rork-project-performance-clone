@@ -25,11 +25,14 @@ export interface ProgramGoal {
   startDate: string;
   targetDate: string;
   notes?: string;
+  isActive: boolean;
+  priority: 'primary' | 'secondary';
 }
 
 export interface ProgressEntry {
   date: string;
   value: number;
+  notes?: string;
 }
 
 export interface UserProgress {
@@ -37,6 +40,8 @@ export interface UserProgress {
   metricKey: string;
   history: ProgressEntry[];
   lastUpdated: string;
+  currentValue: number;
+  startingValue: number;
 }
 
 export interface GoalProgressSummary {
@@ -45,6 +50,10 @@ export interface GoalProgressSummary {
   weeksElapsed: number;
   totalWeeks: number;
   paceVsPlan: 'ahead' | 'on_track' | 'behind';
+  currentValue: number;
+  targetValue: number;
+  weeklyTarget: number;
+  daysRemaining: number;
 }
 
 export interface GoalTemplate {
@@ -53,6 +62,35 @@ export interface GoalTemplate {
   title: string;
   defaultMetricKey: string;
   description: string;
-  suggestedTimeframes: Array<{ value: number; unit: TimeframeUnit }>;
+  suggestedTimeframes: { value: number; unit: TimeframeUnit }[];
   exampleTargets: string[];
+  icon: string;
+  color: string;
+  benefits: string[];
+  whoopIntegration: {
+    recoveryWeight: number;
+    strainTarget: number;
+    sleepImportance: 'high' | 'medium' | 'low';
+  };
+}
+
+export interface DailyRecommendation {
+  id: string;
+  goalId: string;
+  type: 'workout' | 'nutrition' | 'recovery' | 'mindset';
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  estimatedTime: number; // minutes
+  whoopBased: boolean;
+  completed: boolean;
+}
+
+export interface WeeklyInsight {
+  goalId: string;
+  week: number;
+  progressRate: number;
+  recoveryTrend: 'improving' | 'stable' | 'declining';
+  recommendations: string[];
+  adjustments: string[];
 }
