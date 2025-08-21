@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { 
   LayoutDashboard, 
+  MessageSquare, 
+  Dumbbell, 
+  Apple,
   Settings
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
@@ -131,10 +134,49 @@ export default function TabLayout() {
                 strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
               />
             ),
-            headerTitle: 'WHOOP Dashboard',
+            headerTitle: 'WHOOP AI Coach',
           }}
         />
 
+        <Tabs.Screen
+          name="coach"
+          options={{
+            title: 'Coach',
+            tabBarIcon: ({ color, focused }) => (
+              <MessageSquare 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="programs"
+          options={{
+            title: 'Programs',
+            tabBarIcon: ({ color, focused }) => (
+              <Dumbbell 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="nutrition"
+          options={{
+            title: 'Nutrition',
+            tabBarIcon: ({ color, focused }) => (
+              <Apple 
+                size={isSmallDevice ? 20 : 24} 
+                color={color}
+                strokeWidth={focused && Platform.OS === 'ios' ? 2.5 : 2}
+              />
+            ),
+          }}
+        />
         <Tabs.Screen
           name="settings"
           options={{
