@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -20,11 +20,8 @@ import {
   Scale, 
   Plus,
   X,
-  Calendar,
   Target,
-  Brain,
   ChevronRight,
-  TrendingUp,
   Clock,
   CheckCircle,
   Circle,
@@ -74,7 +71,10 @@ export default function ProgramsScreen() {
     completeOnboarding
   } = useProgramStore();
 
-  const [showOnboarding, setShowOnboarding] = useState(!hasCompletedOnboarding);
+  const primaryGoal = getPrimaryGoal();
+  const activeGoals = getActiveGoals();
+  
+  const [showOnboarding, setShowOnboarding] = useState(!hasCompletedOnboarding && activeGoals.length === 0);
   const [selectedTemplate, setSelectedTemplate] = useState<GoalTemplate | null>(null);
   const [goalConfig, setGoalConfig] = useState<{
     title: string;
@@ -87,9 +87,6 @@ export default function ProgramsScreen() {
     timeframe: { value: 12, unit: 'weeks' },
     notes: ''
   });
-
-  const primaryGoal = getPrimaryGoal();
-  const activeGoals = getActiveGoals();
   const primarySummary = primaryGoal ? getGoalSummary(primaryGoal.id) : null;
 
   useEffect(() => {
