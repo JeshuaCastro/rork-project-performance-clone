@@ -51,6 +51,7 @@ import {
 } from '@/types/whoop';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import HeroProgress from '@/components/HeroProgress';
+import ProgressRing from '@/components/ProgressRing';
 
 // Training program templates with evidence-based approaches
 const programTemplates = [
@@ -663,6 +664,84 @@ export default function ProgramsScreen() {
             onSecondaryAction={activePrograms.length > 1 ? () => setActiveTab('browse') : undefined}
           />
         </View>
+        {/* Dashboard Visual Overhaul */}
+        <View style={styles.dashboardGrid} testID="dashboard-visuals">
+          <View style={styles.gridRow}>
+            <View style={styles.gridCard}>
+              <Text style={styles.gridTitle}>Recovery</Text>
+              <HeroProgress
+                title={"Recovery"}
+                percentComplete={(() => {
+                  const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
+                  return Math.max(0, Math.min(100, Math.round(score)));
+                })()}
+                milestoneLabel={(() => {
+                  const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
+                  return typeof hrv === 'number' ? `${hrv} ms HRV` : undefined;
+                })()}
+                nextMilestone={"Stay green 3 days"}
+                primaryActionLabel={'View Trends'}
+                onPrimaryAction={() => router.push('/trends')}
+              />
+            </View>
+            <View style={styles.gridCard}>
+              <Text style={styles.gridTitle}>Strain</Text>
+              <View style={styles.inlineRingRow}>
+                <ProgressRing
+                  size={90}
+                  strokeWidth={10}
+                  progress={(() => {
+                    const strain = (useWhoopStore.getState().data.strain[0]?.score ?? 0) * 10;
+                    return Math.max(0, Math.min(100, Math.round(strain)));
+                  })()}
+                  label={'Today'}
+                  sublabel={(() => {
+                    const s = useWhoopStore.getState().data.strain[0]?.score;
+                    return typeof s === 'number' ? `${s.toFixed(1)}` : undefined;
+                  })()}
+                  testID={'strain-ring'}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.metricLine}>Yesterday: {(() => { const v = useWhoopStore.getState().data.strain[1]?.score; return typeof v === 'number' ? v.toFixed(1) : '-'; })()}</Text>
+                  <Text style={styles.metricLine}>7d Avg: {(() => {
+                    const arr = useWhoopStore.getState().data.strain.slice(0,7);
+                    if (!arr.length) return '-';
+                    const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
+                    return avg.toFixed(1);
+                  })()}</Text>
+                  <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="strain-trends-btn">
+                    <Text style={styles.smallActionText}>Open Strain Trends</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.gridRow}>
+            <View style={styles.gridCardWide}>
+              <Text style={styles.gridTitle}>Milestones</Text>
+              <View style={styles.milestonesRow}>
+                {['Week 1 Complete','50% Journey','Goal Day'].map((m, idx) => (
+                  <View key={idx} style={styles.milestonePill} testID={`milestone-${idx}`}>
+                    <Text style={styles.milestoneText}>{m}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.quickActionsRow}>
+                <TouchableOpacity style={styles.quickAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)} testID="qa-program">
+                  <Text style={styles.quickActionText}>Open Program</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/coach')} testID="qa-coach">
+                  <Text style={styles.quickActionText}>Ask Coach</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/nutrition')} testID="qa-nutrition">
+                  <Text style={styles.quickActionText}>Log Meal</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {activePrograms.map(program => {
           // Find the template for this program to get the image
           const template = programTemplates.find(t => t.type === program.type);
@@ -1545,6 +1624,87 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  dashboardGrid: {
+    marginBottom: 16,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 12 as any,
+    marginBottom: 12,
+  },
+  gridCard: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 12,
+  },
+  gridCardWide: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 12,
+  },
+  gridTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  inlineRingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metricLine: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  smallActionBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#2A2A2A',
+    alignSelf: 'flex-start',
+  },
+  smallActionText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  milestonesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8 as any,
+    marginBottom: 10,
+  },
+  milestonePill: {
+    backgroundColor: 'rgba(93, 95, 239, 0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  milestoneText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 8 as any,
+  },
+  quickAction: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  quickActionText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
   },
   tabContainer: {
     flexDirection: 'row',
