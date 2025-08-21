@@ -664,114 +664,86 @@ export default function ProgramsScreen() {
             onSecondaryAction={activePrograms.length > 1 ? () => setActiveTab('browse') : undefined}
           />
         </View>
-        {/* Dashboard Visual Overhaul */}
-        <View style={styles.dashboardGrid} testID="dashboard-visuals">
-          {/* Recovery Card - Full Width */}
-          <View style={styles.metricsCard}>
-            <Text style={styles.metricsTitle}>Recovery</Text>
-            <View style={styles.metricsContent}>
-              <View style={styles.ringSection}>
-                <ProgressRing
-                  size={100}
-                  strokeWidth={10}
-                  progress={(() => {
-                    const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
-                    return Math.max(0, Math.min(100, Math.round(score)));
-                  })()}
-                  label={'Today'}
-                  sublabel={(() => {
-                    const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
-                    return typeof hrv === 'number' ? `${hrv}ms HRV` : undefined;
-                  })()}
-                  testID={'recovery-ring'}
-                />
+        {/* Modern Dashboard - Bevel Inspired */}
+        <View style={styles.modernDashboard} testID="dashboard-visuals">
+          {/* Today's Focus Card */}
+          <View style={styles.focusCard}>
+            <View style={styles.focusHeader}>
+              <Text style={styles.focusTitle}>Today's Focus</Text>
+              <View style={styles.focusDate}>
+                <Text style={styles.focusDateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               </View>
-              <View style={styles.metricsStats}>
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Yesterday</Text>
-                  <Text style={styles.statValue}>{(() => { const v = useWhoopStore.getState().data.recovery[1]?.score; return typeof v === 'number' ? Math.round(v) + '%' : '-'; })()}</Text>
-                </View>
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>7-Day Average</Text>
-                  <Text style={styles.statValue}>{(() => {
-                    const arr = useWhoopStore.getState().data.recovery.slice(0,7);
-                    if (!arr.length) return '-';
-                    const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
-                    return Math.round(avg) + '%';
-                  })()}</Text>
-                </View>
-                <TouchableOpacity style={styles.metricsActionBtn} onPress={() => router.push('/trends')} testID="recovery-trends-btn">
-                  <Text style={styles.metricsActionText}>View Trends</Text>
-                </TouchableOpacity>
+            </View>
+            <Text style={styles.focusRecommendation}>
+              {(() => {
+                const recovery = useWhoopStore.getState().data.recovery[0]?.score ?? 0;
+                if (recovery > 70) return "High recovery - Perfect for intense training";
+                if (recovery > 40) return "Moderate recovery - Focus on technique and form";
+                return "Low recovery - Prioritize rest and light movement";
+              })()}
+            </Text>
+            <TouchableOpacity style={styles.focusAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)}>
+              <Text style={styles.focusActionText}>View Today's Workout</Text>
+              <ChevronRightIcon size={16} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Metrics Row */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Recovery</Text>
+                <Heart size={16} color={colors.success} />
               </View>
+              <Text style={styles.metricValue}>
+                {(() => {
+                  const score = useWhoopStore.getState().data.recovery[0]?.score ?? 0;
+                  return Math.round(score) + '%';
+                })()}
+              </Text>
+              <Text style={styles.metricSubtext}>Ready to train</Text>
+            </View>
+            
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Strain</Text>
+                <Activity size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.metricValue}>
+                {(() => {
+                  const strain = useWhoopStore.getState().data.strain[0]?.score ?? 0;
+                  return strain.toFixed(1);
+                })()}
+              </Text>
+              <Text style={styles.metricSubtext}>Today's load</Text>
             </View>
           </View>
 
-          {/* Strain Card - Full Width */}
-          <View style={styles.metricsCard}>
-            <Text style={styles.metricsTitle}>Strain</Text>
-            <View style={styles.metricsContent}>
-              <View style={styles.ringSection}>
-                <ProgressRing
-                  size={100}
-                  strokeWidth={10}
-                  progress={(() => {
-                    const strain = (useWhoopStore.getState().data.strain[0]?.score ?? 0) * 10;
-                    return Math.max(0, Math.min(100, Math.round(strain)));
-                  })()}
-                  label={'Today'}
-                  sublabel={(() => {
-                    const s = useWhoopStore.getState().data.strain[0]?.score;
-                    return typeof s === 'number' ? `${s.toFixed(1)} Strain` : undefined;
-                  })()}
-                  testID={'strain-ring'}
-                />
+          {/* Quick Actions */}
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/coach')}>
+              <View style={styles.actionIcon}>
+                <Brain size={20} color={colors.primary} />
               </View>
-              <View style={styles.metricsStats}>
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Yesterday</Text>
-                  <Text style={styles.statValue}>{(() => { const v = useWhoopStore.getState().data.strain[1]?.score; return typeof v === 'number' ? v.toFixed(1) : '-'; })()}</Text>
-                </View>
-                <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>7-Day Average</Text>
-                  <Text style={styles.statValue}>{(() => {
-                    const arr = useWhoopStore.getState().data.strain.slice(0,7);
-                    if (!arr.length) return '-';
-                    const avg = arr.reduce((a,b)=> a + (b.score||0),0)/arr.length;
-                    return avg.toFixed(1);
-                  })()}</Text>
-                </View>
-                <TouchableOpacity style={styles.metricsActionBtn} onPress={() => router.push('/trends')} testID="strain-trends-btn">
-                  <Text style={styles.metricsActionText}>View Trends</Text>
-                </TouchableOpacity>
+              <Text style={styles.actionTitle}>Ask Coach</Text>
+              <Text style={styles.actionSubtitle}>Get personalized advice</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/nutrition')}>
+              <View style={styles.actionIcon}>
+                <Utensils size={20} color={colors.warning} />
               </View>
-            </View>
-          </View>
-
-          {/* Quick Actions Card - Full Width */}
-          <View style={styles.quickActionsCard}>
-            <Text style={styles.metricsTitle}>Quick Actions</Text>
-            <View style={styles.quickActionsGrid}>
-              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)} testID="qa-program">
-                <Text style={styles.quickActionLargeText}>Open Program</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push('/coach')} testID="qa-coach">
-                <Text style={styles.quickActionLargeText}>Ask Coach</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickActionLarge} onPress={() => router.push('/nutrition')} testID="qa-nutrition">
-                <Text style={styles.quickActionLargeText}>Log Meal</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.milestonesSection}>
-              <Text style={styles.milestonesLabel}>Milestones</Text>
-              <View style={styles.milestonesRow}>
-                {['Week 1 Complete','50% Journey','Goal Day'].map((m, idx) => (
-                  <View key={idx} style={styles.milestonePill} testID={`milestone-${idx}`}>
-                    <Text style={styles.milestoneText}>{m}</Text>
-                  </View>
-                ))}
+              <Text style={styles.actionTitle}>Log Meal</Text>
+              <Text style={styles.actionSubtitle}>Track your nutrition</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/trends')}>
+              <View style={styles.actionIcon}>
+                <Activity size={20} color={colors.info} />
               </View>
-            </View>
+              <Text style={styles.actionTitle}>View Trends</Text>
+              <Text style={styles.actionSubtitle}>Analyze your progress</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1658,145 +1630,151 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  dashboardGrid: {
-    marginBottom: 32,
-    paddingHorizontal: 0,
+  // Modern Dashboard - Bevel Inspired
+  modernDashboard: {
+    marginBottom: 40,
+    gap: 24,
   },
-  // New metrics card styles for full-width recovery and strain
-  metricsCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
+  
+  // Today's Focus Card
+  focusCard: {
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  metricsTitle: {
-    color: colors.text,
-    fontSize: 18,
+  focusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  focusTitle: {
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 20,
-    letterSpacing: 0.3,
+    color: colors.text,
+    letterSpacing: -0.3,
   },
-  metricsContent: {
+  focusDate: {
+    backgroundColor: 'rgba(93, 95, 239, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  focusDateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+    letterSpacing: 0.2,
+  },
+  focusRecommendation: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.textSecondary,
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  focusAction: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 16,
   },
-  ringSection: {
-    marginRight: 24,
+  focusActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    letterSpacing: 0.1,
   },
-  metricsStats: {
+  
+  // Metrics Row
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  metricCard: {
     flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  statRow: {
+  metricHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  statLabel: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  statValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  metricsActionBtn: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: 'rgba(93, 95, 239, 0.15)',
-    alignSelf: 'flex-start',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  metricsActionText: {
-    color: colors.primary,
+  metricLabel: {
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    color: colors.textSecondary,
+    letterSpacing: 0.3,
   },
-  // Quick actions card styles
-  quickActionsCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+  metricValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  quickActionsGrid: {
+  metricSubtext: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    opacity: 0.8,
+  },
+  
+  // Actions Grid
+  actionsGrid: {
     flexDirection: 'row',
-    marginHorizontal: -8,
-    marginBottom: 24,
+    gap: 16,
   },
-  quickActionLarge: {
+  actionCard: {
     flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
-    marginHorizontal: 8,
-    minHeight: 60,
-    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  quickActionLargeText: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    textAlign: 'center',
-  },
-  milestonesSection: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingTop: 20,
-  },
-  milestonesLabel: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
-    letterSpacing: 0.2,
   },
-  milestonesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  milestonePill: {
-    backgroundColor: 'rgba(93, 95, 239, 0.12)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(93, 95, 239, 0.2)',
-  },
-  milestoneText: {
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
     letterSpacing: 0.1,
+  },
+  actionSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
   },
   tabContainer: {
     flexDirection: 'row',
