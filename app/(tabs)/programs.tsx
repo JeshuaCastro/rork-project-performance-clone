@@ -666,10 +666,10 @@ export default function ProgramsScreen() {
         </View>
         {/* Modern Dashboard - Bevel Inspired */}
         <View style={styles.modernDashboard} testID="dashboard-visuals">
-          {/* Today's Focus Card */}
+          {/* Today's Workout Card */}
           <View style={styles.focusCard}>
             <View style={styles.focusHeader}>
-              <Text style={styles.focusTitle}>Today's Focus</Text>
+              <Text style={styles.focusTitle}>Today's Workout</Text>
               <View style={styles.focusDate}>
                 <Text style={styles.focusDateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               </View>
@@ -677,13 +677,26 @@ export default function ProgramsScreen() {
             <Text style={styles.focusRecommendation}>
               {(() => {
                 const recovery = useWhoopStore.getState().data.recovery[0]?.score ?? 0;
-                if (recovery > 70) return "High recovery - Perfect for intense training";
-                if (recovery > 40) return "Moderate recovery - Focus on technique and form";
-                return "Low recovery - Prioritize rest and light movement";
+                const program = activePrograms[0];
+                if (!program) return "No active program - Start a program to see today's workout";
+                
+                // Get workout type based on program and recovery
+                let workoutType = "Strength Training";
+                if (program.type === 'marathon' || program.type === 'half-marathon') {
+                  workoutType = recovery > 70 ? "Interval Training" : recovery > 40 ? "Tempo Run" : "Easy Recovery Run";
+                } else if (program.type === 'cycling') {
+                  workoutType = recovery > 70 ? "High Intensity Intervals" : recovery > 40 ? "Sweet Spot Training" : "Zone 2 Endurance";
+                } else if (program.type === 'powerlifting') {
+                  workoutType = recovery > 70 ? "Heavy Compound Lifts" : recovery > 40 ? "Accessory Work" : "Light Technique Work";
+                } else if (program.type === 'hypertrophy') {
+                  workoutType = recovery > 70 ? "High Volume Training" : recovery > 40 ? "Moderate Volume" : "Light Pump Work";
+                }
+                
+                return workoutType;
               })()}
             </Text>
             <TouchableOpacity style={styles.focusAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)}>
-              <Text style={styles.focusActionText}>View Today's Workout</Text>
+              <Text style={styles.focusActionText}>Start Workout</Text>
               <ChevronRightIcon size={16} color={colors.text} />
             </TouchableOpacity>
           </View>
