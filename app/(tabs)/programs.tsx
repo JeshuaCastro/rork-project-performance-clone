@@ -140,9 +140,9 @@ export default function ProgramsScreen() {
       {!selectedTemplate ? (
         <ScrollView style={styles.onboardingScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.onboardingHeader}>
-            <Text style={styles.onboardingTitle}>What's Your Goal?</Text>
+            <Text style={styles.onboardingTitle}>Choose Your Program</Text>
             <Text style={styles.onboardingSubtitle}>
-              Choose your primary fitness goal to get started with a personalized program
+              Select a specialized training program designed by experts to help you achieve your goals
             </Text>
           </View>
 
@@ -560,14 +560,19 @@ const styles = StyleSheet.create({
   },
   templatesGrid: {
     padding: 20,
-    gap: 20,
+    gap: 24,
   },
   templateCard: {
     backgroundColor: '#1A1A1A',
     borderRadius: 24,
-    padding: 24,
+    padding: 28,
     borderWidth: 2,
     borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   templateIcon: {
     width: 64,
@@ -690,11 +695,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroSection: {
-    padding: 20,
-    paddingTop: 40,
+    padding: 24,
+    paddingTop: 50,
+    paddingBottom: 32,
   },
   whoopSection: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   sectionTitle: {
     fontSize: 24,
@@ -726,7 +733,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   recommendationsSection: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   recommendationCard: {
     flexDirection: 'row',
@@ -777,7 +785,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   goalsSection: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 
 import { useWhoopStore } from '@/store/whoopStore';
 import { colors } from '@/constants/colors';
@@ -10,43 +9,44 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function IndexScreen() {
   const router = useRouter();
-
   const { checkWhoopConnection, syncWhoopData } = useWhoopStore();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const initializeApp = async () => {
-        try {
-          // Wait a bit to ensure the layout is mounted
-          await new Promise(resolve => setTimeout(resolve, 200));
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log('Initializing app...');
+        
+        // Check if we need to redirect after a successful WHOOP connection
+        const connectionSuccessful = await AsyncStorage.getItem('whoop_connection_successful');
+        
+        if (connectionSuccessful === 'true') {
+          console.log('Previous connection was successful, syncing data');
+          // Clear the flag to prevent future automatic redirects
+          await AsyncStorage.removeItem('whoop_connection_successful');
           
-          // Check if we need to redirect after a successful WHOOP connection
-          const connectionSuccessful = await AsyncStorage.getItem('whoop_connection_successful');
-          
-          if (connectionSuccessful === 'true') {
-            console.log('Previous connection was successful, syncing data');
-            // Clear the flag to prevent future automatic redirects
-            await AsyncStorage.removeItem('whoop_connection_successful');
-            
-            // Check connection status and sync data
-            const isConnected = await checkWhoopConnection();
-            if (isConnected) {
-              await syncWhoopData();
-            }
+          // Check connection status and sync data
+          const isConnected = await checkWhoopConnection();
+          if (isConnected) {
+            await syncWhoopData();
           }
-          
-          router.replace('/programs');
-          
-        } catch (error) {
-          console.error('Error initializing app:', error);
-          // Fallback to programs page
-          router.replace('/programs');
         }
-      };
-      
-      initializeApp();
-    }, [checkWhoopConnection, syncWhoopData, router])
-  );
+        
+        // Use a small delay to ensure navigation is ready
+        setTimeout(() => {
+          router.replace('/programs');
+        }, 100);
+        
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        // Fallback to programs page
+        setTimeout(() => {
+          router.replace('/programs');
+        }, 100);
+      }
+    };
+    
+    initializeApp();
+  }, [checkWhoopConnection, syncWhoopData, router]);
 
   return (
     <View style={styles.container}>
