@@ -57,4 +57,90 @@ export class WhoopRecommendationEngine {
           whoopBased: true,
           completed: false,
         });
-      }\n    }\n\n    // Sleep-based recommendations\n    if (sleep && sleep.efficiency && sleep.efficiency < 85) {\n      recommendations.push({\n        id: `rec-${Date.now()}-sleep`,\n        goalId: goal.id,\n        type: 'recovery',\n        title: 'Optimize Sleep Tonight',\n        description: `Last night's sleep efficiency was ${Math.round(sleep.efficiency)}%. Focus on better sleep hygiene tonight.`,\n        priority: 'medium',\n        estimatedTime: 15,\n        whoopBased: true,\n        completed: false,\n      });\n    }\n\n    // Goal-specific nutrition recommendations\n    recommendations.push({\n      id: `rec-${Date.now()}-nutrition`,\n      goalId: goal.id,\n      type: 'nutrition',\n      title: this.getNutritionTitle(goal.type),\n      description: this.getNutritionDescription(goal.type),\n      priority: 'medium',\n      estimatedTime: 10,\n      whoopBased: false,\n      completed: false,\n    });\n\n    // Mindset/motivation recommendations\n    if (Math.random() > 0.7) { // 30% chance for variety\n      recommendations.push({\n        id: `rec-${Date.now()}-mindset`,\n        goalId: goal.id,\n        type: 'mindset',\n        title: 'Visualize Success',\n        description: 'Spend 5 minutes visualizing achieving your goal. Mental rehearsal improves performance.',\n        priority: 'low',\n        estimatedTime: 5,\n        whoopBased: false,\n        completed: false,\n      });\n    }\n\n    return recommendations.sort((a, b) => {\n      const priorityOrder = { high: 3, medium: 2, low: 1 };\n      return priorityOrder[b.priority as keyof typeof priorityOrder] - priorityOrder[a.priority as keyof typeof priorityOrder];\n    });\n  }\n\n  private static getWorkoutDuration(goalType: string, intensity: string): number {\n    const baseDurations = {\n      muscle_gain: { high: 75, medium: 60, low: 45 },\n      fat_loss: { high: 60, medium: 45, low: 30 },\n      endurance: { high: 90, medium: 60, low: 45 },\n      strength: { high: 90, medium: 75, low: 60 },\n      general_health: { high: 45, medium: 30, low: 20 },\n    };\n\n    return baseDurations[goalType as keyof typeof baseDurations]?.[intensity as keyof typeof baseDurations.muscle_gain] || 45;\n  }\n\n  private static getNutritionTitle(goalType: string): string {\n    switch (goalType) {\n      case 'muscle_gain': return 'Protein Focus';\n      case 'fat_loss': return 'Calorie Tracking';\n      case 'endurance': return 'Carb Timing';\n      case 'strength': return 'Pre/Post Workout Nutrition';\n      default: return 'Balanced Nutrition';\n    }\n  }\n\n  private static getNutritionDescription(goalType: string): string {\n    switch (goalType) {\n      case 'muscle_gain': return 'Aim for 1.6-2.2g protein per kg body weight. Log your meals to track progress.';\n      case 'fat_loss': return 'Maintain your caloric deficit while getting adequate protein. Track your intake.';\n      case 'endurance': return 'Focus on carb timing around workouts. Log pre and post-workout meals.';\n      case 'strength': return 'Optimize protein timing around workouts. Track your pre/post workout nutrition.';\n      default: return 'Maintain balanced macronutrients. Log your meals for awareness.';\n    }\n  }\n}\n\nexport default WhoopRecommendationEngine;
+      }
+    }
+
+    // Sleep-based recommendations
+    if (sleep && sleep.efficiency && sleep.efficiency < 85) {
+      recommendations.push({
+        id: `rec-${Date.now()}-sleep`,
+        goalId: goal.id,
+        type: 'recovery',
+        title: 'Optimize Sleep Tonight',
+        description: `Last night's sleep efficiency was ${Math.round(sleep.efficiency)}%. Focus on better sleep hygiene tonight.`,
+        priority: 'medium',
+        estimatedTime: 15,
+        whoopBased: true,
+        completed: false,
+      });
+    }
+
+    // Goal-specific nutrition recommendations
+    recommendations.push({
+      id: `rec-${Date.now()}-nutrition`,
+      goalId: goal.id,
+      type: 'nutrition',
+      title: this.getNutritionTitle(goal.type),
+      description: this.getNutritionDescription(goal.type),
+      priority: 'medium',
+      estimatedTime: 10,
+      whoopBased: false,
+      completed: false,
+    });
+
+    // Mindset/motivation recommendations
+    if (Math.random() > 0.7) { // 30% chance for variety
+      recommendations.push({
+        id: `rec-${Date.now()}-mindset`,
+        goalId: goal.id,
+        type: 'mindset',
+        title: 'Visualize Success',
+        description: 'Spend 5 minutes visualizing achieving your goal. Mental rehearsal improves performance.',
+        priority: 'low',
+        estimatedTime: 5,
+        whoopBased: false,
+        completed: false,
+      });
+    }
+
+    return recommendations.sort((a, b) => {
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      return priorityOrder[b.priority as keyof typeof priorityOrder] - priorityOrder[a.priority as keyof typeof priorityOrder];
+    });
+  }
+
+  private static getWorkoutDuration(goalType: string, intensity: string): number {
+    const baseDurations = {
+      muscle_gain: { high: 75, medium: 60, low: 45 },
+      fat_loss: { high: 60, medium: 45, low: 30 },
+      endurance: { high: 90, medium: 60, low: 45 },
+      strength: { high: 90, medium: 75, low: 60 },
+      general_fitness: { high: 60, medium: 45, low: 30 }
+    };
+
+    const durations = baseDurations[goalType as keyof typeof baseDurations] || baseDurations.general_fitness;
+    return durations[intensity as keyof typeof durations] || durations.medium;
+  }
+
+  private static getNutritionTitle(goalType: string): string {
+    const titles = {
+      muscle_gain: 'Fuel for Growth',
+      fat_loss: 'Smart Calorie Management',
+      endurance: 'Endurance Nutrition',
+      strength: 'Power Nutrition',
+      general_fitness: 'Balanced Nutrition'
+    };
+    return titles[goalType as keyof typeof titles] || titles.general_fitness;
+  }
+
+  private static getNutritionDescription(goalType: string): string {
+    const descriptions = {
+      muscle_gain: 'Focus on protein intake (1g per lb bodyweight) and post-workout nutrition within 30 minutes.',
+      fat_loss: 'Maintain a moderate calorie deficit while prioritizing protein to preserve muscle mass.',
+      endurance: 'Ensure adequate carbohydrate intake and proper hydration before, during, and after training.',
+      strength: 'Prioritize protein and creatine. Time carbohydrates around your training sessions.',
+      general_fitness: 'Maintain a balanced diet with adequate protein, healthy fats, and complex carbohydrates.'
+    };
+    return descriptions[goalType as keyof typeof descriptions] || descriptions.general_fitness;
+  }
+}
