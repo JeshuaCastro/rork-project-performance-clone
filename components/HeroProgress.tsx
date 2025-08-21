@@ -9,6 +9,8 @@ export interface HeroProgressProps {
   percentComplete: number; // 0-100
   milestoneLabel?: string;
   nextMilestone?: string;
+  goalDescription?: string; // e.g., "Gain 10lbs Muscle - Week 3/12"
+  daysUntilGoal?: number;
   primaryActionLabel: string;
   onPrimaryAction: () => void;
   secondaryActionLabel?: string;
@@ -21,6 +23,8 @@ const HeroProgress = React.memo(function HeroProgress({
   percentComplete,
   milestoneLabel,
   nextMilestone,
+  goalDescription,
+  daysUntilGoal,
   primaryActionLabel,
   onPrimaryAction,
   secondaryActionLabel,
@@ -43,12 +47,23 @@ const HeroProgress = React.memo(function HeroProgress({
       </View>
       <View style={styles.right}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {!!nextMilestone && (
-          <View style={styles.milestoneRow}>
-            <Target size={16} color={colors.primary} />
-            <Text style={styles.milestoneText} numberOfLines={1}>{nextMilestone}</Text>
-          </View>
+        {!!goalDescription && (
+          <Text style={styles.goalDescription} numberOfLines={1}>{goalDescription}</Text>
         )}
+        <View style={styles.metricsRow}>
+          {!!nextMilestone && (
+            <View style={styles.milestoneContainer}>
+              <Target size={14} color={colors.primary} />
+              <Text style={styles.milestoneText} numberOfLines={1}>{nextMilestone}</Text>
+            </View>
+          )}
+          {!!daysUntilGoal && daysUntilGoal > 0 && (
+            <View style={styles.countdownContainer}>
+              <Text style={styles.countdownNumber}>{daysUntilGoal}</Text>
+              <Text style={styles.countdownLabel}>days left</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.primaryBtn} onPress={onPrimaryAction} testID="hero-primary-action">
             <Trophy size={18} color={colors.text} />
@@ -87,23 +102,54 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 12,
-    letterSpacing: 0.2,
-    lineHeight: 26,
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+    lineHeight: 30,
   },
-  milestoneRow: {
+  goalDescription: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+    letterSpacing: 0.1,
+    lineHeight: 20,
+  },
+  metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  milestoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   milestoneText: {
     color: colors.textSecondary,
-    marginLeft: 10,
-    fontSize: 14,
+    marginLeft: 6,
+    fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0.1,
+  },
+  countdownContainer: {
+    alignItems: 'flex-end',
+  },
+  countdownNumber: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    lineHeight: 22,
+  },
+  countdownLabel: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
   },
   actions: {
     flexDirection: 'row',

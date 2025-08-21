@@ -658,6 +658,64 @@ export default function ProgramsScreen() {
             })()}
             milestoneLabel={activePrograms[0]?.targetMetric ?? undefined}
             nextMilestone={activePrograms[0]?.goalDate ? `Goal ${activePrograms[0]?.goalDate}` : undefined}
+            goalDescription={(() => {
+              const p = activePrograms[0];
+              if (!p) return undefined;
+              
+              // Calculate current week
+              let weekInfo = '';
+              if (p.startDate && p.goalDate) {
+                const startDate = new Date(p.startDate).getTime();
+                const goalDate = new Date(p.goalDate).getTime();
+                const now = Date.now();
+                const totalWeeks = Math.ceil((goalDate - startDate) / (1000 * 60 * 60 * 24 * 7));
+                const currentWeek = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24 * 7));
+                
+                if (currentWeek > 0 && totalWeeks > 0) {
+                  weekInfo = ` - Week ${Math.min(currentWeek, totalWeeks)}/${totalWeeks}`;
+                }
+              }
+              
+              // Create goal description based on program type and target
+              let goalDesc = '';
+              if (p.targetMetric) {
+                goalDesc = p.targetMetric;
+              } else {
+                // Fallback based on program type
+                switch (p.type) {
+                  case 'hypertrophy':
+                    goalDesc = 'Build Muscle Mass';
+                    break;
+                  case 'powerlifting':
+                    goalDesc = 'Increase Strength';
+                    break;
+                  case 'marathon':
+                    goalDesc = 'Marathon Training';
+                    break;
+                  case 'half-marathon':
+                    goalDesc = 'Half Marathon Training';
+                    break;
+                  case 'weight_loss':
+                    goalDesc = 'Lose Weight';
+                    break;
+                  case 'cycling':
+                    goalDesc = 'Improve Cycling Performance';
+                    break;
+                  default:
+                    goalDesc = 'Fitness Goal';
+                }
+              }
+              
+              return goalDesc + weekInfo;
+            })()}
+            daysUntilGoal={(() => {
+              const p = activePrograms[0];
+              if (!p?.goalDate) return undefined;
+              const goalDate = new Date(p.goalDate).getTime();
+              const now = Date.now();
+              const daysLeft = Math.ceil((goalDate - now) / (1000 * 60 * 60 * 24));
+              return daysLeft > 0 ? daysLeft : undefined;
+            })()}
             primaryActionLabel={'Open Program'}
             onPrimaryAction={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)}
             secondaryActionLabel={activePrograms.length > 1 ? 'Switch' : undefined}
