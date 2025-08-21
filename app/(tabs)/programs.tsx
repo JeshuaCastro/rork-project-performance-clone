@@ -671,8 +671,8 @@ export default function ProgramsScreen() {
               <Text style={styles.gridTitle}>Recovery</Text>
               <View style={styles.recoveryContent}>
                 <ProgressRing
-                  size={90}
-                  strokeWidth={10}
+                  size={80}
+                  strokeWidth={8}
                   progress={(() => {
                     const score = (useWhoopStore.getState().data.recovery[0]?.score ?? 0);
                     return Math.max(0, Math.min(100, Math.round(score)));
@@ -680,7 +680,7 @@ export default function ProgramsScreen() {
                   label={'Today'}
                   sublabel={(() => {
                     const hrv = useWhoopStore.getState().data.recovery[0]?.hrvMs ?? undefined;
-                    return typeof hrv === 'number' ? `${hrv}ms HRV` : undefined;
+                    return typeof hrv === 'number' ? `${hrv}ms` : undefined;
                   })()}
                   testID={'recovery-ring'}
                 />
@@ -693,7 +693,7 @@ export default function ProgramsScreen() {
                     return Math.round(avg) + '%';
                   })()}</Text>
                   <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="recovery-trends-btn">
-                    <Text style={styles.smallActionText}>View Recovery</Text>
+                    <Text style={styles.smallActionText}>View Trends</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -702,8 +702,8 @@ export default function ProgramsScreen() {
               <Text style={styles.gridTitle}>Strain</Text>
               <View style={styles.inlineRingRow}>
                 <ProgressRing
-                  size={90}
-                  strokeWidth={10}
+                  size={80}
+                  strokeWidth={8}
                   progress={(() => {
                     const strain = (useWhoopStore.getState().data.strain[0]?.score ?? 0) * 10;
                     return Math.max(0, Math.min(100, Math.round(strain)));
@@ -724,7 +724,7 @@ export default function ProgramsScreen() {
                     return avg.toFixed(1);
                   })()}</Text>
                   <TouchableOpacity style={styles.smallActionBtn} onPress={() => router.push('/trends')} testID="strain-trends-btn">
-                    <Text style={styles.smallActionText}>Open Strain Trends</Text>
+                    <Text style={styles.smallActionText}>View Trends</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -733,14 +733,7 @@ export default function ProgramsScreen() {
 
           <View style={styles.gridRow}>
             <View style={styles.gridCardWide}>
-              <Text style={styles.gridTitle}>Milestones</Text>
-              <View style={styles.milestonesRow}>
-                {['Week 1 Complete','50% Journey','Goal Day'].map((m, idx) => (
-                  <View key={idx} style={styles.milestonePill} testID={`milestone-${idx}`}>
-                    <Text style={styles.milestoneText}>{m}</Text>
-                  </View>
-                ))}
-              </View>
+              <Text style={styles.gridTitle}>Quick Actions</Text>
               <View style={styles.quickActionsRow}>
                 <TouchableOpacity style={styles.quickAction} onPress={() => router.push(`/program-detail?id=${activePrograms[0]?.id}`)} testID="qa-program">
                   <Text style={styles.quickActionText}>Open Program</Text>
@@ -751,6 +744,13 @@ export default function ProgramsScreen() {
                 <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/nutrition')} testID="qa-nutrition">
                   <Text style={styles.quickActionText}>Log Meal</Text>
                 </TouchableOpacity>
+              </View>
+              <View style={styles.milestonesRow}>
+                {['Week 1 Complete','50% Journey','Goal Day'].map((m, idx) => (
+                  <View key={idx} style={styles.milestonePill} testID={`milestone-${idx}`}>
+                    <Text style={styles.milestoneText}>{m}</Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>
@@ -1640,119 +1640,119 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   dashboardGrid: {
-    marginBottom: 32,
+    marginBottom: 40,
     paddingHorizontal: 0,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 16 as any,
-    marginBottom: 20,
+    gap: 20 as any,
+    marginBottom: 24,
   },
   gridCard: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 24,
-    padding: 24,
-    minHeight: 160,
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 200,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   gridCardWide: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 24,
-    minHeight: 180,
+    minHeight: 220,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   gridTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 20,
-    letterSpacing: 0.5,
+    marginBottom: 16,
+    letterSpacing: 0.3,
   },
   inlineRingRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
   },
   metricLine: {
     color: colors.textSecondary,
-    fontSize: 14,
-    marginBottom: 12,
+    fontSize: 13,
+    marginBottom: 8,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   smallActionBtn: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(93, 95, 239, 0.2)',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(93, 95, 239, 0.15)',
     alignSelf: 'flex-start',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
     elevation: 2,
   },
   smallActionText: {
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   milestonesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12 as any,
-    marginBottom: 20,
+    gap: 10 as any,
+    marginBottom: 24,
   },
   milestonePill: {
-    backgroundColor: 'rgba(93, 95, 239, 0.15)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: 'rgba(93, 95, 239, 0.12)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: 'rgba(93, 95, 239, 0.25)',
+    borderColor: 'rgba(93, 95, 239, 0.2)',
   },
   milestoneText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 14 as any,
+    gap: 12 as any,
   },
   quickAction: {
     flex: 1,
     backgroundColor: '#2A2A2A',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 14,
+    padding: 16,
     alignItems: 'center',
-    minHeight: 56,
+    minHeight: 52,
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
   },
   quickActionText: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -1899,7 +1899,7 @@ const styles = StyleSheet.create({
     marginBottom: bottomPadding - 16, // Adjusted for consistent bottom padding
   },
   heroSection: {
-    marginBottom: 40,
+    marginBottom: 32,
     paddingHorizontal: 0,
   },
   customProgramText: {
@@ -2422,7 +2422,7 @@ const styles = StyleSheet.create({
   },
   recoveryStats: {
     flex: 1,
-    marginLeft: 20,
-    paddingTop: 8,
+    marginLeft: 16,
+    paddingTop: 4,
   },
 });

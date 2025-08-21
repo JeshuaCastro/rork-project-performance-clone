@@ -77,20 +77,20 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   value: {
     color: colors.text,
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    letterSpacing: 0.3,
-    marginBottom: 2,
+    letterSpacing: 0.2,
+    marginBottom: 1,
   },
   sublabel: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '500',
   },
 });
