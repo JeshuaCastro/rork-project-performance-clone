@@ -1081,6 +1081,14 @@ export default function ProgramsScreen() {
               <Plus size={20} color={colors.text} />
               <Text style={styles.customProgramText}>Create Custom Program</Text>
             </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.demoButton}
+              onPress={() => router.push('/exercise-clarity-demo')}
+            >
+              <Activity size={20} color={colors.primary} />
+              <Text style={styles.demoButtonText}>Exercise Clarity Demo</Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -2560,6 +2568,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 12,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(93, 95, 239, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: bottomPadding - 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  demoButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 
 });
