@@ -1,192 +1,248 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
-import { colors } from '@/constants/colors';
-import { Stack } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { colors } from '@/constants/colors';
+import { ChevronLeft, Dumbbell, Activity, Heart } from 'lucide-react-native';
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 import ExerciseCard from '@/components/ExerciseCard';
 import { WorkoutExercise } from '@/types/exercises';
 
-export default function ExerciseClarityDemo() {
-  // Sample workout data
-  const sampleWorkout = {
+// Sample workout data
+const sampleWorkouts = [
+  {
     day: 'Monday',
-    title: 'Upper Body Strength',
-    description: 'Push-ups 3x8-12, Dumbbell Rows 3x8-10, Plank hold 3x30-60 seconds. Focus on proper form and controlled movements.',
-    intensity: 'Medium-High',
+    title: 'Upper Body Push',
+    description: 'Bench Press 5x5, Incline DB Press 3x8-10, Shoulder Press 3x8-10, Triceps work',
+    intensity: 'High',
     type: 'strength' as const,
+  },
+  {
+    day: 'Tuesday',
+    title: 'HIIT Cardio',
+    description: '30 seconds work, 30 seconds rest x 10 exercises, 3 rounds. Focus on explosive movements.',
+    intensity: 'High',
+    type: 'cardio' as const,
+  },
+  {
+    day: 'Wednesday',
+    title: 'Full Body Strength',
+    description: 'Circuit: Squats, Push-ups, Rows, Lunges, Planks (3 rounds). Perfect for beginners.',
+    intensity: 'Medium',
+    type: 'strength' as const,
+  },
+  {
+    day: 'Thursday',
+    title: 'Active Recovery',
+    description: '30-45 minute walk or light yoga. Focus on mobility and gentle movement.',
+    intensity: 'Low',
+    type: 'recovery' as const,
+  },
+];
+
+// Sample individual exercises
+const sampleExercises: WorkoutExercise[] = [
+  {
+    exerciseId: 'push-up',
+    sets: 3,
+    reps: '8-12',
+    targetRPE: 7,
+    notes: 'Focus on proper form and controlled movement',
+  },
+  {
+    exerciseId: 'squat',
+    sets: 4,
+    reps: 10,
+    targetRPE: 8,
+    notes: 'Keep chest up and drive through heels',
+  },
+  {
+    exerciseId: 'plank',
+    sets: 3,
+    duration: '30-45 seconds',
+    targetRPE: 6,
+    notes: 'Maintain straight line from head to heels',
+  },
+];
+
+export default function ExerciseClarityDemo() {
+  const router = useRouter();
+  const [selectedTab, setSelectedTab] = useState<'workouts' | 'exercises'>('workouts');
+  const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
+
+  const handleWorkoutStart = (workoutTitle: string) => {
+    console.log(`Starting workout: ${workoutTitle}`);
+    // Simulate workout completion after a short delay
+    setTimeout(() => {
+      setCompletedWorkouts(prev => [...prev, workoutTitle]);
+    }, 2000);
   };
 
-  // Sample individual exercises
-  const sampleExercises: WorkoutExercise[] = [
-    {
-      exerciseId: 'push-up',
-      sets: 3,
-      reps: '8-12',
-      weight: 'bodyweight',
-      restTime: '60 seconds',
-      targetRPE: 7,
-      notes: 'Focus on full range of motion and controlled tempo'
-    },
-    {
-      exerciseId: 'squat',
-      sets: 4,
-      reps: 12,
-      weight: 'bodyweight',
-      restTime: '90 seconds',
-      targetRPE: 6,
-      notes: 'Keep chest up and knees tracking over toes'
-    },
-    {
-      exerciseId: 'burpee',
-      sets: 3,
-      reps: 8,
-      restTime: '2 minutes',
-      targetRPE: 8,
-      notes: 'High intensity - maintain form over speed'
-    }
-  ];
+  const handleExerciseStart = (exerciseId: string) => {
+    console.log(`Starting exercise: ${exerciseId}`);
+  };
+
+  const handleExerciseComplete = (exerciseId: string) => {
+    console.log(`Completed exercise: ${exerciseId}`);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
-          title: 'Exercise Clarity Demo',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
+          headerShown: false,
         }}
       />
       <StatusBar style="light" />
-      
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Enhanced Exercise Clarity</Text>
-          <Text style={styles.subtitle}>
-            Making workouts accessible for beginners with detailed instructions, 
-            form tips, and progressive modifications.
-          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Exercise Clarity Demo</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Enhanced Workout Card Demo */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Enhanced Workout Card</Text>
-          <Text style={styles.sectionDescription}>
-            Workouts now break down into individual exercises with detailed guidance:
-          </Text>
-          <EnhancedWorkoutCard 
-            workout={sampleWorkout}
-            onStart={() => console.log('Starting workout')}
-          />
+        {/* Tab Selector */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[
+              styles.tab,
+              selectedTab === 'workouts' && styles.activeTab,
+            ]}
+            onPress={() => setSelectedTab('workouts')}
+          >
+            <Dumbbell size={16} color={selectedTab === 'workouts' ? colors.text : colors.textSecondary} />
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === 'workouts' && styles.activeTabText,
+              ]}
+            >
+              Enhanced Workouts
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tab,
+              selectedTab === 'exercises' && styles.activeTab,
+            ]}
+            onPress={() => setSelectedTab('exercises')}
+          >
+            <Activity size={16} color={selectedTab === 'exercises' ? colors.text : colors.textSecondary} />
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === 'exercises' && styles.activeTabText,
+              ]}
+            >
+              Individual Exercises
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Individual Exercise Cards Demo */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎯 Individual Exercise Cards</Text>
-          <Text style={styles.sectionDescription}>
-            Each exercise provides comprehensive guidance for proper execution:
-          </Text>
-          
-          {sampleExercises.map((exercise, index) => (
-            <ExerciseCard
-              key={`${exercise.exerciseId}-${index}`}
-              workoutExercise={exercise}
-              onStart={() => console.log(`Starting ${exercise.exerciseId}`)}
-              showDetails={true}
-            />
-          ))}
-        </View>
+        {/* Content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {selectedTab === 'workouts' ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Enhanced Workout Cards</Text>
+                <Text style={styles.sectionDescription}>
+                  These cards automatically parse workout descriptions and provide detailed exercise breakdowns with step-by-step instructions.
+                </Text>
+              </View>
 
-        {/* Features Overview */}
-        <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>✨ Key Features</Text>
-          
-          <View style={styles.featuresList}>
+              {sampleWorkouts.map((workout, index) => (
+                <EnhancedWorkoutCard
+                  key={index}
+                  workout={workout}
+                  isCompleted={completedWorkouts.includes(workout.title)}
+                  onStart={() => handleWorkoutStart(workout.title)}
+                  onEdit={() => console.log('Edit workout:', workout.title)}
+                  onDetails={() => console.log('View details:', workout.title)}
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Individual Exercise Cards</Text>
+                <Text style={styles.sectionDescription}>
+                  Each exercise card provides comprehensive guidance including form tips, modifications, and safety notes.
+                </Text>
+              </View>
+
+              {sampleExercises.map((exercise, index) => (
+                <ExerciseCard
+                  key={index}
+                  workoutExercise={exercise}
+                  onStart={() => handleExerciseStart(exercise.exerciseId)}
+                  onComplete={() => handleExerciseComplete(exercise.exerciseId)}
+                  showDetails={true}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Features Overview */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.featuresTitle}>Key Features</Text>
+            
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📖</Text>
+              <View style={styles.featureIcon}>
+                <Dumbbell size={20} color={colors.primary} />
+              </View>
               <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Step-by-Step Instructions</Text>
+                <Text style={styles.featureTitle}>Comprehensive Exercise Database</Text>
                 <Text style={styles.featureDescription}>
-                  Detailed breakdown of each exercise with numbered steps, tips, and common mistakes to avoid.
+                  Detailed instructions, form tips, modifications, and safety notes for every exercise.
                 </Text>
               </View>
             </View>
 
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>⚖️</Text>
+              <View style={styles.featureIcon}>
+                <Activity size={20} color={colors.primary} />
+              </View>
               <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Progressive Modifications</Text>
+                <Text style={styles.featureTitle}>Smart Workout Parsing</Text>
                 <Text style={styles.featureDescription}>
-                  Easier and harder variations for every exercise, allowing users to progress at their own pace.
+                  Automatically converts workout descriptions into structured, actionable exercise plans.
                 </Text>
               </View>
             </View>
 
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🎯</Text>
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Clear Exercise Prescription</Text>
-                <Text style={styles.featureDescription}>
-                  Sets, reps, weight, rest time, and target RPE clearly displayed for each exercise.
-                </Text>
+              <View style={styles.featureIcon}>
+                <Heart size={20} color={colors.primary} />
               </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>⚠️</Text>
               <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Safety Guidelines</Text>
+                <Text style={styles.featureTitle}>Beginner-Friendly Design</Text>
                 <Text style={styles.featureDescription}>
-                  Important safety notes and form cues to prevent injury and ensure proper execution.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🏷️</Text>
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Equipment & Difficulty</Text>
-                <Text style={styles.featureDescription}>
-                  Clear indication of required equipment and difficulty level for each exercise.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📊</Text>
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Progress Tracking</Text>
-                <Text style={styles.featureDescription}>
-                  Visual progress indicators and completion tracking for workouts and individual exercises.
+                  Clear visual cues, difficulty levels, and progressive modifications for all fitness levels.
                 </Text>
               </View>
             </View>
           </View>
-        </View>
-
-        {/* Implementation Benefits */}
-        <View style={styles.benefitsSection}>
-          <Text style={styles.sectionTitle}>🚀 Benefits for Beginners</Text>
-          
-          <View style={styles.benefitsList}>
-            <Text style={styles.benefitItem}>
-              • <Text style={styles.benefitText}>Reduces intimidation factor for new exercisers</Text>
-            </Text>
-            <Text style={styles.benefitItem}>
-              • <Text style={styles.benefitText}>Prevents injury through proper form education</Text>
-            </Text>
-            <Text style={styles.benefitItem}>
-              • <Text style={styles.benefitText}>Enables progressive skill development</Text>
-            </Text>
-            <Text style={styles.benefitItem}>
-              • <Text style={styles.benefitText}>Builds confidence through clear guidance</Text>
-            </Text>
-            <Text style={styles.benefitItem}>
-              • <Text style={styles.benefitText}>Improves workout adherence and results</Text>
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -200,57 +256,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 24,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    margin: 16,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
+  activeTabText: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
   },
-  header: {
-    marginBottom: 24,
+  sectionHeader: {
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 28,
+  sectionTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 8,
   },
-  subtitle: {
+  sectionDescription: {
     fontSize: 16,
     color: colors.textSecondary,
     lineHeight: 24,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  sectionDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
   },
   featuresSection: {
     backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
+    marginTop: 24,
   },
-  featuresList: {
-    marginTop: 16,
+  featuresTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   featureIcon: {
-    fontSize: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
-    marginTop: 2,
   },
   featureContent: {
     flex: 1,
@@ -265,24 +367,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
-  },
-  benefitsSection: {
-    backgroundColor: colors.primary + '10',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
-  },
-  benefitsList: {
-    marginTop: 16,
-  },
-  benefitItem: {
-    fontSize: 16,
-    color: colors.primary,
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  benefitText: {
-    color: colors.text,
   },
 });

@@ -4,7 +4,7 @@ import { colors } from '@/constants/colors';
 import ExerciseCard from '@/components/ExerciseCard';
 import { WorkoutExercise } from '@/types/exercises';
 import { parseWorkoutToExercises, getTargetRPE } from '@/utils/exerciseParser';
-import { ChevronDown, ChevronUp, Dumbbell } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Dumbbell, Play, CheckCircle2 } from 'lucide-react-native';
 
 interface Workout {
   day: string;
@@ -122,11 +122,13 @@ export default function EnhancedWorkoutCard({
             style={styles.startButton}
             onPress={onStart}
           >
+            <Play size={16} color={colors.text} />
             <Text style={styles.startButtonText}>Start Workout</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.completedButton}>
-            <Text style={styles.completedButtonText}>✓ Completed</Text>
+            <CheckCircle2 size={16} color={colors.success} />
+            <Text style={styles.completedButtonText}>Completed</Text>
           </View>
         )}
         
@@ -252,32 +254,38 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
     flex: 1,
     marginRight: 8,
-    alignItems: 'center',
   },
   startButtonText: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 6,
   },
   completedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.success + '20',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
     flex: 1,
     marginRight: 8,
-    alignItems: 'center',
   },
   completedButtonText: {
     color: colors.success,
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 6,
   },
   detailsButton: {
     backgroundColor: '#2A2A2A',
