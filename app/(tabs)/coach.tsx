@@ -518,7 +518,7 @@ export default function CoachScreen() {
     }
   }, [hasWhoopData, data]);
 
-  // Program-aware smart coach insight generator
+  // Program-aware smart coach insight generator with progress analysis
   const getSmartCoachInsight = (insights: HealthInsight[], steps: any[], recovery: number, strain: number): string => {
     if (insights.length === 0) {
       if (activeGoal) {
@@ -542,28 +542,59 @@ export default function CoachScreen() {
       baseInsight = `Excellent work! Your health metrics are strong. With recovery at ${recovery.toFixed(0)}% and balanced strain, you're ready to push your limits.`;
     }
     
-    // Add program context
+    // Enhanced program context with progress analysis
     if (activeGoal && goalSummary) {
       const paceStatus = goalSummary.paceVsPlan;
       const weeksLeft = goalSummary.totalWeeks - goalSummary.weeksElapsed;
       const progressPercent = goalSummary.percentComplete;
+      const weeksElapsed = goalSummary.weeksElapsed;
+      const expectedProgress = (weeksElapsed / goalSummary.totalWeeks) * 100;
+      const progressDelta = progressPercent - expectedProgress;
       
       let programContext = '';
-      if (paceStatus === 'behind' && criticalInsights.length === 0) {
-        programContext = ` Your ${activeGoal.title} goal is behind schedule (${progressPercent}% complete). Focus on recovery to get back on track.`;
+      let programAdjustment = '';
+      
+      // Analyze progress vs expectations
+      if (paceStatus === 'behind') {
+        const weeksToRecover = Math.ceil(Math.abs(progressDelta) / (100 / goalSummary.totalWeeks));
+        programContext = ` Your ${activeGoal.title} goal is ${Math.abs(progressDelta).toFixed(0)}% behind schedule (${progressPercent}% complete vs ${expectedProgress.toFixed(0)}% expected).`;
+        
+        if (criticalInsights.length > 0) {
+          programAdjustment = ` Recovery issues are likely impacting your progress. Address these first before intensifying training.`;
+        } else if (recovery >= 70) {
+          programAdjustment = ` With good recovery, consider increasing training frequency by 1-2 sessions per week to catch up.`;
+        } else {
+          programAdjustment = ` Focus on consistency rather than intensity - you need ${weeksToRecover} weeks of steady progress to get back on track.`;
+        }
       } else if (paceStatus === 'ahead') {
-        programContext = ` Great news - you're ahead of schedule on your ${activeGoal.title} goal (${progressPercent}% complete with ${weeksLeft} weeks left)!`;
+        programContext = ` Excellent! You're ${progressDelta.toFixed(0)}% ahead of schedule on your ${activeGoal.title} goal (${progressPercent}% complete vs ${expectedProgress.toFixed(0)}% expected).`;
+        
+        if (recovery >= 75) {
+          programAdjustment = ` Your body is handling the program well. Consider progressing to the next phase or increasing targets by 10-15%.`;
+        } else if (recovery < 60) {
+          programAdjustment = ` Great progress, but your recovery suggests scaling back slightly to maintain this pace sustainably.`;
+        } else {
+          programAdjustment = ` Maintain your current approach - you're in the optimal zone for continued progress.`;
+        }
       } else {
-        programContext = ` You're on track with your ${activeGoal.title} goal (${progressPercent}% complete, ${weeksLeft} weeks remaining).`;
+        programContext = ` You're perfectly on track with your ${activeGoal.title} goal (${progressPercent}% complete, ${weeksLeft} weeks remaining).`;
+        
+        if (recovery >= 75 && strain < 12) {
+          programAdjustment = ` Your body can handle more - consider adding 1 extra training session or increasing intensity by 10%.`;
+        } else if (recovery < 55) {
+          programAdjustment = ` Your progress is good but recovery is declining. Maintain current volume but focus on sleep and nutrition.`;
+        } else {
+          programAdjustment = ` Perfect balance - continue your current program structure.`;
+        }
       }
       
-      return baseInsight + programContext;
+      return baseInsight + programContext + programAdjustment;
     }
     
     return baseInsight;
   };
 
-  // Program-aware workout recommendations
+  // Enhanced program-aware workout recommendations with progress analysis
   const generateWorkoutRecommendation = () => {
     let baseRecommendation = '';
     
@@ -575,55 +606,102 @@ export default function CoachScreen() {
       baseRecommendation = 'Active recovery recommended. Light walking, gentle stretching, or restorative yoga.';
     }
     
-    // Add program-specific guidance
+    // Enhanced program-specific guidance with progress analysis
     let programGuidance = '';
-    if (activeGoal) {
-      const weeksRemaining = goalSummary ? goalSummary.totalWeeks - goalSummary.weeksElapsed : 0;
-      const paceStatus = goalSummary?.paceVsPlan || 'on_track';
+    if (activeGoal && goalSummary) {
+      const weeksRemaining = goalSummary.totalWeeks - goalSummary.weeksElapsed;
+      const paceStatus = goalSummary.paceVsPlan;
+      const progressPercent = goalSummary.percentComplete;
+      const expectedProgress = (goalSummary.weeksElapsed / goalSummary.totalWeeks) * 100;
+      const progressDelta = progressPercent - expectedProgress;
+      
+      // Calculate program modifications based on progress
+      let intensityModifier = 1.0;
+      let volumeModifier = 1.0;
+      
+      if (paceStatus === 'behind' && avgRecovery >= 70) {
+        intensityModifier = 1.1; // 10% increase
+        volumeModifier = 1.15; // 15% increase
+      } else if (paceStatus === 'ahead' && avgRecovery < 60) {
+        intensityModifier = 0.9; // 10% decrease
+        volumeModifier = 0.95; // 5% decrease
+      }
       
       switch (activeGoal.type) {
         case 'muscle_gain':
           if (avgRecovery >= 75) {
-            programGuidance = paceStatus === 'behind' 
-              ? ` Focus on compound movements and progressive overload to catch up on your muscle gain goal (${weeksRemaining} weeks left).`
-              : ` Perfect for muscle-building compound lifts. You're ${paceStatus === 'ahead' ? 'ahead of' : 'on track with'} your muscle gain target.`;
+            if (paceStatus === 'behind') {
+              programGuidance = ` PROGRAM ADJUSTMENT: Increase training volume by ${Math.round((volumeModifier - 1) * 100)}% with compound movements. Add an extra set to major lifts to catch up (${Math.abs(progressDelta).toFixed(0)}% behind, ${weeksRemaining} weeks left).`;
+            } else if (paceStatus === 'ahead') {
+              programGuidance = ` PROGRAM SUCCESS: You're ${progressDelta.toFixed(0)}% ahead! Consider progressive overload or adding advanced techniques like drop sets.`;
+            } else {
+              programGuidance = ` Perfect for muscle-building compound lifts. Maintain current program structure - you're on track.`;
+            }
           } else if (avgRecovery >= 50) {
-            programGuidance = ` Light resistance training with focus on form. Your muscle gain program needs consistent training even on moderate recovery days.`;
+            programGuidance = paceStatus === 'behind' 
+              ? ` Focus on form and consistency rather than intensity. Your muscle gain progress needs steady training even when behind schedule.`
+              : ` Light resistance training with focus on form. Maintain program consistency for muscle gain.`;
           } else {
-            programGuidance = ` Skip heavy lifting today. Your muscle gain progress depends on recovery - prioritize sleep and nutrition.`;
+            programGuidance = ` RECOVERY PRIORITY: Skip heavy lifting today. Your muscle gain progress depends on recovery - this rest will help you catch up later.`;
           }
           break;
+          
         case 'fat_loss':
           if (avgRecovery >= 75) {
-            programGuidance = ` Great day for HIIT or circuit training to maximize fat burn. You're ${paceStatus} with your fat loss goal.`;
+            if (paceStatus === 'behind') {
+              programGuidance = ` PROGRAM ADJUSTMENT: Add ${Math.round((volumeModifier - 1) * 100)}% more cardio volume. Consider HIIT 4x/week instead of 3x to accelerate fat loss (${Math.abs(progressDelta).toFixed(0)}% behind target).`;
+            } else if (paceStatus === 'ahead') {
+              programGuidance = ` EXCELLENT PROGRESS: ${progressDelta.toFixed(0)}% ahead of schedule! Maintain current approach or add strength training to preserve muscle.`;
+            } else {
+              programGuidance = ` Great day for HIIT or circuit training. Your fat loss program is on track.`;
+            }
           } else if (avgRecovery >= 50) {
-            programGuidance = ` Steady-state cardio or light strength training. Consistency is key for your fat loss program.`;
+            programGuidance = paceStatus === 'behind'
+              ? ` Steady-state cardio focus. Consistency over intensity will help you catch up on your fat loss goal.`
+              : ` Steady-state cardio or light strength training. Consistency is key for fat loss.`;
           } else {
-            programGuidance = ` Low-intensity movement only. Fat loss happens in recovery too - don't compromise your progress.`;
+            programGuidance = ` Low-intensity movement only. Fat loss happens in recovery too - don't compromise long-term progress for short-term gains.`;
           }
           break;
+          
         case 'strength':
           if (avgRecovery >= 75) {
-            programGuidance = paceStatus === 'behind'
-              ? ` Perfect for heavy compound lifts. Push hard to catch up on your strength goals (${weeksRemaining} weeks left).`
-              : ` Ideal for testing new PRs or heavy singles. Your strength program is progressing well.`;
+            if (paceStatus === 'behind') {
+              programGuidance = ` PROGRAM ADJUSTMENT: Increase training intensity by ${Math.round((intensityModifier - 1) * 100)}%. Focus on heavy compound lifts at 85-95% 1RM to catch up (${Math.abs(progressDelta).toFixed(0)}% behind, ${weeksRemaining} weeks left).`;
+            } else if (paceStatus === 'ahead') {
+              programGuidance = ` STRENGTH GAINS AHEAD OF SCHEDULE: ${progressDelta.toFixed(0)}% ahead! Perfect day for testing new PRs or attempting heavier singles.`;
+            } else {
+              programGuidance = ` Ideal for heavy compound lifts. Your strength program is progressing perfectly.`;
+            }
           } else if (avgRecovery >= 50) {
-            programGuidance = ` Technique work at 70-80% max. Your strength gains come from consistent quality training.`;
+            programGuidance = paceStatus === 'behind'
+              ? ` Technique work at 75-85% max. Focus on movement quality to build strength foundation even when behind schedule.`
+              : ` Technique work at 70-80% max. Quality training builds strength consistently.`;
           } else {
-            programGuidance = ` Skip heavy lifting. Strength gains require full recovery - focus on mobility and light movement.`;
+            programGuidance = ` RECOVERY PRIORITY: Skip heavy lifting. Strength gains require full recovery - this rest will enable bigger gains later.`;
           }
           break;
+          
         case 'endurance':
           if (avgRecovery >= 75) {
-            programGuidance = ` Perfect for interval training or tempo runs. You're ${paceStatus} with your endurance goals.`;
+            if (paceStatus === 'behind') {
+              programGuidance = ` PROGRAM ADJUSTMENT: Add ${Math.round((volumeModifier - 1) * 100)}% more training volume. Focus on tempo runs and intervals to catch up on endurance goals (${Math.abs(progressDelta).toFixed(0)}% behind).`;
+            } else if (paceStatus === 'ahead') {
+              programGuidance = ` ENDURANCE AHEAD OF SCHEDULE: ${progressDelta.toFixed(0)}% ahead! Perfect for challenging interval sessions or race pace work.`;
+            } else {
+              programGuidance = ` Perfect for interval training or tempo runs. Your endurance program is on track.`;
+            }
           } else if (avgRecovery >= 50) {
-            programGuidance = ` Easy aerobic pace training. Build your aerobic base consistently for endurance gains.`;
+            programGuidance = paceStatus === 'behind'
+              ? ` Easy aerobic pace with slightly longer duration. Build your base consistently to catch up on endurance goals.`
+              : ` Easy aerobic pace training. Build your aerobic base consistently.`;
           } else {
-            programGuidance = ` Easy walk or complete rest. Endurance improvements happen during recovery.`;
+            programGuidance = ` Easy walk or complete rest. Endurance improvements happen during recovery - this rest will help your next quality session.`;
           }
           break;
+          
         default:
-          programGuidance = ` Consider how today's training aligns with your ${activeGoal.title} goal.`;
+          programGuidance = ` Consider how today's training aligns with your ${activeGoal.title} goal (${progressPercent}% complete, ${paceStatus}).`;
       }
     }
     
@@ -644,28 +722,58 @@ export default function CoachScreen() {
       basePlan = 'Balanced nutrition: lean proteins, complex carbs, healthy fats. Time meals around your training schedule.';
     }
     
-    // Add program-specific nutrition guidance
+    // Enhanced program-specific nutrition guidance with progress analysis
     let programNutrition = '';
-    if (activeGoal) {
-      const paceStatus = goalSummary?.paceVsPlan || 'on_track';
+    if (activeGoal && goalSummary) {
+      const paceStatus = goalSummary.paceVsPlan;
+      const progressPercent = goalSummary.percentComplete;
+      const expectedProgress = (goalSummary.weeksElapsed / goalSummary.totalWeeks) * 100;
+      const progressDelta = progressPercent - expectedProgress;
+      const weeksRemaining = goalSummary.totalWeeks - goalSummary.weeksElapsed;
       
       switch (activeGoal.type) {
         case 'muscle_gain':
-          programNutrition = paceStatus === 'behind'
-            ? ' Increase calories by 200-300 and protein to 2.2g/kg to accelerate muscle gain.'
-            : ' Maintain slight caloric surplus with 1.8-2.0g/kg protein for steady muscle growth.';
+          if (paceStatus === 'behind') {
+            programNutrition = ` NUTRITION ADJUSTMENT: Increase calories by ${Math.round(200 + (Math.abs(progressDelta) * 10))} and protein to 2.2-2.4g/kg to accelerate muscle gain. You're ${Math.abs(progressDelta).toFixed(0)}% behind with ${weeksRemaining} weeks left.`;
+          } else if (paceStatus === 'ahead') {
+            programNutrition = ` EXCELLENT PROGRESS: ${progressDelta.toFixed(0)}% ahead! Maintain current surplus or slightly reduce calories to optimize body composition while continuing gains.`;
+          } else {
+            programNutrition = ' Maintain slight caloric surplus with 1.8-2.0g/kg protein for steady muscle growth.';
+          }
           break;
+          
         case 'fat_loss':
-          programNutrition = paceStatus === 'behind'
-            ? ' Consider a moderate caloric deficit (300-500 calories) while maintaining protein at 2.0g/kg.'
-            : ' Stay consistent with your current caloric deficit and high protein intake.';
+          if (paceStatus === 'behind') {
+            programNutrition = ` NUTRITION ADJUSTMENT: Increase deficit by ${Math.round(100 + (Math.abs(progressDelta) * 20))} calories while maintaining protein at 2.2g/kg. Consider intermittent fasting to accelerate progress (${Math.abs(progressDelta).toFixed(0)}% behind target).`;
+          } else if (paceStatus === 'ahead') {
+            programNutrition = ` GREAT PROGRESS: ${progressDelta.toFixed(0)}% ahead of schedule! Consider a diet break or reduce deficit slightly to preserve muscle and metabolic health.`;
+          } else {
+            programNutrition = ' Stay consistent with your current caloric deficit and high protein intake.';
+          }
           break;
+          
         case 'strength':
-          programNutrition = ' Fuel strength gains with adequate carbs pre-workout and protein post-workout. Don\'t restrict calories.';
+          if (paceStatus === 'behind') {
+            programNutrition = ` NUTRITION FOCUS: Increase pre-workout carbs by 20-30g and post-workout protein to 40-50g. Strength gains need optimal fueling (${Math.abs(progressDelta).toFixed(0)}% behind target).`;
+          } else if (paceStatus === 'ahead') {
+            programNutrition = ` STRENGTH GAINS ON TRACK: ${progressDelta.toFixed(0)}% ahead! Maintain current nutrition or add creatine supplementation for continued gains.`;
+          } else {
+            programNutrition = ' Fuel strength gains with adequate carbs pre-workout and protein post-workout. Don\'t restrict calories.';
+          }
           break;
+          
         case 'endurance':
-          programNutrition = ' Focus on carb periodization - higher carbs on training days, moderate on rest days.';
+          if (paceStatus === 'behind') {
+            programNutrition = ` ENDURANCE NUTRITION: Increase training day carbs by ${Math.round(50 + (Math.abs(progressDelta) * 5))}g and focus on glycogen replenishment. Consider sports drinks during longer sessions (${Math.abs(progressDelta).toFixed(0)}% behind).`;
+          } else if (paceStatus === 'ahead') {
+            programNutrition = ` ENDURANCE AHEAD: ${progressDelta.toFixed(0)}% ahead of schedule! Maintain current carb periodization or experiment with fat adaptation techniques.`;
+          } else {
+            programNutrition = ' Focus on carb periodization - higher carbs on training days, moderate on rest days.';
+          }
           break;
+          
+        default:
+          programNutrition = ` Align nutrition with your ${activeGoal.title} goal progress (${progressPercent}% complete, ${paceStatus}).`;
       }
     }
     

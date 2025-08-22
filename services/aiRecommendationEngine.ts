@@ -83,28 +83,92 @@ class AIRecommendationEngine {
 
   private generateWorkoutRecommendations(context: RecommendationContext): AIRecommendation[] {
     const recommendations: AIRecommendation[] = [];
-    const { currentRecovery, currentStrain, activePrograms, timeOfDay, dayOfWeek } = context;
+    const { currentRecovery, currentStrain, activePrograms, timeOfDay, dayOfWeek, programContext } = context;
 
-    // Intensity recommendations based on recovery
+    // Program-aware intensity recommendations
     if (currentRecovery >= 75) {
+      let description = `With ${currentRecovery}% recovery, you're primed for a challenging workout.`;
+      let title = 'High-Intensity Training Ready';
+      let priority: 'high' | 'medium' | 'low' = 'medium';
+      
+      if (programContext) {
+        const { activeGoal, goalSummary, progressDelta, isBehindSchedule, isAheadOfSchedule } = programContext;
+        
+        if (isBehindSchedule) {
+          title = `Catch-Up Training for ${activeGoal.title}`;
+          description = `Excellent recovery (${currentRecovery}%) - perfect opportunity to catch up on your ${activeGoal.title} goal. You're ${Math.abs(progressDelta).toFixed(0)}% behind schedule.`;
+          priority = 'high';
+          
+          // Goal-specific catch-up recommendations
+          switch (activeGoal.type) {
+            case 'muscle_gain':
+              description += ' Focus on compound movements with progressive overload.';
+              break;
+            case 'fat_loss':
+              description += ' Consider HIIT or circuit training to accelerate fat loss.';
+              break;
+            case 'strength':
+              description += ' Perfect for heavy compound lifts at 85-95% 1RM.';
+              break;
+            case 'endurance':
+              description += ' Ideal for interval training or tempo runs.';
+              break;
+          }
+        } else if (isAheadOfSchedule) {
+          title = `Program Optimization for ${activeGoal.title}`;
+          description = `Great recovery (${currentRecovery}%) and you're ${progressDelta.toFixed(0)}% ahead of schedule! Consider advancing your program or adding complexity.`;
+          
+          switch (activeGoal.type) {
+            case 'muscle_gain':
+              description += ' Try advanced techniques like drop sets or supersets.';
+              break;
+            case 'fat_loss':
+              description += ' Add strength training to preserve muscle while continuing fat loss.';
+              break;
+            case 'strength':
+              description += ' Perfect for testing new PRs or attempting heavier singles.';
+              break;
+            case 'endurance':
+              description += ' Great for challenging interval sessions or race pace work.';
+              break;
+          }
+        } else {
+          description += ` Perfect for your ${activeGoal.title} program - you're on track (${goalSummary.percentComplete}% complete).`;
+        }
+      } else {
+        description += ' Consider HIIT or strength training.';
+      }
+      
       recommendations.push({
         id: `workout-high-${Date.now()}`,
         category: 'workout',
-        title: 'High-Intensity Training Ready',
-        description: `With ${currentRecovery}% recovery, you're primed for a challenging workout. Consider HIIT or strength training.`,
-        priority: 'medium',
+        title,
+        description,
+        priority,
         actionable: true,
-        estimatedImpact: 'Maximize fitness gains',
+        estimatedImpact: programContext?.isBehindSchedule ? 'Catch up on program goals' : 'Maximize fitness gains',
         timeframe: 'Today',
         icon: 'zap',
         createdAt: new Date()
       });
     } else if (currentRecovery < 50) {
+      let description = `Recovery at ${currentRecovery}% suggests light activity.`;
+      let title = 'Active Recovery Recommended';
+      
+      if (programContext?.isBehindSchedule) {
+        title = 'Recovery Priority Despite Program Delays';
+        description += ` Even though you're behind on your ${programContext.activeGoal.title} goal, prioritizing recovery now will enable better progress later.`;
+      } else if (programContext) {
+        description += ` This aligns with your ${programContext.activeGoal.title} program - recovery is essential for progress.`;
+      }
+      
+      description += ' Try yoga, walking, or gentle stretching.';
+      
       recommendations.push({
         id: `workout-low-${Date.now()}`,
         category: 'workout',
-        title: 'Active Recovery Recommended',
-        description: `Recovery at ${currentRecovery}% suggests light activity. Try yoga, walking, or gentle stretching.`,
+        title,
+        description,
         priority: 'high',
         actionable: true,
         estimatedImpact: 'Prevent overtraining',
@@ -114,13 +178,19 @@ class AIRecommendationEngine {
       });
     }
 
-    // Time-based workout suggestions
+    // Program-aware time-based suggestions
     if (timeOfDay === 'morning' && currentRecovery > 60) {
+      let description = 'Your recovery supports morning training. This timing can boost metabolism and energy for the day.';
+      
+      if (programContext) {
+        description += ` Great timing for your ${programContext.activeGoal.title} program.`;
+      }
+      
       recommendations.push({
         id: `morning-workout-${Date.now()}`,
         category: 'workout',
         title: 'Morning Training Window',
-        description: 'Your recovery supports morning training. This timing can boost metabolism and energy for the day.',
+        description,
         priority: 'low',
         actionable: true,
         estimatedImpact: 'Better daily energy',
@@ -130,13 +200,20 @@ class AIRecommendationEngine {
       });
     }
 
-    // Weekly periodization
-    if (dayOfWeek === 'Monday' && activePrograms.length > 0) {
+    // Program-aware weekly periodization
+    if (dayOfWeek === 'Monday' && (activePrograms.length > 0 || programContext)) {
+      let description = 'Start your week strong with a structured workout. Your body is typically most recovered on Mondays.';
+      
+      if (programContext) {
+        const weeksLeft = programContext.weeksRemaining;
+        description += ` You have ${weeksLeft} weeks left on your ${programContext.activeGoal.title} goal.`;
+      }
+      
       recommendations.push({
         id: `weekly-plan-${Date.now()}`,
         category: 'workout',
         title: 'Week Planning',
-        description: 'Start your week strong with a structured workout. Your body is typically most recovered on Mondays.',
+        description,
         priority: 'low',
         actionable: true,
         estimatedImpact: 'Better weekly consistency',
@@ -151,15 +228,41 @@ class AIRecommendationEngine {
 
   private generateNutritionRecommendations(context: RecommendationContext): AIRecommendation[] {
     const recommendations: AIRecommendation[] = [];
-    const { currentRecovery, currentStrain, timeOfDay, userProfile } = context;
+    const { currentRecovery, currentStrain, timeOfDay, userProfile, programContext } = context;
 
-    // Pre-workout nutrition
+    // Program-aware pre-workout nutrition
     if (timeOfDay === 'morning' && currentRecovery > 65) {
+      let description = 'Have a light snack with carbs 30-60 minutes before your workout.';
+      let suggestion = 'Try banana with almond butter.';
+      
+      if (programContext) {
+        const { activeGoal, isBehindSchedule } = programContext;
+        
+        if (isBehindSchedule) {
+          description = `Since you're behind on your ${activeGoal.title} goal, optimize pre-workout nutrition for maximum performance.`;
+        }
+        
+        switch (activeGoal.type) {
+          case 'muscle_gain':
+            suggestion = 'Try oatmeal with protein powder and banana for sustained energy and muscle support.';
+            break;
+          case 'fat_loss':
+            suggestion = 'Try black coffee with a small apple for energy without excess calories.';
+            break;
+          case 'strength':
+            suggestion = 'Try banana with almond butter for quick energy and sustained power.';
+            break;
+          case 'endurance':
+            suggestion = 'Try oatmeal with berries for sustained carbohydrate energy.';
+            break;
+        }
+      }
+      
       recommendations.push({
         id: `pre-workout-${Date.now()}`,
         category: 'nutrition',
         title: 'Pre-Workout Fuel',
-        description: 'Have a light snack with carbs 30-60 minutes before your workout. Try banana with almond butter.',
+        description: `${description} ${suggestion}`,
         priority: 'medium',
         actionable: true,
         estimatedImpact: '+10% workout performance',
@@ -169,13 +272,37 @@ class AIRecommendationEngine {
       });
     }
 
-    // Post-workout recovery nutrition
+    // Program-aware post-workout nutrition
     if (currentStrain > 12) {
+      let description = 'Your high strain workout requires protein and carbs within 30 minutes.';
+      let suggestion = 'Try chocolate milk or protein shake.';
+      
+      if (programContext) {
+        const { activeGoal, isBehindSchedule } = programContext;
+        
+        switch (activeGoal.type) {
+          case 'muscle_gain':
+            suggestion = isBehindSchedule 
+              ? 'Try whey protein with banana and oats for maximum muscle protein synthesis.'
+              : 'Try protein shake with milk and banana.';
+            break;
+          case 'fat_loss':
+            suggestion = 'Try lean protein shake with water to support recovery without excess calories.';
+            break;
+          case 'strength':
+            suggestion = 'Try chocolate milk or protein shake with creatine for strength recovery.';
+            break;
+          case 'endurance':
+            suggestion = 'Try chocolate milk for optimal carb-to-protein ratio for endurance recovery.';
+            break;
+        }
+      }
+      
       recommendations.push({
         id: `post-workout-${Date.now()}`,
         category: 'nutrition',
         title: 'Recovery Nutrition',
-        description: 'Your high strain workout requires protein and carbs within 30 minutes. Try chocolate milk or protein shake.',
+        description: `${description} ${suggestion}`,
         priority: 'high',
         actionable: true,
         estimatedImpact: '+20% recovery speed',
@@ -185,13 +312,19 @@ class AIRecommendationEngine {
       });
     }
 
-    // Hydration based on recovery
+    // Program-aware hydration
     if (currentRecovery < 60) {
+      let description = 'Low recovery may indicate dehydration. Aim for 500ml of water in the next hour.';
+      
+      if (programContext?.isBehindSchedule) {
+        description += ` Proper hydration is crucial for catching up on your ${programContext.activeGoal.title} goal.`;
+      }
+      
       recommendations.push({
         id: `hydration-${Date.now()}`,
         category: 'nutrition',
         title: 'Hydration Focus',
-        description: 'Low recovery may indicate dehydration. Aim for 500ml of water in the next hour.',
+        description,
         priority: 'medium',
         actionable: true,
         estimatedImpact: '+5% recovery boost',
@@ -201,8 +334,64 @@ class AIRecommendationEngine {
       });
     }
 
-    // Goal-specific nutrition
-    if (userProfile.fitnessGoal === 'gainMuscle') {
+    // Enhanced program-specific nutrition
+    if (programContext) {
+      const { activeGoal, progressDelta, isBehindSchedule, isAheadOfSchedule } = programContext;
+      let proteinTarget = Math.round(userProfile.weight * 1.8);
+      let title = `${activeGoal.title} Nutrition`;
+      let description = '';
+      let priority: 'high' | 'medium' | 'low' = 'medium';
+      
+      switch (activeGoal.type) {
+        case 'muscle_gain':
+          proteinTarget = Math.round(userProfile.weight * (isBehindSchedule ? 2.4 : 2.0));
+          title = 'Muscle Building Nutrition';
+          description = isBehindSchedule 
+            ? `You're ${Math.abs(progressDelta).toFixed(0)}% behind schedule. Increase protein to ${proteinTarget}g and add 200-300 calories to accelerate muscle gain.`
+            : `Aim for ${proteinTarget}g protein today with a slight caloric surplus to support muscle growth.`;
+          priority = isBehindSchedule ? 'high' : 'medium';
+          break;
+          
+        case 'fat_loss':
+          proteinTarget = Math.round(userProfile.weight * 2.2);
+          title = 'Fat Loss Nutrition';
+          description = isBehindSchedule 
+            ? `You're ${Math.abs(progressDelta).toFixed(0)}% behind target. Maintain ${proteinTarget}g protein while creating a moderate caloric deficit.`
+            : isAheadOfSchedule 
+            ? `Great progress! You're ${progressDelta.toFixed(0)}% ahead. Consider a diet break or reduce deficit slightly.`
+            : `Maintain ${proteinTarget}g protein with your current caloric deficit.`;
+          priority = isBehindSchedule ? 'high' : 'medium';
+          break;
+          
+        case 'strength':
+          title = 'Strength Building Nutrition';
+          description = isBehindSchedule 
+            ? `Optimize nutrition for strength gains: increase pre-workout carbs by 20-30g and post-workout protein to 40-50g.`
+            : `Fuel strength gains with adequate carbs pre-workout and ${proteinTarget}g protein daily.`;
+          break;
+          
+        case 'endurance':
+          title = 'Endurance Nutrition';
+          description = isBehindSchedule 
+            ? `Focus on carb periodization: increase training day carbs by ${Math.round(50 + Math.abs(progressDelta) * 5)}g for better endurance performance.`
+            : `Focus on carb periodization - higher carbs on training days, moderate on rest days.`;
+          break;
+      }
+      
+      recommendations.push({
+        id: `program-nutrition-${Date.now()}`,
+        category: 'nutrition',
+        title,
+        description,
+        priority,
+        actionable: true,
+        estimatedImpact: isBehindSchedule ? 'Accelerate program progress' : 'Support program goals',
+        timeframe: 'Throughout the day',
+        icon: 'beef',
+        createdAt: new Date()
+      });
+    } else if (userProfile.fitnessGoal === 'gainMuscle') {
+      // Fallback for legacy goal system
       recommendations.push({
         id: `muscle-nutrition-${Date.now()}`,
         category: 'nutrition',
@@ -766,7 +955,9 @@ class AIRecommendationEngine {
     strainData: any[],
     sleepData: any[],
     userProfile: any,
-    activePrograms: any[]
+    activePrograms: any[],
+    programGoals?: any[],
+    getGoalSummary?: (goalId: string) => any
   ): RecommendationContext {
     const today = new Date().toISOString().split('T')[0];
     const currentRecovery = recoveryData.find(r => r.date === today)?.score || 50;
@@ -789,6 +980,33 @@ class AIRecommendationEngine {
     const avgRestingHR = recoveryData.slice(-7).reduce((sum, r) => sum + r.restingHeartRate, 0) / Math.min(7, recoveryData.length);
     const sleepQuality = sleepData.find(s => s.date === today)?.qualityScore || 75;
     
+    // Enhanced program context
+    let programContext = undefined;
+    if (programGoals && getGoalSummary) {
+      const activeGoal = programGoals.find(goal => {
+        const summary = getGoalSummary(goal.id);
+        return summary && summary.percentComplete < 100;
+      });
+      
+      if (activeGoal) {
+        const goalSummary = getGoalSummary(activeGoal.id);
+        if (goalSummary) {
+          const expectedProgress = (goalSummary.weeksElapsed / goalSummary.totalWeeks) * 100;
+          const progressDelta = goalSummary.percentComplete - expectedProgress;
+          
+          programContext = {
+            activeGoal,
+            goalSummary,
+            progressDelta,
+            expectedProgress,
+            isAheadOfSchedule: goalSummary.paceVsPlan === 'ahead',
+            isBehindSchedule: goalSummary.paceVsPlan === 'behind',
+            weeksRemaining: goalSummary.totalWeeks - goalSummary.weeksElapsed
+          };
+        }
+      }
+    }
+    
     return {
       currentRecovery,
       recentRecoveryTrend,
@@ -801,7 +1019,8 @@ class AIRecommendationEngine {
       activePrograms,
       recentWorkouts: activePrograms.length,
       timeOfDay: this.getTimeOfDay(),
-      dayOfWeek: this.getDayOfWeek()
+      dayOfWeek: this.getDayOfWeek(),
+      programContext
     };
   }
 }

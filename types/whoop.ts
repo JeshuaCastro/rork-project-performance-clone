@@ -284,6 +284,15 @@ export interface RecommendationContext {
   recentWorkouts: number;
   timeOfDay: 'morning' | 'afternoon' | 'evening';
   dayOfWeek: string;
+  programContext?: {
+    activeGoal: any;
+    goalSummary: any;
+    progressDelta: number;
+    expectedProgress: number;
+    isAheadOfSchedule: boolean;
+    isBehindSchedule: boolean;
+    weeksRemaining: number;
+  };
 }
 
 export interface SmartInsightsData {
