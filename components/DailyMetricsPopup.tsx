@@ -19,7 +19,7 @@ import {
   CheckCircle,
   X,
   AlertTriangle,
-  Target,
+
   Calendar
 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
@@ -225,8 +225,9 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                 </View>
 
                 {/* Training Adjustment */}
-                {hasAdjustment && currentAdjustment && (
-                  <View style={styles.section}>
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Training Analysis</Text>
+                  {hasAdjustment && currentAdjustment ? (
                     <View style={styles.adjustmentCard}>
                       <View style={styles.adjustmentHeader}>
                         <View style={styles.adjustmentIcon}>
@@ -297,32 +298,41 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                         </TouchableOpacity>
                       </View>
                     </View>
-                  </View>
-                )}
-
-                {/* Today&apos;s Workout */}
-                {todaysWorkout && !hasAdjustment && (
-                  <View style={styles.section}>
-                    <View style={styles.workoutCard}>
-                      <View style={styles.workoutHeader}>
-                        <View style={styles.workoutIcon}>
-                          <Target size={20} color={colors.primary} />
-                        </View>
-                        <View>
-                          <Text style={styles.workoutCardTitle}>Today&apos;s Workout</Text>
-                          <Text style={styles.workoutCardSubtitle}>No adjustments needed</Text>
-                        </View>
-                        <View style={styles.checkIcon}>
+                  ) : (
+                    <View style={styles.noAdjustmentCard}>
+                      <View style={styles.noAdjustmentHeader}>
+                        <View style={styles.noAdjustmentIcon}>
                           <CheckCircle size={20} color={colors.success} />
                         </View>
+                        <View style={styles.adjustmentHeaderText}>
+                          <Text style={styles.adjustmentTitle}>Training Optimized</Text>
+                          <Text style={styles.adjustmentSubtitle}>
+                            Your workout is well-matched to your recovery
+                          </Text>
+                        </View>
                       </View>
-                      <Text style={styles.workoutName}>{todaysWorkout.title}</Text>
-                      <Text style={styles.workoutDescription}>
-                        {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
-                      </Text>
+
+                      <View style={styles.analysisDetails}>
+                        <Text style={styles.analysisText}>
+                          Based on your recovery score of {todaysRecovery.score}% and HRV of {todaysRecovery.hrvMs}ms, 
+                          your planned workout intensity is appropriate for today.
+                        </Text>
+                      </View>
+
+                      {todaysWorkout && (
+                        <View style={styles.plannedWorkout}>
+                          <Text style={styles.workoutLabel}>Today&apos;s Workout</Text>
+                          <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
+                          <Text style={styles.workoutDetails}>
+                            {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                )}
+                  )}
+                </View>
+
+
 
                 {/* Program Progress */}
                 {activeGoals.length > 0 && (
@@ -452,8 +462,9 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                 </View>
               </View>
 
-              {hasAdjustment && currentAdjustment && (
-                <View style={styles.section}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Training Analysis</Text>
+                {hasAdjustment && currentAdjustment ? (
                   <View style={styles.adjustmentCard}>
                     <View style={styles.adjustmentHeader}>
                       <View style={styles.adjustmentIcon}>
@@ -524,31 +535,40 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                       </TouchableOpacity>
                     </View>
                   </View>
-                </View>
-              )}
-
-              {todaysWorkout && !hasAdjustment && (
-                <View style={styles.section}>
-                  <View style={styles.workoutCard}>
-                    <View style={styles.workoutHeader}>
-                      <View style={styles.workoutIcon}>
-                        <Target size={20} color={colors.primary} />
-                      </View>
-                      <View>
-                        <Text style={styles.workoutCardTitle}>Today&apos;s Workout</Text>
-                        <Text style={styles.workoutCardSubtitle}>No adjustments needed</Text>
-                      </View>
-                      <View style={styles.checkIcon}>
+                ) : (
+                  <View style={styles.noAdjustmentCard}>
+                    <View style={styles.noAdjustmentHeader}>
+                      <View style={styles.noAdjustmentIcon}>
                         <CheckCircle size={20} color={colors.success} />
                       </View>
+                      <View style={styles.adjustmentHeaderText}>
+                        <Text style={styles.adjustmentTitle}>Training Optimized</Text>
+                        <Text style={styles.adjustmentSubtitle}>
+                          Your workout is well-matched to your recovery
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.workoutName}>{todaysWorkout.title}</Text>
-                    <Text style={styles.workoutDescription}>
-                      {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
-                    </Text>
+
+                    <View style={styles.analysisDetails}>
+                      <Text style={styles.analysisText}>
+                        Based on your recovery score of {todaysRecovery.score}% and HRV of {todaysRecovery.hrvMs}ms, your planned workout intensity is appropriate for today.
+                      </Text>
+                    </View>
+
+                    {todaysWorkout && (
+                      <View style={styles.plannedWorkout}>
+                        <Text style={styles.workoutLabel}>Today&apos;s Workout</Text>
+                        <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
+                        <Text style={styles.workoutDetails}>
+                          {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                </View>
-              )}
+                )}
+              </View>
+
+
 
               {activeGoals.length > 0 && (
                 <View style={styles.section}>
@@ -944,6 +964,48 @@ const styles = StyleSheet.create({
     ...iosTypography.headline,
     color: colors.text,
     fontWeight: '600',
+  },
+  noAdjustmentCard: {
+    backgroundColor: colors.card,
+    borderRadius: iosBorderRadius.large,
+    padding: iosMargins.cardPadding,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  noAdjustmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: iosSpacing.md,
+  },
+  noAdjustmentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.success + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: iosSpacing.md,
+  },
+  analysisDetails: {
+    backgroundColor: colors.ios.tertiaryBackground,
+    padding: iosSpacing.md,
+    borderRadius: iosBorderRadius.medium,
+    marginBottom: iosSpacing.md,
+  },
+  analysisText: {
+    ...iosTypography.callout,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  plannedWorkout: {
+    backgroundColor: colors.ios.quaternaryBackground,
+    padding: iosSpacing.md,
+    borderRadius: iosBorderRadius.medium,
   },
 });
 
