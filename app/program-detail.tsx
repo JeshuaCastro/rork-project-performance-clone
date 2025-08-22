@@ -58,8 +58,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useWhoopStore } from '@/store/whoopStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 import NutritionTracker from '@/components/NutritionTracker';
-import StrengthWorkoutCard from '@/components/StrengthWorkoutCard';
-import CardioWorkoutCard from '@/components/CardioWorkoutCard';
+import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 
 // Define workout type
 interface Workout {
@@ -1658,125 +1657,24 @@ export default function ProgramDetailScreen() {
       });
   };
 
-  // Render a single workout card with specialized components
+  // Render a single workout card using enhanced workout cards
   const renderWorkoutCard = (workout: Workout) => {
     const workoutKey = `${workout.day}-${workout.title}`;
     const isCompleted = completedWorkouts.includes(workoutKey);
     
     // Debug log to check completion state
-    console.log('Rendering workout card:', workoutKey, 'isCompleted:', isCompleted, 'completedWorkouts:', completedWorkouts);
+    console.log('Rendering enhanced workout card:', workoutKey, 'isCompleted:', isCompleted, 'completedWorkouts:', completedWorkouts);
     
-    // Use specialized cards based on workout type
-    if (workout.type === 'strength') {
-      return (
-        <StrengthWorkoutCard
-          key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
-          workout={workout as any}
-          isCompleted={isCompleted}
-          onPress={() => handleWorkoutCardClick(workout)}
-          onStart={() => handleStartWorkout(workout)}
-          onEdit={() => handleEditWorkout(workout)}
-          onDetails={() => handleWorkoutCardClick(workout)}
-        />
-      );
-    } else if (workout.type === 'cardio') {
-      return (
-        <CardioWorkoutCard
-          key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
-          workout={workout as any}
-          isCompleted={isCompleted}
-          onPress={() => handleWorkoutCardClick(workout)}
-          onStart={() => handleStartWorkout(workout)}
-          onEdit={() => handleEditWorkout(workout)}
-          onDetails={() => handleWorkoutCardClick(workout)}
-        />
-      );
-    }
-    
-    // Fallback to original card for recovery and other types
+    // Use enhanced workout card for all workout types
     return (
-      <TouchableOpacity 
-        style={styles.workoutCard} 
+      <EnhancedWorkoutCard
         key={`${workout.day}-${workout.title}-${isCompleted ? 'completed' : 'pending'}`}
-        onPress={() => handleWorkoutCardClick(workout)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.workoutHeader}>
-          <View style={styles.workoutTitleContainer}>
-            {getWorkoutIcon(workout.title, workout.type)}
-            <Text style={styles.workoutTitle} numberOfLines={1} ellipsizeMode="tail">
-              {workout.title}
-            </Text>
-          </View>
-          <View style={[
-            styles.intensityBadge,
-            { backgroundColor: getIntensityColor(workout.intensity) }
-          ]}>
-            <Text style={styles.intensityText}>{workout.intensity}</Text>
-          </View>
-        </View>
-        
-        <Text style={styles.workoutDescription} numberOfLines={3} ellipsizeMode="tail">
-          {workout.description}
-        </Text>
-        
-        {workout.duration && (
-          <View style={styles.workoutMetaInfo}>
-            <Clock size={14} color={colors.textSecondary} />
-            <Text style={styles.workoutMetaText}>{workout.duration}</Text>
-          </View>
-        )}
-        
-        {workout.adjustedForRecovery && (
-          <View style={styles.adjustmentContainer}>
-            <Text style={styles.adjustmentTitle}>Recovery Adjustment:</Text>
-            <Text style={styles.adjustmentText} numberOfLines={2} ellipsizeMode="tail">
-              {workout.adjustedForRecovery}
-            </Text>
-          </View>
-        )}
-        
-        <View style={styles.workoutButtonsRow}>
-          <TouchableOpacity 
-            style={[
-              styles.startWorkoutButton,
-              isCompleted && styles.completedWorkoutButton
-            ]}
-            onPress={(e) => {
-              e.stopPropagation();
-              isCompleted ? null : handleStartWorkout(workout);
-            }}
-            disabled={isCompleted}
-          >
-            {isCompleted ? (
-              <>
-                <Check size={18} color={colors.text} />
-                <Text style={styles.startWorkoutText}>Completed</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.startWorkoutText}>Start</Text>
-                <ArrowRight size={18} color={colors.text} />
-              </>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.editWorkoutButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleEditWorkout(workout);
-            }}
-          >
-            <Edit3 size={18} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.clickHint}>
-          <Eye size={14} color={colors.textSecondary} />
-          <Text style={styles.clickHintText}>Tap for details</Text>
-        </View>
-      </TouchableOpacity>
+        workout={workout}
+        isCompleted={isCompleted}
+        onStart={() => handleStartWorkout(workout)}
+        onEdit={() => handleEditWorkout(workout)}
+        onDetails={() => handleWorkoutCardClick(workout)}
+      />
     );
   };
 
