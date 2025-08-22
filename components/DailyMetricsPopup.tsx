@@ -1,941 +1,857 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
-  Modal,
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
   StyleSheet,
+  Modal,
+  ScrollView,
   Dimensions,
-  ActivityIndicator,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
-import { useWhoopStore } from '@/store/whoopStore';
-import { colors } from '@/constants/colors';
 import {
-  X,
-  TrendingUp,
-  TrendingDown,
-  Heart,
   Activity,
+  Heart,
   Moon,
   Zap,
-  Target,
-  AlertCircle,
+  TrendingUp,
+  TrendingDown,
   CheckCircle,
-  Info,
-  Lightbulb
+  X,
+  AlertTriangle,
+  Target
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BlurView } from 'expo-blur';
+import { useWhoopStore } from '@/store/whoopStore';
+import { useProgramStore } from '@/store/programStore';
+import { useProgramAwareWorkoutAnalysis } from '@/hooks/useProgramAwareWorkoutAnalysis';
+import IOSButton from './IOSButton';
+import IOSCard from './IOSCard';
+
 
 interface DailyMetricsPopupProps {
   visible: boolean;
   onClose: () => void;
 }
 
-interface MetricAssessment {
-  metric: string;
-  value: number | string;
-  status: 'excellent' | 'good' | 'fair' | 'poor';
-  trend: 'up' | 'down' | 'stable';
-  icon: React.ReactNode;
-  color: string;
-  recommendation: string;
-}
+const { width: screenWidth } = Dimensions.get('window');
 
-interface DailyAssessment {
-  overallScore: number;
-  overallStatus: 'excellent' | 'good' | 'fair' | 'poor';
-  summary: string;
-  metrics: MetricAssessment[];
-  keyRecommendations: string[];
-  focusArea: string;
-}
+export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
+  visible,
+  onClose
+}) => {
 
-const DAILY_POPUP_KEY = 'daily_metrics_popup_shown';
-
-export default function DailyMetricsPopup({ visible, onClose }: DailyMetricsPopupProps) {
-  const [assessment, setAssessment] = useState<DailyAssessment | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const {
-    data,
-    isConnectedToWhoop,
-    userProfile,
-    generateAIAnalysisFromWhoopData,
-    markDailyAssessmentShown
-  } = useWhoopStore();
-
-  // Generate AI-powered daily assessment
-  const generateDailyAssessment = async (): Promise<void> => {
-    console.log('Starting daily assessment generation...');
-    console.log('Data check:', {
-      isConnectedToWhoop,
-      hasData: !!data,
-      hasRecovery: data?.recovery?.length > 0,
-      hasUserProfile: !!userProfile
-    });
-
-    // Always generate an assessment, even without WHOOP data
-    if (!isConnectedToWhoop || !data || !data.recovery || !data.recovery.length) {
-      console.log('No WHOOP data available - generating basic assessment');
-      
-      const basicAssessment: DailyAssessment = {
-        overallScore: 70,
-        overallStatus: 'good',
-        summary: 'Connect your WHOOP device to get personalized daily assessments based on your recovery, strain, and sleep metrics.',
-        focusArea: 'data connection',
-        keyRecommendations: [
-          'Connect your WHOOP device to start tracking your metrics',
-          'Ensure your WHOOP is charged and syncing properly',
-          'Check your WHOOP app for any connection issues',
-          'Once connected, return here for personalized insights'
-        ],
-        metrics: [
-          {
-            metric: 'Recovery',
-            value: 'N/A',
-            status: 'fair',
-            trend: 'stable',
-            icon: getMetricIcon('Recovery'),
-            color: getStatusColor('fair'),
-            recommendation: 'Connect WHOOP to track your recovery metrics'
-          },
-          {
-            metric: 'Strain',
-            value: 'N/A',
-            status: 'fair',
-            trend: 'stable',
-            icon: getMetricIcon('Strain'),
-            color: getStatusColor('fair'),
-            recommendation: 'Connect WHOOP to track your daily strain'
-          },
-          {
-            metric: 'Sleep',
-            value: 'N/A',
-            status: 'fair',
-            trend: 'stable',
-            icon: getMetricIcon('Sleep'),
-            color: getStatusColor('fair'),
-            recommendation: 'Connect WHOOP to track your sleep quality'
-          }
-        ]
-      };
-      
-      console.log('Basic assessment generated:', basicAssessment);
-      setAssessment(basicAssessment);
-      setError(null);
-      return;
-    }
-
-    if (!userProfile) {
-      console.log('No user profile available for assessment, using defaults');
-      // Continue with default profile values instead of stopping
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const latestRecovery = data.recovery?.[0] || null;
-      const latestStrain = data.strain?.[0] || null;
-      const latestSleep = data.sleep?.[0] || null;
-
-      // Calculate 7-day averages for trend analysis with null checks
-      const last7Recovery = data.recovery?.slice(0, 7) || [];
-      const last7Strain = data.strain?.slice(0, 7) || [];
-      const last7Sleep = data.sleep?.slice(0, 7) || [];
-
-      const avgRecovery = last7Recovery.length > 0 ? 
-        last7Recovery.reduce((sum, r) => sum + (r?.score || 0), 0) / last7Recovery.length : 0;
-      const avgStrain = last7Strain.length > 0 ? 
-        last7Strain.reduce((sum, s) => sum + (s?.score || 0), 0) / last7Strain.length : 0;
-      const avgSleep = last7Sleep.length > 0 ? 
-        last7Sleep.reduce((sum, s) => sum + (s?.efficiency || 0), 0) / last7Sleep.length : 0;
-
-      // Create assessment prompt for AI with safe property access
-      const assessmentPrompt = `Analyze today's WHOOP metrics and provide personalized improvement recommendations.
-
-USER PROFILE: ${userProfile?.age || 30}y ${userProfile?.gender || 'unknown'}, ${userProfile?.weight || 70}kg, ${userProfile?.height || 175}cm, ${userProfile?.activityLevel || 'moderate'} activity, goal: ${userProfile?.fitnessGoal || 'general fitness'}
-
-TODAY'S METRICS:
-- Recovery: ${latestRecovery?.score || 'N/A'}% (HRV: ${latestRecovery?.hrvMs || 'N/A'}ms, RHR: ${latestRecovery?.restingHeartRate || 'N/A'}bpm)
-- Strain: ${latestStrain?.score || 'N/A'} (Avg HR: ${latestStrain?.averageHeartRate || 'N/A'}bpm, Max HR: ${latestStrain?.maxHeartRate || 'N/A'}bpm)
-- Sleep: ${latestSleep?.efficiency || 'N/A'}% efficiency, ${latestSleep?.duration ? Math.round(latestSleep.duration / 60) : 'N/A'}h duration, ${latestSleep?.disturbances || 'N/A'} disturbances
-
-7-DAY AVERAGES:
-- Recovery: ${avgRecovery > 0 ? avgRecovery.toFixed(1) : 'N/A'}%
-- Strain: ${avgStrain > 0 ? avgStrain.toFixed(1) : 'N/A'}
-- Sleep: ${avgSleep > 0 ? avgSleep.toFixed(1) : 'N/A'}%
-
-Return JSON with this exact structure:
-{
-  "overallScore": 85,
-  "overallStatus": "good",
-  "summary": "Brief overall assessment of today's metrics and readiness",
-  "focusArea": "Primary area to focus on today (recovery/training/sleep)",
-  "keyRecommendations": [
-    "Top 3-4 specific, actionable recommendations for today",
-    "Based on current metrics and trends",
-    "Personalized for user's profile and goals"
-  ],
-  "metrics": [
-    {
-      "metric": "Recovery",
-      "value": ${latestRecovery?.score || 0},
-      "status": "good",
-      "trend": "up",
-      "recommendation": "Specific advice for recovery optimization"
-    },
-    {
-      "metric": "Strain",
-      "value": ${latestStrain?.score || 0},
-      "status": "fair",
-      "trend": "stable", 
-      "recommendation": "Specific advice for strain management"
-    },
-    {
-      "metric": "Sleep",
-      "value": ${latestSleep?.efficiency || 0},
-      "status": "excellent",
-      "trend": "down",
-      "recommendation": "Specific advice for sleep improvement"
-    }
-  ]
-}
-
-Status levels: excellent (90-100), good (70-89), fair (50-69), poor (<50)
-Trend: up (improving), down (declining), stable (consistent)`;
-
-      console.log('Sending assessment request to AI...');
-      
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-      
-      const response = await fetch('https://toolkit.rork.com/text/llm/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert WHOOP data analyst and fitness coach. Provide personalized, actionable daily assessments based on recovery, strain, and sleep metrics. Always return valid JSON only.'
-            },
-            {
-              role: 'user',
-              content: assessmentPrompt
-            }
-          ]
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('AI response received:', result.completion ? 'Success' : 'No completion');
-      
-      if (!result.completion) {
-        throw new Error('No response from AI service');
-      }
-
-      // Parse AI response
-      let assessmentData;
-      try {
-        const responseText = result.completion.trim();
-        const jsonStart = responseText.indexOf('{');
-        const jsonEnd = responseText.lastIndexOf('}') + 1;
-        
-        if (jsonStart >= 0 && jsonEnd > jsonStart) {
-          const jsonStr = responseText.substring(jsonStart, jsonEnd);
-          assessmentData = JSON.parse(jsonStr);
-        } else {
-          throw new Error('No valid JSON found in response');
-        }
-      } catch (parseError) {
-        console.error('Error parsing AI response:', parseError);
-        // Fallback to manual assessment
-        assessmentData = generateFallbackAssessment(latestRecovery, latestStrain, latestSleep);
-      }
-
-      // Enhance metrics with icons and colors
-      const enhancedMetrics = assessmentData.metrics.map((metric: any) => ({
-        ...metric,
-        icon: getMetricIcon(metric.metric),
-        color: getStatusColor(metric.status)
-      }));
-
-      setAssessment({
-        ...assessmentData,
-        metrics: enhancedMetrics
-      });
-
-    } catch (error) {
-      console.error('Error generating daily assessment:', error);
-      console.log('Generating fallback assessment due to error...');
-      
-      // Always generate fallback assessment when AI fails
-      const latestRecovery = data?.recovery?.[0] || null;
-      const latestStrain = data?.strain?.[0] || null;
-      const latestSleep = data?.sleep?.[0] || null;
-      const fallbackAssessment = generateFallbackAssessment(latestRecovery, latestStrain, latestSleep);
-      
-      console.log('Fallback assessment generated:', fallbackAssessment);
-      setAssessment(fallbackAssessment);
-      setError(null); // Clear error since we have fallback assessment
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Generate fallback assessment when AI fails
-  const generateFallbackAssessment = (recovery: any, strain: any, sleep: any): DailyAssessment => {
-    const recoveryScore = (recovery && typeof recovery.score === 'number') ? recovery.score : 50;
-    const strainScore = (strain && typeof strain.score === 'number') ? strain.score : 10;
-    const sleepScore = (sleep && typeof sleep.efficiency === 'number') ? sleep.efficiency : 75;
-
-    const overallScore = Math.round((recoveryScore + (100 - strainScore * 5) + sleepScore) / 3);
-    
-    return {
-      overallScore,
-      overallStatus: overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'fair' : 'poor',
-      summary: `Your overall readiness is ${overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'moderate' : 'low'} based on today's metrics.`,
-      focusArea: recoveryScore < 60 ? 'recovery' : sleepScore < 70 ? 'sleep' : 'training',
-      keyRecommendations: [
-        recoveryScore < 60 ? 'Focus on active recovery and stress management today' : 'Your recovery looks good for moderate training',
-        sleepScore < 70 ? 'Prioritize sleep quality tonight - aim for 7-9 hours' : 'Maintain your current sleep routine',
-        strainScore > 15 ? 'Consider reducing training intensity to allow recovery' : 'You can handle moderate training load today',
-        'Stay hydrated and maintain consistent meal timing'
-      ],
-      metrics: [
-        {
-          metric: 'Recovery',
-          value: recoveryScore,
-          status: recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Recovery'),
-          color: getStatusColor(recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor'),
-          recommendation: recoveryScore >= 75 ? 'Great recovery! You\'re ready for intense training.' : recoveryScore >= 60 ? 'Good recovery. Moderate training is recommended.' : 'Focus on recovery activities and stress management.'
-        },
-        {
-          metric: 'Strain',
-          value: strainScore,
-          status: strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Strain'),
-          color: getStatusColor(strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor'),
-          recommendation: strainScore <= 8 ? 'Low strain - you can increase training intensity.' : strainScore <= 12 ? 'Moderate strain - maintain current training load.' : 'High strain - consider active recovery.'
-        },
-        {
-          metric: 'Sleep',
-          value: sleepScore,
-          status: sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Sleep'),
-          color: getStatusColor(sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor'),
-          recommendation: sleepScore >= 85 ? 'Excellent sleep quality! Keep up the routine.' : sleepScore >= 75 ? 'Good sleep. Minor optimizations could help.' : 'Focus on sleep hygiene and consistent bedtime.'
-        }
-      ]
-    };
-  };
-
-  // Get icon for metric type
-  const getMetricIcon = (metric: string) => {
-    switch (metric.toLowerCase()) {
-      case 'recovery':
-        return <Heart size={20} color={colors.primary} />;
-      case 'strain':
-        return <Activity size={20} color={colors.primary} />;
-      case 'sleep':
-        return <Moon size={20} color={colors.primary} />;
-      default:
-        return <Target size={20} color={colors.primary} />;
-    }
-  };
-
-  // Get color for status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'excellent':
-        return colors.success;
-      case 'good':
-        return colors.primary;
-      case 'fair':
-        return colors.warning;
-      case 'poor':
-        return colors.danger;
-      default:
-        return colors.textSecondary;
-    }
-  };
-
-  // Get trend icon
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp size={16} color={colors.success} />;
-      case 'down':
-        return <TrendingDown size={16} color={colors.danger} />;
-      default:
-        return <Target size={16} color={colors.textSecondary} />;
-    }
-  };
-
-  // Get status icon
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'excellent':
-        return <CheckCircle size={16} color={colors.success} />;
-      case 'good':
-        return <CheckCircle size={16} color={colors.primary} />;
-      case 'fair':
-        return <Info size={16} color={colors.warning} />;
-      case 'poor':
-        return <AlertCircle size={16} color={colors.danger} />;
-      default:
-        return <Info size={16} color={colors.textSecondary} />;
-    }
-  };
-
-  // Simple local assessment generator (fallback method)
-  const generateLocalAssessment = (): DailyAssessment => {
-    console.log('Generating local assessment as fallback...');
-    
-    const latestRecovery = data?.recovery?.[0];
-    const latestStrain = data?.strain?.[0];
-    const latestSleep = data?.sleep?.[0];
-    
-    const recoveryScore = latestRecovery?.score || 65;
-    const strainScore = latestStrain?.score || 12;
-    const sleepScore = latestSleep?.efficiency || 75;
-    
-    const overallScore = Math.round((recoveryScore + (100 - strainScore * 4) + sleepScore) / 3);
-    
-    return {
-      overallScore,
-      overallStatus: overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'fair' : 'poor',
-      summary: `Your overall readiness is ${overallScore >= 80 ? 'excellent' : overallScore >= 65 ? 'good' : overallScore >= 50 ? 'moderate' : 'low'} based on today's metrics. ${recoveryScore >= 70 ? 'Your recovery looks strong.' : 'Focus on recovery today.'} ${sleepScore >= 80 ? 'Sleep quality is good.' : 'Consider improving sleep habits.'}`,
-      focusArea: recoveryScore < 60 ? 'recovery' : sleepScore < 70 ? 'sleep' : strainScore > 15 ? 'recovery' : 'training',
-      keyRecommendations: [
-        recoveryScore < 60 ? 'Prioritize active recovery and stress management' : 'Your recovery supports moderate to intense training',
-        sleepScore < 70 ? 'Focus on sleep hygiene - aim for 7-9 hours of quality sleep' : 'Maintain your current sleep routine',
-        strainScore > 15 ? 'Consider reducing training intensity to allow recovery' : 'You can handle moderate training load',
-        'Stay hydrated and maintain consistent nutrition timing'
-      ],
-      metrics: [
-        {
-          metric: 'Recovery',
-          value: recoveryScore,
-          status: recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Recovery'),
-          color: getStatusColor(recoveryScore >= 75 ? 'excellent' : recoveryScore >= 60 ? 'good' : recoveryScore >= 45 ? 'fair' : 'poor'),
-          recommendation: recoveryScore >= 75 ? 'Excellent recovery! Ready for intense training.' : recoveryScore >= 60 ? 'Good recovery. Moderate training recommended.' : 'Focus on recovery activities and stress management.'
-        },
-        {
-          metric: 'Strain',
-          value: strainScore,
-          status: strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Strain'),
-          color: getStatusColor(strainScore <= 8 ? 'excellent' : strainScore <= 12 ? 'good' : strainScore <= 16 ? 'fair' : 'poor'),
-          recommendation: strainScore <= 8 ? 'Low strain - you can increase training intensity.' : strainScore <= 12 ? 'Moderate strain - maintain current training load.' : 'High strain - consider active recovery.'
-        },
-        {
-          metric: 'Sleep',
-          value: sleepScore,
-          status: sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor',
-          trend: 'stable',
-          icon: getMetricIcon('Sleep'),
-          color: getStatusColor(sleepScore >= 85 ? 'excellent' : sleepScore >= 75 ? 'good' : sleepScore >= 65 ? 'fair' : 'poor'),
-          recommendation: sleepScore >= 85 ? 'Excellent sleep quality! Keep up the routine.' : sleepScore >= 75 ? 'Good sleep. Minor optimizations could help.' : 'Focus on sleep hygiene and consistent bedtime.'
-        }
-      ]
-    };
-  };
-
-  // Generate assessment when popup becomes visible
-  useEffect(() => {
-    if (visible) {
-      console.log('Daily metrics popup opened. Current state:', {
-        hasAssessment: !!assessment,
-        hasError: !!error,
-        isLoading,
-        isConnectedToWhoop,
-        hasRecoveryData: data?.recovery?.length > 0,
-        hasUserProfile: !!userProfile,
-        recoveryDataSample: data?.recovery?.[0],
-        strainDataSample: data?.strain?.[0],
-        sleepDataSample: data?.sleep?.[0],
-        userProfileSample: userProfile
-      });
-      
-      // Always try to generate assessment when popup opens
-      if (!assessment || error) {
-        console.log('Generating daily assessment...');
-        
-        // Try local assessment first if we have data
-        if (isConnectedToWhoop && data?.recovery?.length > 0) {
-          console.log('Using local assessment generation...');
-          const localAssessment = generateLocalAssessment();
-          setAssessment(localAssessment);
-          setError(null);
-          setIsLoading(false);
-        } else {
-          // Fall back to AI generation
-          generateDailyAssessment();
-        }
-      }
-    }
-  }, [visible]);
-
-  // Handle close and mark as shown for today
-  const handleClose = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      await AsyncStorage.setItem(DAILY_POPUP_KEY, today);
-    } catch (error) {
-      console.error('Error saving popup shown status:', error);
-    }
-    
-    // Reset state for next time
-    setAssessment(null);
-    setError(null);
-    setIsLoading(false);
-    
-    onClose();
-  };
-
-  if (!visible) return null;
-
-  console.log('Rendering DailyMetricsPopup with state:', {
-    isLoading,
-    hasError: !!error,
-    hasAssessment: !!assessment,
-    errorMessage: error
+  const { data: whoopData, isConnectedToWhoop, getTodaysWorkout } = useWhoopStore();
+  const { goals } = useProgramStore();
+  const activeGoals = goals.filter(goal => {
+    const today = new Date();
+    const targetDate = new Date(goal.targetDate);
+    return targetDate >= today;
   });
+  const {
+    currentAdjustment,
+    acceptAdjustment,
+    dismissAdjustment,
+    hasAdjustment
+  } = useProgramAwareWorkoutAnalysis();
+
+  // Get today's metrics
+  const today = new Date().toISOString().split('T')[0];
+  const todaysRecovery = whoopData.recovery.find(r => r.date === today);
+  const todaysStrain = whoopData.strain.find(s => s.date === today);
+  const todaysSleep = whoopData.sleep.find(s => s.date === today);
+  const todaysWorkout = getTodaysWorkout();
+
+  const getMetricColor = (value: number, type: 'recovery' | 'strain' | 'sleep' | 'hrv') => {
+    switch (type) {
+      case 'recovery':
+        if (value >= 70) return '#4CAF50';
+        if (value >= 50) return '#FF9500';
+        return '#FF6B35';
+      case 'strain':
+        if (value <= 8) return '#4CAF50';
+        if (value <= 15) return '#FF9500';
+        return '#FF6B35';
+      case 'sleep':
+        if (value >= 85) return '#4CAF50';
+        if (value >= 70) return '#FF9500';
+        return '#FF6B35';
+      case 'hrv':
+        if (value >= 50) return '#4CAF50';
+        if (value >= 30) return '#FF9500';
+        return '#FF6B35';
+      default:
+        return '#666666';
+    }
+  };
+
+  const getMetricStatus = (value: number, type: 'recovery' | 'strain' | 'sleep' | 'hrv') => {
+    switch (type) {
+      case 'recovery':
+        if (value >= 70) return 'Excellent';
+        if (value >= 50) return 'Good';
+        return 'Low';
+      case 'strain':
+        if (value <= 8) return 'Light';
+        if (value <= 15) return 'Moderate';
+        return 'High';
+      case 'sleep':
+        if (value >= 85) return 'Excellent';
+        if (value >= 70) return 'Good';
+        return 'Poor';
+      case 'hrv':
+        if (value >= 50) return 'High';
+        if (value >= 30) return 'Normal';
+        return 'Low';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const handleAcceptAdjustment = () => {
+    Alert.alert(
+      'Accept Training Adjustment',
+      'Your workout has been automatically adjusted based on your recovery metrics. This helps optimize your training while preventing overreaching.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept',
+          onPress: () => {
+            acceptAdjustment();
+            onClose();
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDismissAdjustment = () => {
+    Alert.alert(
+      'Keep Original Workout',
+      'You can always manually adjust your workout intensity based on how you feel.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Keep Original',
+          onPress: () => {
+            dismissAdjustment();
+            onClose();
+          }
+        }
+      ]
+    );
+  };
+
+  if (!isConnectedToWhoop || !todaysRecovery) {
+    return null;
+  }
 
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent
       animationType="fade"
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <View style={styles.headerTitleContainer}>
-              <Zap size={24} color={colors.primary} />
-              <Text style={styles.modalTitle}>Daily Metrics Assessment</Text>
-            </View>
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <X size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.loadingText}>Analyzing your metrics...</Text>
-              </View>
-            ) : error ? (
-              <View style={styles.errorContainer}>
-                <AlertCircle size={48} color={colors.danger} />
-                <Text style={styles.errorTitle}>Assessment Unavailable</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity 
-                  style={styles.retryButton} 
-                  onPress={() => {
-                    setError(null);
-                    setAssessment(null);
-                    generateDailyAssessment();
-                  }}
-                >
-                  <Text style={styles.retryButtonText}>Try Again</Text>
-                </TouchableOpacity>
-              </View>
-            ) : assessment ? (
-              <View style={styles.assessmentContainer}>
-                {/* Overall Score */}
-                <View style={styles.overallScoreContainer}>
-                  <View style={styles.scoreCircle}>
-                    <Text style={styles.scoreNumber}>{assessment.overallScore}</Text>
-                    <Text style={styles.scoreLabel}>Overall</Text>
-                  </View>
-                  <View style={styles.overallInfo}>
-                    <View style={styles.statusContainer}>
-                      {getStatusIcon(assessment.overallStatus)}
-                      <Text style={[styles.statusText, { color: getStatusColor(assessment.overallStatus) }]}>
-                        {assessment.overallStatus.charAt(0).toUpperCase() + assessment.overallStatus.slice(1)}
+      <View style={styles.overlay}>
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={20} style={styles.blurContainer}>
+            <View style={styles.modalContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                  <View style={styles.headerLeft}>
+                    <View style={styles.dateContainer}>
+                      <Text style={styles.dateText}>
+                        {new Date().toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </Text>
                     </View>
-                    <Text style={styles.summaryText}>{assessment.summary}</Text>
+                    <Text style={styles.title}>Daily Health Summary</Text>
                   </View>
+                  <IOSButton
+                    title=""
+                    onPress={onClose}
+                    variant="secondary"
+                    style={styles.closeButton}
+                    icon={<X size={20} color="#666666" />}
+                  />
                 </View>
 
-                {/* Focus Area */}
-                <View style={styles.focusAreaContainer}>
-                  <View style={styles.focusAreaHeader}>
-                    <Target size={20} color={colors.primary} />
-                    <Text style={styles.focusAreaTitle}>Today's Focus</Text>
-                  </View>
-                  <Text style={styles.focusAreaText}>
-                    {assessment.focusArea.charAt(0).toUpperCase() + assessment.focusArea.slice(1)}
-                  </Text>
-                </View>
-
-                {/* Individual Metrics */}
-                <View style={styles.metricsContainer}>
-                  <Text style={styles.sectionTitle}>Metric Breakdown</Text>
-                  {assessment.metrics.map((metric, index) => (
-                    <View key={index} style={styles.metricCard}>
-                      <View style={styles.metricHeader}>
-                        <View style={styles.metricTitleContainer}>
-                          {metric.icon}
-                          <Text style={styles.metricName}>{metric.metric}</Text>
-                        </View>
-                        <View style={styles.metricValueContainer}>
-                          <Text style={styles.metricValue}>
-                            {typeof metric.value === 'number' ? 
-                              (metric.metric === 'Strain' ? metric.value.toFixed(1) : `${metric.value}%`) : 
-                              metric.value
-                            }
-                          </Text>
-                          {getTrendIcon(metric.trend)}
-                        </View>
+                {/* Metrics Overview */}
+                <IOSCard style={styles.metricsCard}>
+                  <Text style={styles.sectionTitle}>Your Metrics Today</Text>
+                  <View style={styles.metricsGrid}>
+                    <View style={styles.metricItem}>
+                      <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysRecovery.score, 'recovery') + '20' }]}>
+                        <Heart size={20} color={getMetricColor(todaysRecovery.score, 'recovery')} />
                       </View>
-                      <View style={styles.metricStatus}>
-                        {getStatusIcon(metric.status)}
-                        <Text style={[styles.metricStatusText, { color: metric.color }]}>
-                          {metric.status.charAt(0).toUpperCase() + metric.status.slice(1)}
+                      <Text style={styles.metricLabel}>Recovery</Text>
+                      <Text style={[styles.metricValue, { color: getMetricColor(todaysRecovery.score, 'recovery') }]}>
+                        {todaysRecovery.score}%
+                      </Text>
+                      <Text style={styles.metricStatus}>
+                        {getMetricStatus(todaysRecovery.score, 'recovery')}
+                      </Text>
+                    </View>
+
+                    <View style={styles.metricItem}>
+                      <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysRecovery.hrvMs, 'hrv') + '20' }]}>
+                        <Activity size={20} color={getMetricColor(todaysRecovery.hrvMs, 'hrv')} />
+                      </View>
+                      <Text style={styles.metricLabel}>HRV</Text>
+                      <Text style={[styles.metricValue, { color: getMetricColor(todaysRecovery.hrvMs, 'hrv') }]}>
+                        {todaysRecovery.hrvMs}ms
+                      </Text>
+                      <Text style={styles.metricStatus}>
+                        {getMetricStatus(todaysRecovery.hrvMs, 'hrv')}
+                      </Text>
+                    </View>
+
+                    {todaysSleep && (
+                      <View style={styles.metricItem}>
+                        <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysSleep.efficiency || 75, 'sleep') + '20' }]}>
+                          <Moon size={20} color={getMetricColor(todaysSleep.efficiency || 75, 'sleep')} />
+                        </View>
+                        <Text style={styles.metricLabel}>Sleep</Text>
+                        <Text style={[styles.metricValue, { color: getMetricColor(todaysSleep.efficiency || 75, 'sleep') }]}>
+                          {todaysSleep.efficiency || 75}%
+                        </Text>
+                        <Text style={styles.metricStatus}>
+                          {getMetricStatus(todaysSleep.efficiency || 75, 'sleep')}
                         </Text>
                       </View>
-                      <Text style={styles.metricRecommendation}>{metric.recommendation}</Text>
-                    </View>
-                  ))}
-                </View>
+                    )}
 
-                {/* Key Recommendations */}
-                <View style={styles.recommendationsContainer}>
-                  <View style={styles.recommendationsHeader}>
-                    <Lightbulb size={20} color={colors.primary} />
-                    <Text style={styles.sectionTitle}>Today's Action Plan</Text>
+                    {todaysStrain && (
+                      <View style={styles.metricItem}>
+                        <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysStrain.score, 'strain') + '20' }]}>
+                          <Zap size={20} color={getMetricColor(todaysStrain.score, 'strain')} />
+                        </View>
+                        <Text style={styles.metricLabel}>Strain</Text>
+                        <Text style={[styles.metricValue, { color: getMetricColor(todaysStrain.score, 'strain') }]}>
+                          {todaysStrain.score.toFixed(1)}
+                        </Text>
+                        <Text style={styles.metricStatus}>
+                          {getMetricStatus(todaysStrain.score, 'strain')}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  {assessment.keyRecommendations.map((recommendation, index) => (
-                    <View key={index} style={styles.recommendationItem}>
-                      <View style={styles.recommendationBullet} />
-                      <Text style={styles.recommendationText}>{recommendation}</Text>
+                </IOSCard>
+
+                {/* Training Adjustment */}
+                {hasAdjustment && currentAdjustment && (
+                  <IOSCard style={styles.adjustmentCard}>
+                    <View style={styles.adjustmentHeader}>
+                      <View style={styles.adjustmentIcon}>
+                        {currentAdjustment.adjustmentType === 'intensity' ? (
+                          currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity ? (
+                            <TrendingDown size={20} color="#FF6B35" />
+                          ) : (
+                            <TrendingUp size={20} color="#4CAF50" />
+                          )
+                        ) : currentAdjustment.adjustmentType === 'skip' ? (
+                          <X size={20} color="#FF6B35" />
+                        ) : (
+                          <AlertTriangle size={20} color="#FF9500" />
+                        )}
+                      </View>
+                      <View style={styles.adjustmentHeaderText}>
+                        <Text style={styles.adjustmentTitle}>Training Adjusted</Text>
+                        <Text style={styles.adjustmentSubtitle}>
+                          Based on your recovery metrics
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.adjustmentReason}>
+                      <Text style={styles.reasonText}>{currentAdjustment.adjustmentReason}</Text>
+                    </View>
+
+                    <View style={styles.workoutComparison}>
+                      <View style={styles.workoutBefore}>
+                        <Text style={styles.workoutLabel}>Original</Text>
+                        <Text style={styles.workoutTitle}>{currentAdjustment.originalWorkout.title}</Text>
+                        <Text style={styles.workoutDetails}>
+                          {currentAdjustment.originalWorkout.intensity} • {currentAdjustment.originalWorkout.duration}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.arrow}>
+                        <Text style={styles.arrowText}>→</Text>
+                      </View>
+                      
+                      <View style={styles.workoutAfter}>
+                        <Text style={styles.workoutLabel}>Adjusted</Text>
+                        <Text style={styles.workoutTitle}>{currentAdjustment.adjustedWorkout.title}</Text>
+                        <Text style={[styles.workoutDetails, { 
+                          color: currentAdjustment.adjustmentType === 'intensity' && 
+                                 currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity 
+                                 ? '#FF6B35' : '#4CAF50' 
+                        }]}>
+                          {currentAdjustment.adjustedWorkout.intensity} • {currentAdjustment.adjustedWorkout.duration}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.adjustmentActions}>
+                      <IOSButton
+                        title="Keep Original"
+                        onPress={handleDismissAdjustment}
+                        variant="secondary"
+                        style={styles.adjustmentButton}
+                      />
+                      <IOSButton
+                        title="Accept Adjustment"
+                        onPress={handleAcceptAdjustment}
+                        variant="primary"
+                        style={styles.adjustmentButton}
+                      />
+                    </View>
+                  </IOSCard>
+                )}
+
+                {/* Today's Workout */}
+                {todaysWorkout && !hasAdjustment && (
+                  <IOSCard style={styles.workoutCard}>
+                    <View style={styles.workoutHeader}>
+                      <View style={styles.workoutIcon}>
+                        <Target size={20} color="#007AFF" />
+                      </View>
+                      <View>
+                        <Text style={styles.workoutCardTitle}>Today's Workout</Text>
+                        <Text style={styles.workoutCardSubtitle}>No adjustments needed</Text>
+                      </View>
+                      <View style={styles.checkIcon}>
+                        <CheckCircle size={20} color="#4CAF50" />
+                      </View>
+                    </View>
+                    <Text style={styles.workoutName}>{todaysWorkout.title}</Text>
+                    <Text style={styles.workoutDescription}>
+                      {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                    </Text>
+                  </IOSCard>
+                )}
+
+                {/* Program Progress */}
+                {activeGoals.length > 0 && (
+                  <IOSCard style={styles.progressCard}>
+                    <Text style={styles.sectionTitle}>Program Progress</Text>
+                    {activeGoals.slice(0, 2).map((goal: any) => (
+                      <View key={goal.id} style={styles.goalItem}>
+                        <View style={styles.goalHeader}>
+                          <Text style={styles.goalTitle}>{goal.title}</Text>
+                          <Text style={styles.goalProgress}>{goal.targetValue}</Text>
+                        </View>
+                        <View style={styles.progressBar}>
+                          <View 
+                            style={[styles.progressFill, { 
+                              width: `${Math.min(100, 50)}%` 
+                            }]} 
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </IOSCard>
+                )}
+
+                <View style={styles.footer}>
+                  <IOSButton
+                    title="Got it"
+                    onPress={onClose}
+                    variant="primary"
+                    style={styles.footerButton}
+                  />
+                </View>
+              </ScrollView>
+            </View>
+          </BlurView>
+        ) : (
+          <View style={styles.androidModalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Same content as iOS but without BlurView */}
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <View style={styles.dateContainer}>
+                    <Text style={styles.dateText}>
+                      {new Date().toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.title}>Daily Health Summary</Text>
+                </View>
+                <IOSButton
+                  title=""
+                  onPress={onClose}
+                  variant="secondary"
+                  style={styles.closeButton}
+                  icon={<X size={20} color="#666666" />}
+                />
+              </View>
+
+              {/* Rest of the content - same as iOS version */}
+              <IOSCard style={styles.metricsCard}>
+                <Text style={styles.sectionTitle}>Your Metrics Today</Text>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricItem}>
+                    <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysRecovery.score, 'recovery') + '20' }]}>
+                      <Heart size={20} color={getMetricColor(todaysRecovery.score, 'recovery')} />
+                    </View>
+                    <Text style={styles.metricLabel}>Recovery</Text>
+                    <Text style={[styles.metricValue, { color: getMetricColor(todaysRecovery.score, 'recovery') }]}>
+                      {todaysRecovery.score}%
+                    </Text>
+                    <Text style={styles.metricStatus}>
+                      {getMetricStatus(todaysRecovery.score, 'recovery')}
+                    </Text>
+                  </View>
+
+                  <View style={styles.metricItem}>
+                    <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysRecovery.hrvMs, 'hrv') + '20' }]}>
+                      <Activity size={20} color={getMetricColor(todaysRecovery.hrvMs, 'hrv')} />
+                    </View>
+                    <Text style={styles.metricLabel}>HRV</Text>
+                    <Text style={[styles.metricValue, { color: getMetricColor(todaysRecovery.hrvMs, 'hrv') }]}>
+                      {todaysRecovery.hrvMs}ms
+                    </Text>
+                    <Text style={styles.metricStatus}>
+                      {getMetricStatus(todaysRecovery.hrvMs, 'hrv')}
+                    </Text>
+                  </View>
+
+                  {todaysSleep && (
+                    <View style={styles.metricItem}>
+                      <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysSleep.efficiency || 75, 'sleep') + '20' }]}>
+                        <Moon size={20} color={getMetricColor(todaysSleep.efficiency || 75, 'sleep')} />
+                      </View>
+                      <Text style={styles.metricLabel}>Sleep</Text>
+                      <Text style={[styles.metricValue, { color: getMetricColor(todaysSleep.efficiency || 75, 'sleep') }]}>
+                        {todaysSleep.efficiency || 75}%
+                      </Text>
+                      <Text style={styles.metricStatus}>
+                        {getMetricStatus(todaysSleep.efficiency || 75, 'sleep')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {todaysStrain && (
+                    <View style={styles.metricItem}>
+                      <View style={[styles.metricIcon, { backgroundColor: getMetricColor(todaysStrain.score, 'strain') + '20' }]}>
+                        <Zap size={20} color={getMetricColor(todaysStrain.score, 'strain')} />
+                      </View>
+                      <Text style={styles.metricLabel}>Strain</Text>
+                      <Text style={[styles.metricValue, { color: getMetricColor(todaysStrain.score, 'strain') }]}>
+                        {todaysStrain.score.toFixed(1)}
+                      </Text>
+                      <Text style={styles.metricStatus}>
+                        {getMetricStatus(todaysStrain.score, 'strain')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </IOSCard>
+
+              {hasAdjustment && currentAdjustment && (
+                <IOSCard style={styles.adjustmentCard}>
+                  <View style={styles.adjustmentHeader}>
+                    <View style={styles.adjustmentIcon}>
+                      {currentAdjustment.adjustmentType === 'intensity' ? (
+                        currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity ? (
+                          <TrendingDown size={20} color="#FF6B35" />
+                        ) : (
+                          <TrendingUp size={20} color="#4CAF50" />
+                        )
+                      ) : currentAdjustment.adjustmentType === 'skip' ? (
+                        <X size={20} color="#FF6B35" />
+                      ) : (
+                        <AlertTriangle size={20} color="#FF9500" />
+                      )}
+                    </View>
+                    <View style={styles.adjustmentHeaderText}>
+                      <Text style={styles.adjustmentTitle}>Training Adjusted</Text>
+                      <Text style={styles.adjustmentSubtitle}>
+                        Based on your recovery metrics
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.adjustmentReason}>
+                    <Text style={styles.reasonText}>{currentAdjustment.adjustmentReason}</Text>
+                  </View>
+
+                  <View style={styles.workoutComparison}>
+                    <View style={styles.workoutBefore}>
+                      <Text style={styles.workoutLabel}>Original</Text>
+                      <Text style={styles.workoutTitle}>{currentAdjustment.originalWorkout.title}</Text>
+                      <Text style={styles.workoutDetails}>
+                        {currentAdjustment.originalWorkout.intensity} • {currentAdjustment.originalWorkout.duration}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.arrow}>
+                      <Text style={styles.arrowText}>→</Text>
+                    </View>
+                    
+                    <View style={styles.workoutAfter}>
+                      <Text style={styles.workoutLabel}>Adjusted</Text>
+                      <Text style={styles.workoutTitle}>{currentAdjustment.adjustedWorkout.title}</Text>
+                      <Text style={[styles.workoutDetails, { 
+                        color: currentAdjustment.adjustmentType === 'intensity' && 
+                               currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity 
+                               ? '#FF6B35' : '#4CAF50' 
+                      }]}>
+                        {currentAdjustment.adjustedWorkout.intensity} • {currentAdjustment.adjustedWorkout.duration}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.adjustmentActions}>
+                    <IOSButton
+                      title="Keep Original"
+                      onPress={handleDismissAdjustment}
+                      variant="secondary"
+                      style={styles.adjustmentButton}
+                    />
+                    <IOSButton
+                      title="Accept Adjustment"
+                      onPress={handleAcceptAdjustment}
+                      variant="primary"
+                      style={styles.adjustmentButton}
+                    />
+                  </View>
+                </IOSCard>
+              )}
+
+              {todaysWorkout && !hasAdjustment && (
+                <IOSCard style={styles.workoutCard}>
+                  <View style={styles.workoutHeader}>
+                    <View style={styles.workoutIcon}>
+                      <Target size={20} color="#007AFF" />
+                    </View>
+                    <View>
+                      <Text style={styles.workoutCardTitle}>Today's Workout</Text>
+                      <Text style={styles.workoutCardSubtitle}>No adjustments needed</Text>
+                    </View>
+                    <View style={styles.checkIcon}>
+                      <CheckCircle size={20} color="#4CAF50" />
+                    </View>
+                  </View>
+                  <Text style={styles.workoutName}>{todaysWorkout.title}</Text>
+                  <Text style={styles.workoutDescription}>
+                    {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                  </Text>
+                </IOSCard>
+              )}
+
+              {activeGoals.length > 0 && (
+                <IOSCard style={styles.progressCard}>
+                  <Text style={styles.sectionTitle}>Program Progress</Text>
+                  {activeGoals.slice(0, 2).map((goal: any) => (
+                    <View key={goal.id} style={styles.goalItem}>
+                      <View style={styles.goalHeader}>
+                        <Text style={styles.goalTitle}>{goal.title}</Text>
+                        <Text style={styles.goalProgress}>{goal.targetValue}</Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View 
+                          style={[styles.progressFill, { 
+                            width: `${Math.min(100, 50)}%` 
+                          }]} 
+                        />
+                      </View>
                     </View>
                   ))}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.errorContainer}>
-                <Info size={48} color={colors.primary} />
-                <Text style={styles.errorTitle}>Loading Assessment</Text>
-                <Text style={styles.errorText}>
-                  Your daily metrics assessment is being prepared. If this takes too long, try refreshing.
-                </Text>
-                <TouchableOpacity 
-                  style={styles.retryButton} 
-                  onPress={() => {
-                    setError(null);
-                    setAssessment(null);
-                    generateDailyAssessment();
-                  }}
-                >
-                  <Text style={styles.retryButtonText}>Refresh</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
+                </IOSCard>
+              )}
 
-          <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.closeFooterButton} onPress={handleClose}>
-              <Text style={styles.closeFooterButtonText}>Got it!</Text>
-            </TouchableOpacity>
+              <View style={styles.footer}>
+                <IOSButton
+                  title="Got it"
+                  onPress={onClose}
+                  variant="primary"
+                  style={styles.footerButton}
+                />
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        )}
       </View>
     </Modal>
   );
-}
-
-// Check if popup should be shown today
-export const shouldShowDailyPopup = async (): Promise<boolean> => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const lastShown = await AsyncStorage.getItem(DAILY_POPUP_KEY);
-    return lastShown !== today;
-  } catch (error) {
-    console.error('Error checking popup status:', error);
-    return false;
-  }
 };
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
-  modalOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  blurContainer: {
+    width: Math.min(screenWidth - 40, 400),
+    maxHeight: '90%',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 24,
-    width: SCREEN_WIDTH * 0.9,
-    maxHeight: SCREEN_HEIGHT * 0.85,
-    maxWidth: 400,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 20,
   },
-  modalHeader: {
+  androidModalContent: {
+    width: Math.min(screenWidth - 40, 400),
+    maxHeight: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerLeft: {
     flex: 1,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginLeft: 12,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalScroll: {
-    flex: 1,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  loadingText: {
-    color: colors.text,
-    fontSize: 16,
-    marginTop: 16,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 16,
+  dateContainer: {
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  errorText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  retryButtonText: {
-    color: colors.text,
-    fontSize: 16,
+  dateText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#666666',
   },
-  assessmentContainer: {
-    padding: 20,
-  },
-  overallScoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  scoreCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  scoreNumber: {
+  title: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.text,
+    color: '#000000',
   },
-  scoreLabel: {
-    fontSize: 12,
-    color: colors.text,
-    marginTop: 2,
-  },
-  overallInfo: {
-    flex: 1,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  summaryText: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-  },
-  focusAreaContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  focusAreaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  focusAreaTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginLeft: 8,
-  },
-  focusAreaText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  metricsContainer: {
-    marginBottom: 20,
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginLeft: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
+    color: '#000000',
+    marginBottom: 16,
+  },
+  metricsCard: {
+    marginBottom: 16,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  metricItem: {
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  metricIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  metricStatus: {
+    fontSize: 11,
+    color: '#999999',
+    fontWeight: '500',
+  },
+  adjustmentCard: {
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9500',
+  },
+  adjustmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  metricCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+  adjustmentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  adjustmentHeaderText: {
+    flex: 1,
+  },
+  adjustmentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  adjustmentSubtitle: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  adjustmentReason: {
+    backgroundColor: '#FFF8F0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  reasonText: {
+    fontSize: 14,
+    color: '#B8860B',
+    lineHeight: 20,
+  },
+  workoutComparison: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  workoutBefore: {
+    flex: 1,
+  },
+  workoutAfter: {
+    flex: 1,
+  },
+  arrow: {
+    paddingHorizontal: 12,
+  },
+  arrowText: {
+    fontSize: 16,
+    color: '#666666',
+  },
+  workoutLabel: {
+    fontSize: 11,
+    color: '#666666',
+    marginBottom: 2,
+  },
+  workoutTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  workoutDetails: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  adjustmentActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  adjustmentButton: {
+    flex: 1,
+  },
+  workoutCard: {
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  metricHeader: {
+  workoutIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkIcon: {
+    marginLeft: 'auto',
+  },
+  workoutCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  workoutCardSubtitle: {
+    fontSize: 13,
+    color: '#4CAF50',
+  },
+  workoutName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  workoutDescription: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  progressCard: {
+    marginBottom: 16,
+  },
+  goalItem: {
+    marginBottom: 16,
+  },
+  goalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  metricTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metricName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginLeft: 8,
-  },
-  metricValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginRight: 8,
-  },
-  metricStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metricStatusText: {
+  goalTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
+    color: '#000000',
   },
-  metricRecommendation: {
+  goalProgress: {
     fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
+    fontWeight: '600',
+    color: '#007AFF',
   },
-  recommendationsContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-  },
-  recommendationsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  recommendationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  recommendationBullet: {
-    width: 6,
+  progressBar: {
     height: 6,
+    backgroundColor: '#E0E0E0',
     borderRadius: 3,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 3,
+  },
+  footer: {
     marginTop: 8,
-    marginRight: 12,
   },
-  recommendationText: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-    flex: 1,
-  },
-  modalFooter: {
-    padding: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
-  },
-  closeFooterButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  closeFooterButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+  footerButton: {
+    width: '100%',
   },
 });
+
+export default DailyMetricsPopup;

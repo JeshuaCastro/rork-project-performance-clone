@@ -13,11 +13,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Platform, View, StyleSheet, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DailyMetricsPopup from '@/components/DailyMetricsPopup';
+import { useDailyMetricsPopup } from '@/hooks/useDailyMetricsPopup';
 
 export default function TabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { checkWhoopConnection, syncWhoopData } = useWhoopStore();
+  const { showPopup, closeDailyPopup } = useDailyMetricsPopup();
   
   useEffect(() => {
     const checkPreviousConnection = async () => {
@@ -176,6 +179,11 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+      
+      <DailyMetricsPopup
+        visible={showPopup}
+        onClose={closeDailyPopup}
+      />
     </View>
   );
 }

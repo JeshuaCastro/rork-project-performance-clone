@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { useWhoopStore } from '@/store/whoopStore';
+import { useDailyMetricsPopup } from '@/hooks/useDailyMetricsPopup';
 import { 
   Key, 
   Link, 
@@ -29,7 +30,8 @@ import {
   RefreshCw,
   Clock,
   AlertCircle,
-  UserCircle
+  UserCircle,
+  BarChart3
 } from 'lucide-react-native';
 import { disconnectFromWhoop } from '@/services/whoopApi';
 
@@ -54,6 +56,8 @@ export default function SettingsScreen() {
     setIsLoadingWhoopData,
     userProfile
   } = useWhoopStore();
+  
+  const { triggerPopupManually } = useDailyMetricsPopup();
   
   useEffect(() => {
     // Check WHOOP connection status when the screen loads
@@ -146,6 +150,10 @@ export default function SettingsScreen() {
     
     const date = new Date(lastSyncTime);
     return date.toLocaleString();
+  };
+  
+  const handleShowDailyPopup = () => {
+    triggerPopupManually();
   };
 
   const renderSettingItem = (
@@ -334,6 +342,14 @@ export default function SettingsScreen() {
             "Manage data sharing and permissions",
             undefined,
             () => router.push('/privacy')
+          )}
+          
+          {renderSettingItem(
+            <BarChart3 size={20} color={colors.textSecondary} />,
+            "Daily Health Summary",
+            "View your metrics and training adjustments",
+            undefined,
+            handleShowDailyPopup
           )}
           
           {renderSettingItem(
