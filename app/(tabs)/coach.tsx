@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWhoopStore } from '@/store/whoopStore';
+import { useProgramStore } from '@/store/programStore';
 import { colors } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -62,6 +63,14 @@ export default function CoachScreen() {
     userProfile,
     clearChatMessages
   } = useWhoopStore();
+  
+  // Program-aware coaching context
+  const { goals, getGoalSummary, getMetricLabel } = useProgramStore();
+  const activeGoal = goals.find(goal => {
+    const summary = getGoalSummary(goal.id);
+    return summary && summary.percentComplete < 100;
+  });
+  const goalSummary = activeGoal ? getGoalSummary(activeGoal.id) : null;
   const [message, setMessage] = useState('');
   const flatListRef = useRef<FlatList>(null);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
@@ -509,51 +518,158 @@ export default function CoachScreen() {
     }
   }, [hasWhoopData, data]);
 
-  // Smart coach insight generator
+  // Program-aware smart coach insight generator
   const getSmartCoachInsight = (insights: HealthInsight[], steps: any[], recovery: number, strain: number): string => {
-    if (insights.length === 0) return 'Complete your health analysis to get personalized insights.';
+    if (insights.length === 0) {
+      if (activeGoal) {
+        const paceStatus = goalSummary?.paceVsPlan || 'on_track';
+        const weeksLeft = goalSummary ? goalSummary.totalWeeks - goalSummary.weeksElapsed : 0;
+        return `You're working toward ${activeGoal.title} and currently ${paceStatus} with ${weeksLeft} weeks remaining. Complete your health analysis to get personalized insights for your program.`;
+      }
+      return 'Complete your health analysis to get personalized insights.';
+    }
     
     const criticalInsights = insights.filter(i => i.status === 'critical');
     const warningInsights = insights.filter(i => i.status === 'warning');
     const goodInsights = insights.filter(i => i.status === 'good');
     
+    let baseInsight = '';
     if (criticalInsights.length > 0) {
-      return `Your body is showing signs of stress. Focus on ${criticalInsights[0].category.toLowerCase()} - specifically ${criticalInsights[0].recommendations[0].toLowerCase()}. This should be your top priority today.`;
+      baseInsight = `Your body is showing signs of stress. Focus on ${criticalInsights[0].category.toLowerCase()} - specifically ${criticalInsights[0].recommendations[0].toLowerCase()}.`;
     } else if (warningInsights.length > 0) {
-      return `You're making good progress! Your ${warningInsights[0].category.toLowerCase()} needs attention. Try ${warningInsights[0].recommendations[0].toLowerCase()} to optimize your performance.`;
+      baseInsight = `You're making good progress! Your ${warningInsights[0].category.toLowerCase()} needs attention. Try ${warningInsights[0].recommendations[0].toLowerCase()} to optimize your performance.`;
     } else {
-      return `Excellent work! Your health metrics are strong. With recovery at ${recovery.toFixed(0)}% and balanced strain, you're ready to push your limits or maintain this excellent momentum.`;
+      baseInsight = `Excellent work! Your health metrics are strong. With recovery at ${recovery.toFixed(0)}% and balanced strain, you're ready to push your limits.`;
     }
+    
+    // Add program context
+    if (activeGoal && goalSummary) {
+      const paceStatus = goalSummary.paceVsPlan;
+      const weeksLeft = goalSummary.totalWeeks - goalSummary.weeksElapsed;
+      const progressPercent = goalSummary.percentComplete;
+      
+      let programContext = '';
+      if (paceStatus === 'behind' && criticalInsights.length === 0) {
+        programContext = ` Your ${activeGoal.title} goal is behind schedule (${progressPercent}% complete). Focus on recovery to get back on track.`;
+      } else if (paceStatus === 'ahead') {
+        programContext = ` Great news - you're ahead of schedule on your ${activeGoal.title} goal (${progressPercent}% complete with ${weeksLeft} weeks left)!`;
+      } else {
+        programContext = ` You're on track with your ${activeGoal.title} goal (${progressPercent}% complete, ${weeksLeft} weeks remaining).`;
+      }
+      
+      return baseInsight + programContext;
+    }
+    
+    return baseInsight;
   };
 
-  // Generate specific recommendations
+  // Program-aware workout recommendations
   const generateWorkoutRecommendation = () => {
+    let baseRecommendation = '';
+    
     if (avgRecovery >= 75) {
-      setSmartInsights(prev => ({
-        ...prev,
-        workoutPlan: 'High-intensity training recommended. Consider strength training or HIIT. Your body is ready for performance gains.'
-      }));
+      baseRecommendation = 'High-intensity training recommended. Your body is ready for performance gains.';
     } else if (avgRecovery >= 50) {
-      setSmartInsights(prev => ({
-        ...prev,
-        workoutPlan: 'Moderate intensity training. Focus on technique and form. Consider yoga or light cardio to maintain fitness.'
-      }));
+      baseRecommendation = 'Moderate intensity training. Focus on technique and form.';
     } else {
-      setSmartInsights(prev => ({
-        ...prev,
-        workoutPlan: 'Active recovery recommended. Light walking, gentle stretching, or restorative yoga. Avoid high-intensity training.'
-      }));
+      baseRecommendation = 'Active recovery recommended. Light walking, gentle stretching, or restorative yoga.';
     }
+    
+    // Add program-specific guidance
+    let programGuidance = '';
+    if (activeGoal) {
+      const weeksRemaining = goalSummary ? goalSummary.totalWeeks - goalSummary.weeksElapsed : 0;
+      const paceStatus = goalSummary?.paceVsPlan || 'on_track';
+      
+      switch (activeGoal.type) {
+        case 'muscle_gain':
+          if (avgRecovery >= 75) {
+            programGuidance = paceStatus === 'behind' 
+              ? ` Focus on compound movements and progressive overload to catch up on your muscle gain goal (${weeksRemaining} weeks left).`
+              : ` Perfect for muscle-building compound lifts. You're ${paceStatus === 'ahead' ? 'ahead of' : 'on track with'} your muscle gain target.`;
+          } else if (avgRecovery >= 50) {
+            programGuidance = ` Light resistance training with focus on form. Your muscle gain program needs consistent training even on moderate recovery days.`;
+          } else {
+            programGuidance = ` Skip heavy lifting today. Your muscle gain progress depends on recovery - prioritize sleep and nutrition.`;
+          }
+          break;
+        case 'fat_loss':
+          if (avgRecovery >= 75) {
+            programGuidance = ` Great day for HIIT or circuit training to maximize fat burn. You're ${paceStatus} with your fat loss goal.`;
+          } else if (avgRecovery >= 50) {
+            programGuidance = ` Steady-state cardio or light strength training. Consistency is key for your fat loss program.`;
+          } else {
+            programGuidance = ` Low-intensity movement only. Fat loss happens in recovery too - don't compromise your progress.`;
+          }
+          break;
+        case 'strength':
+          if (avgRecovery >= 75) {
+            programGuidance = paceStatus === 'behind'
+              ? ` Perfect for heavy compound lifts. Push hard to catch up on your strength goals (${weeksRemaining} weeks left).`
+              : ` Ideal for testing new PRs or heavy singles. Your strength program is progressing well.`;
+          } else if (avgRecovery >= 50) {
+            programGuidance = ` Technique work at 70-80% max. Your strength gains come from consistent quality training.`;
+          } else {
+            programGuidance = ` Skip heavy lifting. Strength gains require full recovery - focus on mobility and light movement.`;
+          }
+          break;
+        case 'endurance':
+          if (avgRecovery >= 75) {
+            programGuidance = ` Perfect for interval training or tempo runs. You're ${paceStatus} with your endurance goals.`;
+          } else if (avgRecovery >= 50) {
+            programGuidance = ` Easy aerobic pace training. Build your aerobic base consistently for endurance gains.`;
+          } else {
+            programGuidance = ` Easy walk or complete rest. Endurance improvements happen during recovery.`;
+          }
+          break;
+        default:
+          programGuidance = ` Consider how today's training aligns with your ${activeGoal.title} goal.`;
+      }
+    }
+    
+    setSmartInsights(prev => ({
+      ...prev,
+      workoutPlan: baseRecommendation + programGuidance
+    }));
   };
 
   const generateNutritionPlan = () => {
-    const plan = avgRecovery < 50 ? 
-      'Focus on anti-inflammatory foods: salmon, berries, leafy greens. Increase protein to 2.0g/kg body weight for recovery.' :
-      avgRecovery >= 75 ? 
-      'Fuel for performance: complex carbs 2-3 hours before training, protein within 30 minutes after. Stay hydrated.' :
-      'Balanced nutrition: lean proteins, complex carbs, healthy fats. Time meals around your training schedule.';
+    let basePlan = '';
     
-    setSmartInsights(prev => ({ ...prev, nutritionPlan: plan }));
+    if (avgRecovery < 50) {
+      basePlan = 'Focus on anti-inflammatory foods: salmon, berries, leafy greens. Increase protein to 2.0g/kg body weight for recovery.';
+    } else if (avgRecovery >= 75) {
+      basePlan = 'Fuel for performance: complex carbs 2-3 hours before training, protein within 30 minutes after. Stay hydrated.';
+    } else {
+      basePlan = 'Balanced nutrition: lean proteins, complex carbs, healthy fats. Time meals around your training schedule.';
+    }
+    
+    // Add program-specific nutrition guidance
+    let programNutrition = '';
+    if (activeGoal) {
+      const paceStatus = goalSummary?.paceVsPlan || 'on_track';
+      
+      switch (activeGoal.type) {
+        case 'muscle_gain':
+          programNutrition = paceStatus === 'behind'
+            ? ' Increase calories by 200-300 and protein to 2.2g/kg to accelerate muscle gain.'
+            : ' Maintain slight caloric surplus with 1.8-2.0g/kg protein for steady muscle growth.';
+          break;
+        case 'fat_loss':
+          programNutrition = paceStatus === 'behind'
+            ? ' Consider a moderate caloric deficit (300-500 calories) while maintaining protein at 2.0g/kg.'
+            : ' Stay consistent with your current caloric deficit and high protein intake.';
+          break;
+        case 'strength':
+          programNutrition = ' Fuel strength gains with adequate carbs pre-workout and protein post-workout. Don\'t restrict calories.';
+          break;
+        case 'endurance':
+          programNutrition = ' Focus on carb periodization - higher carbs on training days, moderate on rest days.';
+          break;
+      }
+    }
+    
+    setSmartInsights(prev => ({ ...prev, nutritionPlan: basePlan + programNutrition }));
   };
 
   const generateRecoveryPlan = () => {
@@ -630,10 +746,10 @@ export default function CoachScreen() {
             <View style={styles.suggestionCategory}>
               <Text style={styles.categoryTitle}>Training</Text>
               {[
-                "How should I train today based on my recovery?",
+                activeGoal ? `How should I train today for my ${activeGoal.title} goal?` : "How should I train today based on my recovery?",
                 "Should I take a rest day?",
-                "What's the best workout for my current state?",
-                "How can I improve my performance?",
+                activeGoal ? `What workout will help me reach my ${activeGoal.title} target?` : "What's the best workout for my current state?",
+                activeGoal && goalSummary?.paceVsPlan === 'behind' ? "How can I catch up on my program goals?" : "How can I improve my performance?",
                 "What's a good workout for low recovery days?"
               ].map((suggestion, index) => (
                 <TouchableOpacity 
@@ -654,11 +770,11 @@ export default function CoachScreen() {
             <View style={styles.suggestionCategory}>
               <Text style={styles.categoryTitle}>Nutrition</Text>
               {[
-                "What should I eat after my workout?",
-                "Suggest a high-protein breakfast",
+                activeGoal ? `What should I eat to support my ${activeGoal.title} goal?` : "What should I eat after my workout?",
+                activeGoal?.type === 'muscle_gain' ? "Suggest a muscle-building breakfast" : "Suggest a high-protein breakfast",
                 "How can I hit my protein target today?",
                 "What should I eat before a morning workout?",
-                "How should I adjust my diet on rest days?",
+                activeGoal ? `How should I adjust my diet for my ${activeGoal.title} program?` : "How should I adjust my diet on rest days?",
                 "What foods help with recovery?"
               ].map((suggestion, index) => (
                 <TouchableOpacity 
@@ -681,10 +797,10 @@ export default function CoachScreen() {
               <Text style={styles.categoryTitle}>Recovery</Text>
               {[
                 "What's causing my low recovery scores?",
-                "How can I improve my recovery?",
+                activeGoal ? `How can I optimize recovery for my ${activeGoal.title} program?` : "How can I improve my recovery?",
                 "How can I reduce my resting heart rate?",
                 "What's the best way to recover after a hard workout?",
-                "How does sleep affect my recovery?",
+                activeGoal ? `How does sleep impact my ${activeGoal.title} progress?` : "How does sleep affect my recovery?",
                 "What recovery techniques should I try?"
               ].map((suggestion, index) => (
                 <TouchableOpacity 
