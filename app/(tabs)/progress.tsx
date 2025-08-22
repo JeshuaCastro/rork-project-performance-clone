@@ -30,6 +30,8 @@ import { useWhoopStore } from '@/store/whoopStore';
 import { useProgramStore } from '@/store/programStore';
 import ProgressRing from '@/components/ProgressRing';
 import IOSSegmentedControl from '@/components/IOSSegmentedControl';
+import { DailyMetricsPopup } from '@/components/DailyMetricsPopup';
+import { useDailyMetricsPopup } from '@/hooks/useDailyMetricsPopup';
 
 type TimeRange = 'week' | 'month' | 'quarter';
 
@@ -38,6 +40,7 @@ export default function ProgressScreen() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('month');
   const { data, activePrograms } = useWhoopStore();
   const { goals, getGoalSummary, getMetricLabel } = useProgramStore();
+  const { showPopup, closeDailyPopup, forceShowPopup } = useDailyMetricsPopup();
 
   // Get current active program
   const currentProgram = activePrograms[0];
@@ -384,9 +387,22 @@ export default function ProgressScreen() {
               <Target size={24} color={colors.warning} />
               <Text style={styles.actionButtonText}>Update Goal</Text>
             </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={forceShowPopup}
+            >
+              <Activity size={24} color={colors.info} />
+              <Text style={styles.actionButtonText}>Daily Summary</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+      
+      <DailyMetricsPopup
+        visible={showPopup}
+        onClose={closeDailyPopup}
+      />
     </View>
   );
 }
@@ -685,10 +701,12 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
   },
   actionButton: {
     flex: 1,
+    minWidth: (SCREEN_WIDTH - 64) / 2,
     backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,

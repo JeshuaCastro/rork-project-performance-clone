@@ -85,9 +85,13 @@ export const useDailyMetricsPopup = () => {
   };
 
   const triggerPopupManually = () => {
-    if (isConnectedToWhoop) {
-      setShowPopup(true);
-    }
+    console.log('Manually triggering daily metrics popup');
+    setShowPopup(true);
+  };
+
+  const forceShowPopup = () => {
+    console.log('Force showing daily metrics popup for testing');
+    setShowPopup(true);
   };
 
   // Initialize and check if we should show popup
@@ -116,6 +120,7 @@ export const useDailyMetricsPopup = () => {
     showPopup,
     closeDailyPopup,
     triggerPopupManually,
+    forceShowPopup,
     hasAdjustment,
     isConnectedToWhoop
   };
