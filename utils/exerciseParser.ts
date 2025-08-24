@@ -10,12 +10,16 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
     'Squat': ['squat'],
     'Plank': ['plank'],
     'Core': ['plank'],
-    'Upper Body Push': ['push-up', 'dumbbell-row'],
+    'Upper Body Push': ['push-up', 'bench-press', 'overhead-press'],
     'Upper Body Pull': ['dumbbell-row'],
-    'Full Body': ['squat', 'push-up', 'plank'],
+    'Full Body': ['squat', 'deadlift', 'burpee'],
     'HIIT': ['jumping-jacks', 'mountain-climbers', 'burpee'],
-    'Cardio': ['jumping-jacks'],
-    'Strength': ['squat', 'push-up'],
+    'Cardio': ['jumping-jacks', 'mountain-climbers'],
+    'Strength': ['squat', 'deadlift', 'bench-press'],
+    'Bench Press': ['bench-press'],
+    'Deadlift': ['deadlift'],
+    'Overhead Press': ['overhead-press'],
+    'Press': ['bench-press', 'overhead-press'],
     'Recovery': [], // No specific exercises for recovery
   };
 
@@ -56,6 +60,15 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
     }
     if (description.includes('burpee')) {
       matchedExercises.push('burpee');
+    }
+    if (description.includes('bench press') || description.includes('bench-press')) {
+      matchedExercises.push('bench-press');
+    }
+    if (description.includes('deadlift')) {
+      matchedExercises.push('deadlift');
+    }
+    if (description.includes('overhead press') || description.includes('shoulder press')) {
+      matchedExercises.push('overhead-press');
     }
   }
 

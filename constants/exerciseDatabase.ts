@@ -10,7 +10,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['core'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -229,7 +229,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['biceps', 'shoulders'],
     difficulty: 'beginner',
     equipment: ['dumbbells', 'bench'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -301,7 +301,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['core'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -379,7 +379,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['legs', 'shoulders'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -451,7 +451,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['shoulders', 'legs'],
     difficulty: 'intermediate',
     equipment: ['bodyweight'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -523,7 +523,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['chest', 'legs', 'core'],
     difficulty: 'intermediate',
     equipment: ['bodyweight'],
-    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -603,6 +603,223 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     ],
     estimatedDuration: '45 seconds',
     caloriesPerMinute: 15
+  },
+  // ADDITIONAL STRENGTH EXERCISES
+  {
+    id: 'bench-press',
+    name: 'Bench Press',
+    description: 'A fundamental upper body pressing exercise that targets the chest, shoulders, and triceps.',
+    primaryMuscles: ['chest'],
+    secondaryMuscles: ['shoulders', 'triceps'],
+    difficulty: 'intermediate',
+    equipment: ['barbell', 'bench'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Lie flat on bench with feet firmly on the ground.',
+        tip: 'Keep your shoulder blades pulled back and down.',
+        commonMistake: 'Arching back excessively'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Grip the barbell with hands slightly wider than shoulder-width.',
+        tip: 'Use a full grip, not thumbless grip.',
+        commonMistake: 'Gripping too wide or too narrow'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Lower the bar to your chest with control.',
+        tip: 'Touch your chest lightly, don\'t bounce.',
+        commonMistake: 'Lowering too fast or not touching chest'
+      },
+      {
+        stepNumber: 4,
+        instruction: 'Press the bar back up to starting position.',
+        tip: 'Drive through your chest and maintain tight core.',
+        commonMistake: 'Pressing unevenly or losing shoulder position'
+      }
+    ],
+    formTips: [
+      'Keep your feet flat on the ground',
+      'Maintain natural arch in your back',
+      'Keep your core tight throughout',
+      'Control the weight on both up and down phases'
+    ],
+    commonMistakes: [
+      'Bouncing the bar off chest',
+      'Lifting feet off the ground',
+      'Flaring elbows too wide',
+      'Not using full range of motion'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Dumbbell Bench Press',
+        instruction: 'Use dumbbells instead of barbell for better control and range of motion.'
+      },
+      {
+        level: 'easier',
+        description: 'Incline Bench Press',
+        instruction: 'Use an inclined bench to reduce the load and target upper chest.'
+      },
+      {
+        level: 'harder',
+        description: 'Close-Grip Bench Press',
+        instruction: 'Use a narrower grip to emphasize triceps more.'
+      }
+    ],
+    safetyNotes: [
+      'Always use a spotter when lifting heavy',
+      'Start with lighter weights to master form',
+      'Keep the bar path straight up and down'
+    ],
+    estimatedDuration: '60 seconds',
+    caloriesPerMinute: 8
+  },
+  {
+    id: 'deadlift',
+    name: 'Deadlift',
+    description: 'A compound exercise that works the entire posterior chain, including glutes, hamstrings, and back.',
+    primaryMuscles: ['back', 'glutes', 'legs'],
+    secondaryMuscles: ['core', 'shoulders'],
+    difficulty: 'intermediate',
+    equipment: ['barbell'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Stand with feet hip-width apart, bar over mid-foot.',
+        tip: 'Keep the bar close to your shins.',
+        commonMistake: 'Standing too far from the bar'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Hinge at hips and bend knees to grip the bar.',
+        tip: 'Keep your chest up and back straight.',
+        commonMistake: 'Rounding the back'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Drive through your heels and extend hips and knees.',
+        tip: 'Keep the bar close to your body throughout.',
+        commonMistake: 'Bar drifting away from body'
+      },
+      {
+        stepNumber: 4,
+        instruction: 'Stand tall with shoulders back, then lower with control.',
+        tip: 'Reverse the movement pattern to lower the weight.',
+        commonMistake: 'Dropping the weight or losing control'
+      }
+    ],
+    formTips: [
+      'Keep your core braced throughout',
+      'Maintain neutral spine position',
+      'Drive through your heels, not toes',
+      'Keep the bar path straight'
+    ],
+    commonMistakes: [
+      'Rounding the back',
+      'Bar drifting away from body',
+      'Not engaging glutes at the top',
+      'Looking up instead of keeping neutral neck'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Romanian Deadlift',
+        instruction: 'Start from standing position and only lower to mid-shin level.'
+      },
+      {
+        level: 'easier',
+        description: 'Trap Bar Deadlift',
+        instruction: 'Use a trap bar for more natural hand position and easier form.'
+      },
+      {
+        level: 'harder',
+        description: 'Single-Leg Deadlift',
+        instruction: 'Perform the movement on one leg for increased balance challenge.'
+      }
+    ],
+    safetyNotes: [
+      'Start with very light weight to learn proper form',
+      'Never round your back under load',
+      'Consider using lifting straps for grip if needed'
+    ],
+    estimatedDuration: '90 seconds',
+    caloriesPerMinute: 10
+  },
+  {
+    id: 'overhead-press',
+    name: 'Overhead Press',
+    description: 'A vertical pressing movement that builds shoulder strength and stability.',
+    primaryMuscles: ['shoulders'],
+    secondaryMuscles: ['triceps', 'core'],
+    difficulty: 'intermediate',
+    equipment: ['barbell'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Stand with feet shoulder-width apart, bar at shoulder level.',
+        tip: 'Keep your core tight and glutes engaged.',
+        commonMistake: 'Leaning back too much'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Press the bar straight up overhead.',
+        tip: 'Keep the bar path straight and close to your face.',
+        commonMistake: 'Pressing the bar forward instead of up'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Lock out arms fully overhead.',
+        tip: 'Shrug shoulders up slightly at the top.',
+        commonMistake: 'Not achieving full lockout'
+      },
+      {
+        stepNumber: 4,
+        instruction: 'Lower the bar back to starting position with control.',
+        tip: 'Control the descent, don\'t let it drop.',
+        commonMistake: 'Lowering too quickly'
+      }
+    ],
+    formTips: [
+      'Keep your core braced throughout',
+      'Don\'t lean back excessively',
+      'Keep your wrists straight',
+      'Maintain tight glutes to protect lower back'
+    ],
+    commonMistakes: [
+      'Pressing the bar forward',
+      'Excessive back arch',
+      'Not achieving full range of motion',
+      'Using legs to help (unless doing push press)'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Seated Overhead Press',
+        instruction: 'Perform the movement seated to reduce core stability demands.'
+      },
+      {
+        level: 'easier',
+        description: 'Dumbbell Shoulder Press',
+        instruction: 'Use dumbbells for independent arm movement and easier form.'
+      },
+      {
+        level: 'harder',
+        description: 'Single-Arm Overhead Press',
+        instruction: 'Press one arm at a time for increased core challenge.'
+      }
+    ],
+    safetyNotes: [
+      'Start with lighter weights to master form',
+      'Don\'t press behind the neck',
+      'Stop if you feel shoulder impingement'
+    ],
+    estimatedDuration: '60 seconds',
+    caloriesPerMinute: 7
   }
 ];
 
