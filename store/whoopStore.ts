@@ -1460,15 +1460,39 @@ Return comprehensive JSON with goal-focused structure and STRICT workout separat
             }),
           });
           
+          if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+          }
+          
           const result = await response.json();
           
           try {
+            console.log('AI API Response:', result);
+            
+            if (!result || typeof result !== 'object') {
+              throw new Error('Invalid API response format');
+            }
+            
             const planText = result.completion?.trim() || '';
+            console.log('Plan text from AI:', planText);
+            
+            if (!planText) {
+              throw new Error('No completion text received from AI - response was empty or null');
+            }
+            
+            if (planText === 'null' || planText === 'None' || planText === 'undefined') {
+              throw new Error('AI returned null/None/undefined instead of valid content');
+            }
+            
             const jsonStart = planText.indexOf('{');
             const jsonEnd = planText.lastIndexOf('}') + 1;
             
+            console.log('JSON boundaries:', { jsonStart, jsonEnd });
+            
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
               const jsonStr = planText.substring(jsonStart, jsonEnd);
+              console.log('Extracted JSON string:', jsonStr);
+              
               const planJson = JSON.parse(jsonStr);
               
               // Ensure planJson is valid
