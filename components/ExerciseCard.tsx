@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors } from '@/constants/colors';
 import { WorkoutExercise } from '@/types/exercises';
 import { getExerciseById } from '@/constants/exerciseDatabase';
 import { 
-  ChevronDown, 
-  ChevronUp, 
   Play, 
-  Info, 
-  AlertTriangle, 
-  Target,
-  Clock,
-  Dumbbell,
   CheckCircle2,
-  Zap
+  Eye
 } from 'lucide-react-native';
 
 interface ExerciseCardProps {
@@ -31,9 +24,10 @@ export default function ExerciseCard({
   isCompleted = false,
   showDetails = true 
 }: ExerciseCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [showModifications, setShowModifications] = useState(false);
+  const [showFormTips, setShowFormTips] = useState(false);
+  
+  // Suppress unused variable warning for showDetails
+  void showDetails;
   
   const exercise = getExerciseById(workoutExercise.exerciseId);
   
@@ -45,21 +39,6 @@ export default function ExerciseCard({
     );
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner': return colors.success;
-      case 'intermediate': return colors.warning;
-      case 'advanced': return colors.danger;
-      default: return colors.textSecondary;
-    }
-  };
-
-  const getMuscleGroupIcon = (muscles: string[]) => {
-    if (muscles.includes('cardio')) return <Zap size={16} color={colors.primary} />;
-    if (muscles.includes('core')) return <Target size={16} color={colors.primary} />;
-    return <Dumbbell size={16} color={colors.primary} />;
-  };
-
   const formatSetsReps = () => {
     const parts = [];
     if (workoutExercise.sets) parts.push(`${workoutExercise.sets} sets`);
@@ -68,37 +47,61 @@ export default function ExerciseCard({
     return parts.join(' × ') || 'As prescribed';
   };
 
+  // Generate Unsplash image URL based on exercise name
+  const getExerciseImageUrl = (exerciseName: string) => {
+    // Map common exercise names to specific Unsplash photo IDs for better consistency
+    const exerciseImageMap: { [key: string]: string } = {
+      'push-up': 'photo-1571019613454-1cb2f99b2d8b', // Push-up demonstration
+      'squat': 'photo-1566241440091-ec10de8db2e1', // Squat exercise
+      'deadlift': 'photo-1534438327276-14e5300c3a48', // Deadlift
+      'bench press': 'photo-1571019613454-1cb2f99b2d8b', // Bench press
+      'pull-up': 'photo-1571019613454-1cb2f99b2d8b', // Pull-up
+      'plank': 'photo-1571019613454-1cb2f99b2d8b', // Plank
+      'lunge': 'photo-1566241440091-ec10de8db2e1', // Lunge
+      'burpee': 'photo-1571019613454-1cb2f99b2d8b', // Burpee
+      'mountain climber': 'photo-1571019613454-1cb2f99b2d8b', // Mountain climbers
+      'jumping jack': 'photo-1571019613454-1cb2f99b2d8b', // Jumping jacks
+    };
+    
+    // Clean exercise name and find matching image
+    const cleanName = exerciseName.toLowerCase().trim();
+    const photoId = exerciseImageMap[cleanName] || 'photo-1571019613454-1cb2f99b2d8b'; // Default fitness image
+    
+    return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`;
+  };
+
   return (
     <View style={[styles.card, isCompleted && styles.completedCard]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          {getMuscleGroupIcon(exercise.primaryMuscles)}
-          <View style={styles.titleText}>
-            <Text style={styles.exerciseName}>{exercise.name}</Text>
-            <View style={styles.metaInfo}>
-              <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(exercise.difficulty) + '20' }]}>
-                <Text style={[styles.difficultyText, { color: getDifficultyColor(exercise.difficulty) }]}>
-                  {exercise.difficulty}
-                </Text>
-              </View>
-              <Text style={styles.muscleGroups}>
-                {exercise.primaryMuscles.join(', ')}
-              </Text>
-            </View>
-          </View>
+      {/* Exercise Image with Overlay */}
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: getExerciseImageUrl(exercise.name) }}
+          style={styles.exerciseImage}
+          resizeMode="cover"
+        />
+        
+        {/* Image Overlay */}
+        <View style={styles.imageOverlay}>
+          {/* Exercise Name */}
+          <Text style={styles.exerciseName} numberOfLines={2}>
+            {exercise.name}
+          </Text>
+          
+          {/* Form Tips Button */}
+          <TouchableOpacity 
+            style={styles.formTipsButton}
+            onPress={() => setShowFormTips(!showFormTips)}
+          >
+            <Eye size={16} color={colors.text} />
+            <Text style={styles.formTipsButtonText}>Tap to see form</Text>
+          </TouchableOpacity>
         </View>
         
-        {showDetails && (
-          <TouchableOpacity 
-            style={styles.expandButton}
-            onPress={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? 
-              <ChevronUp size={20} color={colors.textSecondary} /> : 
-              <ChevronDown size={20} color={colors.textSecondary} />
-            }
-          </TouchableOpacity>
+        {/* Completion Badge */}
+        {isCompleted && (
+          <View style={styles.completionBadge}>
+            <CheckCircle2 size={20} color={colors.success} />
+          </View>
         )}
       </View>
 
@@ -106,183 +109,51 @@ export default function ExerciseCard({
       <View style={styles.prescriptionContainer}>
         <Text style={styles.prescriptionText}>{formatSetsReps()}</Text>
         {workoutExercise.weight && (
-          <Text style={styles.weightText}>Weight: {workoutExercise.weight}</Text>
+          <Text style={styles.metricText}>Weight: {workoutExercise.weight}</Text>
         )}
         {workoutExercise.restTime && (
-          <Text style={styles.restText}>Rest: {workoutExercise.restTime}</Text>
-        )}
-        {workoutExercise.targetRPE && (
-          <Text style={styles.rpeText}>Target RPE: {workoutExercise.targetRPE}/10</Text>
+          <Text style={styles.metricText}>Rest: {workoutExercise.restTime}</Text>
         )}
       </View>
 
-      {/* Quick Description */}
-      <Text style={styles.description}>{exercise.description}</Text>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        {!isCompleted ? (
-          <TouchableOpacity 
-            style={styles.startButton}
-            onPress={onStart}
-          >
-            <Play size={16} color={colors.text} />
-            <Text style={styles.startButtonText}>Start Exercise</Text>
-          </TouchableOpacity>
+      {/* Action Button */}
+      <TouchableOpacity 
+        style={[styles.actionButton, isCompleted && styles.completedActionButton]}
+        onPress={isCompleted ? onComplete : onStart}
+        disabled={isCompleted}
+        activeOpacity={isCompleted ? 1 : 0.7}
+      >
+        {isCompleted ? (
+          <>
+            <CheckCircle2 size={18} color={colors.success} />
+            <Text style={[styles.actionButtonText, styles.completedActionText]}>Completed</Text>
+          </>
         ) : (
-          <View style={styles.completedButton}>
-            <CheckCircle2 size={16} color={colors.success} />
-            <Text style={styles.completedButtonText}>Completed</Text>
-          </View>
+          <>
+            <Play size={18} color={colors.text} />
+            <Text style={styles.actionButtonText}>Start</Text>
+          </>
         )}
-        
-        {showDetails && (
-          <TouchableOpacity 
-            style={styles.detailsButton}
-            onPress={() => setIsExpanded(!isExpanded)}
-          >
-            <Info size={16} color={colors.textSecondary} />
-            <Text style={styles.detailsButtonText}>Details</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      </TouchableOpacity>
 
-      {/* Expanded Details */}
-      {isExpanded && (
-        <View style={styles.expandedContent}>
-          {/* Equipment Needed */}
-          {exercise.equipment.length > 0 && (
-            <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>Equipment Needed</Text>
-              <View style={styles.equipmentList}>
-                {exercise.equipment.map((item, index) => (
-                  <View key={index} style={styles.equipmentItem}>
-                    <Text style={styles.equipmentText}>
-                      {item.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Quick Form Tips */}
-          <View style={styles.detailSection}>
-            <Text style={styles.detailSectionTitle}>Key Form Tips</Text>
+      {/* Form Tips Overlay */}
+      {showFormTips && (
+        <View style={styles.formTipsOverlay}>
+          <View style={styles.formTipsContent}>
+            <Text style={styles.formTipsTitle}>Form Tips</Text>
             {exercise.formTips.slice(0, 3).map((tip, index) => (
-              <View key={index} style={styles.tipItem}>
+              <View key={index} style={styles.formTipItem}>
                 <View style={styles.bulletPoint} />
-                <Text style={styles.tipText}>{tip}</Text>
+                <Text style={styles.formTipText}>{tip}</Text>
               </View>
             ))}
-          </View>
-
-          {/* Instructions Toggle */}
-          <TouchableOpacity 
-            style={styles.toggleButton}
-            onPress={() => setShowInstructions(!showInstructions)}
-          >
-            <Text style={styles.toggleButtonText}>
-              {showInstructions ? 'Hide' : 'Show'} Step-by-Step Instructions
-            </Text>
-            {showInstructions ? 
-              <ChevronUp size={16} color={colors.primary} /> : 
-              <ChevronDown size={16} color={colors.primary} />
-            }
-          </TouchableOpacity>
-
-          {/* Step-by-Step Instructions */}
-          {showInstructions && (
-            <View style={styles.instructionsContainer}>
-              {exercise.instructions.map((step, index) => (
-                <View key={index} style={styles.instructionStep}>
-                  <View style={styles.stepNumber}>
-                    <Text style={styles.stepNumberText}>{step.stepNumber}</Text>
-                  </View>
-                  <View style={styles.stepContent}>
-                    <Text style={styles.stepInstruction}>{step.instruction}</Text>
-                    {step.tip && (
-                      <Text style={styles.stepTip}>💡 {step.tip}</Text>
-                    )}
-                    {step.commonMistake && (
-                      <Text style={styles.stepMistake}>⚠️ Avoid: {step.commonMistake}</Text>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Modifications Toggle */}
-          {exercise.modifications.length > 0 && (
-            <>
-              <TouchableOpacity 
-                style={styles.toggleButton}
-                onPress={() => setShowModifications(!showModifications)}
-              >
-                <Text style={styles.toggleButtonText}>
-                  {showModifications ? 'Hide' : 'Show'} Modifications
-                </Text>
-                {showModifications ? 
-                  <ChevronUp size={16} color={colors.primary} /> : 
-                  <ChevronDown size={16} color={colors.primary} />
-                }
-              </TouchableOpacity>
-
-              {showModifications && (
-                <View style={styles.modificationsContainer}>
-                  {exercise.modifications.map((mod, index) => (
-                    <View key={index} style={styles.modificationItem}>
-                      <View style={[
-                        styles.modificationBadge,
-                        { backgroundColor: mod.level === 'easier' ? colors.success + '20' : colors.warning + '20' }
-                      ]}>
-                        <Text style={[
-                          styles.modificationLevel,
-                          { color: mod.level === 'easier' ? colors.success : colors.warning }
-                        ]}>
-                          {mod.level === 'easier' ? 'Easier' : 'Harder'}
-                        </Text>
-                      </View>
-                      <Text style={styles.modificationName}>{mod.description}</Text>
-                      <Text style={styles.modificationInstruction}>{mod.instruction}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          )}
-
-          {/* Safety Notes */}
-          {exercise.safetyNotes.length > 0 && (
-            <View style={styles.safetySection}>
-              <View style={styles.safetySectionHeader}>
-                <AlertTriangle size={16} color={colors.warning} />
-                <Text style={styles.safetySectionTitle}>Safety Notes</Text>
-              </View>
-              {exercise.safetyNotes.map((note, index) => (
-                <View key={index} style={styles.safetyItem}>
-                  <View style={styles.bulletPoint} />
-                  <Text style={styles.safetyText}>{note}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Exercise Stats */}
-          <View style={styles.statsContainer}>
-            {exercise.estimatedDuration && (
-              <View style={styles.statItem}>
-                <Clock size={14} color={colors.textSecondary} />
-                <Text style={styles.statText}>{exercise.estimatedDuration}</Text>
-              </View>
-            )}
-            {exercise.caloriesPerMinute && (
-              <View style={styles.statItem}>
-                <Zap size={14} color={colors.textSecondary} />
-                <Text style={styles.statText}>{exercise.caloriesPerMinute} cal/min</Text>
-              </View>
-            )}
+            
+            <TouchableOpacity 
+              style={styles.closeTipsButton}
+              onPress={() => setShowFormTips(false)}
+            >
+              <Text style={styles.closeTipsButtonText}>Got it</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -290,7 +161,6 @@ export default function ExerciseCard({
       {/* Notes */}
       {workoutExercise.notes && (
         <View style={styles.notesContainer}>
-          <Text style={styles.notesTitle}>Notes:</Text>
           <Text style={styles.notesText}>{workoutExercise.notes}</Text>
         </View>
       )}
@@ -302,14 +172,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: 16,
-    padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   completedCard: {
-    borderColor: colors.success + '30',
-    backgroundColor: colors.success + '05',
+    opacity: 0.8,
   },
   errorCard: {
     backgroundColor: colors.danger + '10',
@@ -324,336 +196,162 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  header: {
-    flexDirection: 'row',
+  imageContainer: {
+    position: 'relative',
+    height: 200,
+  },
+  exerciseImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 16,
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  titleContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    marginRight: 8,
-  },
-  titleText: {
-    marginLeft: 12,
-    flex: 1,
+    alignItems: 'flex-end',
   },
   exerciseName: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 12,
   },
-  metaInfo: {
+  formTipsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 2,
-  },
-  difficultyText: {
+  formTipsButtonText: {
+    color: colors.text,
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    fontWeight: '500',
+    marginLeft: 4,
   },
-  muscleGroups: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textTransform: 'capitalize',
+  completionBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+    padding: 8,
   },
-  expandButton: {
-    padding: 4,
-  },
+
   prescriptionContainer: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    padding: 16,
+    backgroundColor: colors.background,
   },
   prescriptionText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
+    fontWeight: '700',
+    color: colors.text,
     marginBottom: 4,
   },
-  weightText: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  restText: {
+  metricText: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 2,
   },
-  rpeText: {
-    fontSize: 14,
-    color: colors.warning,
-  },
-  description: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  startButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    flex: 1,
-    marginRight: 8,
-    justifyContent: 'center',
-  },
-  startButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  completedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.success + '20',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    flex: 1,
-    marginRight: 8,
-    justifyContent: 'center',
-  },
-  completedButtonText: {
-    color: colors.success,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  detailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  detailsButtonText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  expandedContent: {
-    borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
-    paddingTop: 16,
-    marginTop: 4,
-  },
-  detailSection: {
+    marginHorizontal: 16,
     marginBottom: 16,
+    borderRadius: 12,
   },
-  detailSectionTitle: {
+  completedActionButton: {
+    backgroundColor: colors.success + '20',
+  },
+  actionButtonText: {
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+  },
+  completedActionText: {
+    color: colors.success,
+  },
+  formTipsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  formTipsContent: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    maxWidth: '90%',
+  },
+  formTipsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  equipmentList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  equipmentItem: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 8,
-    marginBottom: 4,
-  },
-  equipmentText: {
-    fontSize: 12,
-    color: colors.text,
-  },
-  tipItem: {
+  formTipItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  bulletPoint: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 8,
-    marginRight: 8,
-  },
-  tipText: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
-    flex: 1,
-  },
-  toggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
     marginBottom: 12,
   },
-  toggleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  instructionsContainer: {
-    marginBottom: 16,
-  },
-  instructionStep: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  stepNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 8,
     marginRight: 12,
-    marginTop: 2,
   },
-  stepNumberText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepInstruction: {
+  formTipText: {
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,
-    marginBottom: 4,
-  },
-  stepTip: {
-    fontSize: 13,
-    color: colors.success,
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  stepMistake: {
-    fontSize: 13,
-    color: colors.warning,
-    lineHeight: 18,
-  },
-  modificationsContainer: {
-    marginBottom: 16,
-  },
-  modificationItem: {
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  modificationBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: 6,
-  },
-  modificationLevel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  modificationName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  modificationInstruction: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  safetySection: {
-    backgroundColor: colors.warning + '10',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  safetySectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  safetySectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.warning,
-    marginLeft: 6,
-  },
-  safetyItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  safetyText: {
-    fontSize: 13,
-    color: colors.text,
-    lineHeight: 18,
     flex: 1,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#2A2A2A',
+  closeTipsButton: {
+    backgroundColor: colors.primary,
     borderRadius: 12,
-    padding: 12,
-  },
-  statItem: {
-    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    marginTop: 16,
   },
-  statText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
+  closeTipsButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
+
   notesContainer: {
     backgroundColor: colors.primary + '10',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-  },
-  notesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   notesText: {
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,
+    fontStyle: 'italic',
   },
 });
