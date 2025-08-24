@@ -1,120 +1,165 @@
 import { WorkoutExercise } from '@/types/exercises';
+import { exerciseDatabase } from '@/constants/exerciseDatabase';
+
+// Enhanced exercise keyword mapping for better AI workout parsing
+const exerciseKeywordMap: Record<string, string[]> = {
+  // Strength exercises with multiple keyword variations
+  'bench-press': [
+    'bench press', 'bench-press', 'bench pressing', 'chest press', 
+    'barbell bench', 'dumbbell bench', 'pressing movement', 'horizontal press'
+  ],
+  'squat': [
+    'squat', 'squats', 'squatting', 'bodyweight squat', 'air squat',
+    'back squat', 'front squat', 'goblet squat', 'leg exercise'
+  ],
+  'deadlift': [
+    'deadlift', 'deadlifts', 'deadlifting', 'romanian deadlift', 'rdl',
+    'conventional deadlift', 'sumo deadlift', 'hip hinge'
+  ],
+  'overhead-press': [
+    'overhead press', 'shoulder press', 'military press', 'standing press',
+    'dumbbell press', 'barbell press', 'vertical press', 'pressing overhead'
+  ],
+  'dumbbell-row': [
+    'row', 'rows', 'rowing', 'dumbbell row', 'bent-over row', 'single-arm row',
+    'barbell row', 'cable row', 'pulling movement', 'back exercise'
+  ],
+  'push-up': [
+    'push-up', 'push up', 'pushup', 'push ups', 'bodyweight push',
+    'chest exercise', 'upper body push'
+  ],
+  'lunge': [
+    'lunge', 'lunges', 'lunging', 'forward lunge', 'reverse lunge',
+    'walking lunge', 'stationary lunge', 'leg exercise'
+  ],
+  'plank': [
+    'plank', 'planks', 'planking', 'forearm plank', 'core exercise',
+    'isometric hold', 'core stability'
+  ],
+  
+  // Cardio exercises
+  'jumping-jacks': [
+    'jumping jacks', 'jumping jack', 'star jumps', 'cardio exercise',
+    'full body cardio', 'plyometric'
+  ],
+  'mountain-climbers': [
+    'mountain climbers', 'mountain climber', 'mountain climbing',
+    'cardio core', 'dynamic plank'
+  ],
+  'burpee': [
+    'burpee', 'burpees', 'full body exercise', 'compound cardio',
+    'high intensity exercise'
+  ]
+};
+
+// Workout type to exercise mapping for broader categorization
+const workoutTypeMapping: Record<string, string[]> = {
+  'upper body': ['bench-press', 'dumbbell-row', 'overhead-press', 'push-up'],
+  'lower body': ['squat', 'deadlift', 'lunge'],
+  'full body': ['squat', 'deadlift', 'bench-press', 'dumbbell-row'],
+  'push': ['bench-press', 'overhead-press', 'push-up'],
+  'pull': ['dumbbell-row'],
+  'legs': ['squat', 'deadlift', 'lunge'],
+  'chest': ['bench-press', 'push-up'],
+  'back': ['dumbbell-row', 'deadlift'],
+  'shoulders': ['overhead-press'],
+  'arms': ['bench-press', 'dumbbell-row', 'overhead-press'],
+  'core': ['plank', 'mountain-climbers'],
+  'cardio': ['easy-run', 'jumping-jacks', 'mountain-climbers', 'burpee'],
+  'running': ['easy-run', 'tempo-run', 'interval-training', 'long-run'],
+  'cycling': ['steady-state-cycling', 'cycling-intervals'],
+  'endurance': ['easy-run', 'long-run', 'steady-state-cycling'],
+  'aerobic': ['easy-run', 'steady-state-cycling'],
+  'tempo': ['tempo-run'],
+  'intervals': ['interval-training', 'cycling-intervals'],
+  'speed work': ['interval-training'],
+  'base building': ['easy-run', 'steady-state-cycling'],
+  'hiit': ['jumping-jacks', 'mountain-climbers', 'burpee'],
+  'strength': ['squat', 'deadlift', 'bench-press'],
+  'compound': ['squat', 'deadlift', 'bench-press', 'dumbbell-row'],
+};
 
 // Helper function to convert existing workout descriptions to structured exercises
 export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription: string): WorkoutExercise[] => {
   const exercises: WorkoutExercise[] = [];
+  const combined = `${workoutTitle} ${workoutDescription}`.toLowerCase();
   
-  // Map common workout titles and descriptions to exercise IDs
-  const exerciseMapping: Record<string, string[]> = {
-    // Exact matches for titles
-    'Push-Up': ['push-up'],
-    'Squat': ['squat'],
-    'Plank': ['plank'],
-    'Bench Press': ['bench-press'],
-    'Deadlift': ['deadlift'],
-    'Overhead Press': ['overhead-press'],
-    'Deadlift Focus': ['deadlift'],
-    'Upper Body': ['bench-press', 'dumbbell-row', 'overhead-press'],
-    'Lower Body': ['squat', 'deadlift', 'lunge'],
-    'Full Body': ['squat', 'deadlift', 'bench-press', 'dumbbell-row'],
-    
-    // Workout type matches
-    'Push Day': ['bench-press', 'overhead-press', 'push-up'],
-    'Pull Day': ['dumbbell-row'],
-    'Leg Day': ['squat', 'deadlift', 'lunge'],
-    'Upper Body Push': ['bench-press', 'overhead-press', 'push-up'],
-    'Upper Body Pull': ['dumbbell-row'],
-    'HIIT': ['jumping-jacks', 'mountain-climbers', 'burpee'],
-    'Cardio': ['jumping-jacks', 'mountain-climbers'],
-    'Strength': ['squat', 'deadlift', 'bench-press'],
-    'Core': ['plank'],
-    'Recovery': [], // No specific exercises for recovery
-  };
+  console.log('Parsing workout:', { title: workoutTitle, description: workoutDescription });
 
-  // Try to match workout title to exercises (exact matches first)
+  // Step 1: Try to find specific exercises mentioned in the text using keyword matching
   let matchedExercises: string[] = [];
   
-  // First try exact title matches
-  for (const [key, exerciseIds] of Object.entries(exerciseMapping)) {
-    if (workoutTitle.toLowerCase() === key.toLowerCase() || 
-        workoutTitle.toLowerCase().includes(key.toLowerCase())) {
-      matchedExercises = [...exerciseIds];
-      break;
+  // Enhanced keyword-based exercise detection
+  for (const [exerciseId, keywords] of Object.entries(exerciseKeywordMap)) {
+    for (const keyword of keywords) {
+      if (combined.includes(keyword)) {
+        if (!matchedExercises.includes(exerciseId)) {
+          matchedExercises.push(exerciseId);
+          console.log(`Found exercise '${exerciseId}' via keyword '${keyword}'`);
+        }
+      }
     }
   }
   
-  // If no title match, try description matches
+  // Step 2: If no specific exercises found, try workout type matching
   if (matchedExercises.length === 0) {
-    for (const [key, exerciseIds] of Object.entries(exerciseMapping)) {
-      if (workoutDescription.toLowerCase().includes(key.toLowerCase())) {
+    for (const [workoutType, exerciseIds] of Object.entries(workoutTypeMapping)) {
+      if (combined.includes(workoutType)) {
         matchedExercises = [...exerciseIds];
+        console.log(`Found exercises via workout type '${workoutType}':`, exerciseIds);
         break;
       }
     }
   }
-
-  // If no direct match, try to parse individual exercises from description
+  
+  // Step 3: Special handling for compound workout descriptions
   if (matchedExercises.length === 0) {
-    const description = workoutDescription.toLowerCase();
-    const title = workoutTitle.toLowerCase();
-    const combined = `${title} ${description}`;
-    
-    // Look for specific exercise mentions
-    if (combined.includes('bench press') || combined.includes('bench-press') || combined.includes('bench')) {
-      matchedExercises.push('bench-press');
-    }
-    if (combined.includes('deadlift')) {
-      matchedExercises.push('deadlift');
-    }
-    if (combined.includes('overhead press') || combined.includes('shoulder press') || combined.includes('press')) {
-      // Only add overhead press if bench press isn't already there
-      if (!matchedExercises.includes('bench-press')) {
-        matchedExercises.push('overhead-press');
-      }
-    }
-    if (combined.includes('squat')) {
-      matchedExercises.push('squat');
-    }
-    if (combined.includes('row')) {
-      matchedExercises.push('dumbbell-row');
-    }
-    if (combined.includes('lunge')) {
-      matchedExercises.push('lunge');
-    }
-    if (combined.includes('push-up') || combined.includes('push up')) {
-      matchedExercises.push('push-up');
-    }
-    if (combined.includes('plank')) {
-      matchedExercises.push('plank');
-    }
-    if (combined.includes('jumping jack')) {
-      matchedExercises.push('jumping-jacks');
-    }
-    if (combined.includes('mountain climber')) {
-      matchedExercises.push('mountain-climbers');
-    }
-    if (combined.includes('burpee')) {
-      matchedExercises.push('burpee');
-    }
-    
-    // If still no matches, infer from workout type
-    if (matchedExercises.length === 0) {
-      if (combined.includes('upper body') || combined.includes('upper-body')) {
-        matchedExercises.push('bench-press', 'dumbbell-row', 'overhead-press');
-      } else if (combined.includes('lower body') || combined.includes('lower-body') || combined.includes('leg')) {
-        matchedExercises.push('squat', 'deadlift', 'lunge');
-      } else if (combined.includes('full body') || combined.includes('full-body')) {
-        matchedExercises.push('squat', 'deadlift', 'bench-press');
-      } else if (combined.includes('strength')) {
-        matchedExercises.push('squat', 'deadlift', 'bench-press');
-      } else if (combined.includes('cardio') || combined.includes('hiit')) {
-        matchedExercises.push('jumping-jacks', 'mountain-climbers', 'burpee');
-      }
+    // Handle AI-generated descriptions that mention multiple exercises
+    if (combined.includes('compound movements') || combined.includes('compound exercise')) {
+      matchedExercises = ['squat', 'deadlift', 'bench-press', 'dumbbell-row'];
+    } else if (combined.includes('bodyweight') && combined.includes('strength')) {
+      matchedExercises = ['push-up', 'squat', 'lunge', 'plank'];
+    } else if (combined.includes('running') || combined.includes('run') || combined.includes('jog')) {
+      // For cardio workouts, we'll use a generic cardio exercise
+      matchedExercises = ['jumping-jacks']; // Placeholder for running
+    } else if (combined.includes('cycling') || combined.includes('bike')) {
+      matchedExercises = ['jumping-jacks']; // Placeholder for cycling
+    } else if (combined.includes('swimming') || combined.includes('swim')) {
+      matchedExercises = ['jumping-jacks']; // Placeholder for swimming
     }
   }
 
-  // Convert to WorkoutExercise format
+  // Step 4: If still no matches, create a smart fallback based on workout characteristics
+  if (matchedExercises.length === 0) {
+    console.log('No specific exercises found, using intelligent fallback');
+    
+    if (combined.includes('upper') || combined.includes('chest') || combined.includes('arm') || combined.includes('shoulder')) {
+      matchedExercises = ['bench-press', 'dumbbell-row', 'overhead-press'];
+    } else if (combined.includes('lower') || combined.includes('leg') || combined.includes('glute') || combined.includes('quad') || combined.includes('hamstring')) {
+      matchedExercises = ['squat', 'deadlift', 'lunge'];
+    } else if (combined.includes('cardio') || combined.includes('run') || combined.includes('endurance') || combined.includes('aerobic')) {
+      matchedExercises = ['jumping-jacks', 'mountain-climbers'];
+    } else if (combined.includes('core') || combined.includes('ab') || combined.includes('stability')) {
+      matchedExercises = ['plank'];
+    } else if (combined.includes('strength') || combined.includes('resistance') || combined.includes('weight')) {
+      matchedExercises = ['squat', 'bench-press', 'dumbbell-row'];
+    } else {
+      // Ultimate fallback - provide a balanced workout
+      matchedExercises = ['squat', 'push-up'];
+    }
+  }
+  
+  console.log('Final matched exercises:', matchedExercises);
+  
+  // Convert to WorkoutExercise format with enhanced parameter extraction
   matchedExercises.forEach(exerciseId => {
+    // Verify the exercise exists in our database
+    const exerciseExists = exerciseDatabase.find(ex => ex.id === exerciseId);
+    if (!exerciseExists) {
+      console.warn(`Exercise '${exerciseId}' not found in database, skipping`);
+      return;
+    }
+    
     const workoutExercise: WorkoutExercise = {
       exerciseId,
       sets: extractSets(workoutDescription),
@@ -128,25 +173,16 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
     exercises.push(workoutExercise);
   });
 
-  // If no exercises found, create a generic one based on workout type
+  // Ensure we always return at least one exercise
   if (exercises.length === 0) {
-    const combined = `${workoutTitle} ${workoutDescription}`.toLowerCase();
-    let fallbackExercise = 'squat'; // Default fallback
-    
-    if (combined.includes('upper') || combined.includes('chest') || combined.includes('arm')) {
-      fallbackExercise = 'bench-press';
-    } else if (combined.includes('cardio') || combined.includes('run')) {
-      fallbackExercise = 'jumping-jacks';
-    } else if (combined.includes('core') || combined.includes('ab')) {
-      fallbackExercise = 'plank';
-    }
-    
+    console.log('Creating final fallback exercise');
     exercises.push({
-      exerciseId: fallbackExercise,
-      notes: workoutDescription,
+      exerciseId: 'squat', // Safe fallback that exists in database
+      notes: `${workoutTitle}: ${workoutDescription}`,
     });
   }
 
+  console.log('Parsed exercises result:', exercises);
   return exercises;
 };
 

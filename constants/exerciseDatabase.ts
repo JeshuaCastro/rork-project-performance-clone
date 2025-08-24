@@ -820,12 +820,414 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     ],
     estimatedDuration: '60 seconds',
     caloriesPerMinute: 7
+  },
+  // CARDIO/RUNNING EXERCISES
+  {
+    id: 'easy-run',
+    name: 'Easy Run',
+    description: 'A comfortable, conversational pace run that builds aerobic base and promotes recovery.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'beginner',
+    equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Start with a gentle warm-up walk or light jog for 5-10 minutes.',
+        tip: 'Gradually increase your pace to a comfortable running speed.',
+        commonMistake: 'Starting too fast'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Maintain a conversational pace throughout the run.',
+        tip: 'You should be able to speak in full sentences while running.',
+        commonMistake: 'Running too fast for the intended effort'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Focus on relaxed, efficient form with a midfoot strike.',
+        tip: 'Keep your shoulders relaxed and arms swinging naturally.',
+        commonMistake: 'Tensing up or overstriding'
+      }
+    ],
+    formTips: [
+      'Maintain a conversational pace throughout',
+      'Land with a midfoot strike, not on your heels',
+      'Keep your cadence around 170-180 steps per minute',
+      'Breathe naturally and rhythmically'
+    ],
+    commonMistakes: [
+      'Running too fast for an easy effort',
+      'Overstriding and heel striking',
+      'Holding tension in shoulders and arms',
+      'Not staying hydrated on longer runs'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Walk-Run Intervals',
+        instruction: 'Alternate between walking and easy running to build endurance gradually.'
+      },
+      {
+        level: 'easier',
+        description: 'Treadmill Easy Run',
+        instruction: 'Use a treadmill to control pace and reduce impact.'
+      },
+      {
+        level: 'harder',
+        description: 'Progressive Easy Run',
+        instruction: 'Gradually increase pace in the final third of the run.'
+      }
+    ],
+    safetyNotes: [
+      'Start with shorter distances and build gradually',
+      'Pay attention to any pain or discomfort',
+      'Stay hydrated, especially on longer runs'
+    ],
+    estimatedDuration: '30-60 minutes',
+    caloriesPerMinute: 10
+  },
+  {
+    id: 'tempo-run',
+    name: 'Tempo Run',
+    description: 'A sustained effort run at comfortably hard pace that improves lactate threshold and race pace endurance.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'intermediate',
+    equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Warm up with 10-15 minutes of easy running.',
+        tip: 'Gradually build to your tempo pace during the warm-up.',
+        commonMistake: 'Insufficient warm-up before tempo effort'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Run at a comfortably hard pace for the prescribed duration.',
+        tip: 'This should feel like a pace you could sustain for about an hour.',
+        commonMistake: 'Starting too fast and fading'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Cool down with 10-15 minutes of easy running.',
+        tip: 'Gradually reduce pace to help your body recover.',
+        commonMistake: 'Stopping abruptly after the tempo effort'
+      }
+    ],
+    formTips: [
+      'Maintain steady, controlled breathing',
+      'Focus on efficient, relaxed form',
+      'Keep a consistent pace throughout the tempo portion',
+      'Stay mentally focused and engaged'
+    ],
+    commonMistakes: [
+      'Starting the tempo portion too fast',
+      'Not warming up adequately',
+      'Letting pace drift during the effort',
+      'Skipping the cool-down'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Tempo Intervals',
+        instruction: 'Break the tempo effort into shorter intervals with brief recovery.'
+      },
+      {
+        level: 'easier',
+        description: 'Cruise Intervals',
+        instruction: 'Run slightly faster than tempo pace for shorter durations.'
+      },
+      {
+        level: 'harder',
+        description: 'Progressive Tempo',
+        instruction: 'Start at tempo pace and gradually increase throughout the effort.'
+      }
+    ],
+    safetyNotes: [
+      'Ensure adequate warm-up before tempo effort',
+      'Don\'t attempt if feeling fatigued or unwell',
+      'Monitor effort level and adjust if needed'
+    ],
+    estimatedDuration: '20-40 minutes',
+    caloriesPerMinute: 15
+  },
+  {
+    id: 'interval-training',
+    name: 'Interval Training',
+    description: 'High-intensity running intervals with recovery periods that improve VO2 max and speed.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'advanced',
+    equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1486218119243-13883505764c?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Complete a thorough 15-20 minute warm-up with dynamic movements.',
+        tip: 'Include some strides or accelerations to prepare for high intensity.',
+        commonMistake: 'Inadequate warm-up for high-intensity work'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Run the prescribed intervals at high intensity with recovery between.',
+        tip: 'Focus on maintaining good form even when fatigued.',
+        commonMistake: 'Going too hard on early intervals'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Cool down with 10-15 minutes of easy running and stretching.',
+        tip: 'Allow your heart rate to return to normal gradually.',
+        commonMistake: 'Stopping immediately after the last interval'
+      }
+    ],
+    formTips: [
+      'Maintain good running form throughout',
+      'Focus on quick turnover and efficient stride',
+      'Use recovery periods to prepare for the next interval',
+      'Stay relaxed despite the high intensity'
+    ],
+    commonMistakes: [
+      'Starting intervals too fast',
+      'Not taking adequate recovery between intervals',
+      'Poor pacing across the workout',
+      'Compromising form when fatigued'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Longer Recovery',
+        instruction: 'Increase recovery time between intervals to ensure quality.'
+      },
+      {
+        level: 'easier',
+        description: 'Shorter Intervals',
+        instruction: 'Reduce interval duration while maintaining intensity.'
+      },
+      {
+        level: 'harder',
+        description: 'Shorter Recovery',
+        instruction: 'Reduce recovery time to increase workout difficulty.'
+      }
+    ],
+    safetyNotes: [
+      'Ensure you\'re well-rested before interval sessions',
+      'Stop if you experience any pain or dizziness',
+      'Build up interval volume gradually'
+    ],
+    estimatedDuration: '30-45 minutes',
+    caloriesPerMinute: 18
+  },
+  {
+    id: 'long-run',
+    name: 'Long Run',
+    description: 'Extended duration run that builds endurance, mental toughness, and aerobic capacity.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'intermediate',
+    equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Start at an easy, comfortable pace that you can maintain.',
+        tip: 'The first half should feel very easy and controlled.',
+        commonMistake: 'Starting too fast for a long effort'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Maintain steady effort throughout, focusing on time rather than pace.',
+        tip: 'Listen to your body and adjust effort based on how you feel.',
+        commonMistake: 'Obsessing over pace instead of effort'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Finish strong but not exhausted, with energy left over.',
+        tip: 'You should feel like you could continue for a bit longer.',
+        commonMistake: 'Running too hard and finishing completely depleted'
+      }
+    ],
+    formTips: [
+      'Focus on efficient, relaxed running form',
+      'Practice your race-day fueling and hydration',
+      'Stay mentally engaged and positive',
+      'Adjust effort based on terrain and conditions'
+    ],
+    commonMistakes: [
+      'Running too fast for the intended effort',
+      'Not fueling or hydrating properly',
+      'Ignoring early signs of fatigue or discomfort',
+      'Comparing pace to shorter runs'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Walk Breaks',
+        instruction: 'Include planned walk breaks to build endurance gradually.'
+      },
+      {
+        level: 'easier',
+        description: 'Time-Based',
+        instruction: 'Focus on time rather than distance to reduce pressure.'
+      },
+      {
+        level: 'harder',
+        description: 'Progressive Long Run',
+        instruction: 'Gradually increase pace in the final portion of the run.'
+      }
+    ],
+    safetyNotes: [
+      'Carry water and fuel for runs over 90 minutes',
+      'Tell someone your planned route and return time',
+      'Build long run distance gradually (10% rule)'
+    ],
+    estimatedDuration: '60-180 minutes',
+    caloriesPerMinute: 12
+  },
+  // CYCLING EXERCISES
+  {
+    id: 'steady-state-cycling',
+    name: 'Steady State Cycling',
+    description: 'Sustained cycling effort at moderate intensity to build aerobic endurance and cycling efficiency.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'beginner',
+    equipment: ['cardio-equipment'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Start with a 10-15 minute warm-up at easy effort.',
+        tip: 'Gradually increase intensity to prepare for the main effort.',
+        commonMistake: 'Starting the main effort too quickly'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Maintain steady power/effort for the prescribed duration.',
+        tip: 'Focus on smooth, consistent pedaling and breathing.',
+        commonMistake: 'Letting power/effort fluctuate too much'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Cool down with 10-15 minutes of easy spinning.',
+        tip: 'Gradually reduce intensity to help recovery.',
+        commonMistake: 'Stopping abruptly after the main effort'
+      }
+    ],
+    formTips: [
+      'Maintain smooth, circular pedaling motion',
+      'Keep upper body relaxed and stable',
+      'Focus on consistent power output',
+      'Breathe rhythmically and deeply'
+    ],
+    commonMistakes: [
+      'Gripping handlebars too tightly',
+      'Bouncing in the saddle',
+      'Inconsistent pacing throughout the effort',
+      'Poor bike fit causing discomfort'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Shorter Duration',
+        instruction: 'Reduce the duration of the steady effort while maintaining intensity.'
+      },
+      {
+        level: 'easier',
+        description: 'Lower Intensity',
+        instruction: 'Reduce the target power/heart rate for the steady effort.'
+      },
+      {
+        level: 'harder',
+        description: 'Progressive Effort',
+        instruction: 'Gradually increase intensity throughout the steady effort.'
+      }
+    ],
+    safetyNotes: [
+      'Ensure proper bike fit to prevent injury',
+      'Stay hydrated throughout longer sessions',
+      'Check equipment before each ride'
+    ],
+    estimatedDuration: '30-90 minutes',
+    caloriesPerMinute: 12
+  },
+  {
+    id: 'cycling-intervals',
+    name: 'Cycling Intervals',
+    description: 'High-intensity cycling intervals with recovery periods to improve power and VO2 max.',
+    primaryMuscles: ['cardio', 'legs'],
+    secondaryMuscles: ['core'],
+    difficulty: 'advanced',
+    equipment: ['cardio-equipment'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
+    instructions: [
+      {
+        stepNumber: 1,
+        instruction: 'Complete a thorough 15-20 minute warm-up with progressive efforts.',
+        tip: 'Include some short accelerations to prepare for high intensity.',
+        commonMistake: 'Inadequate warm-up before intervals'
+      },
+      {
+        stepNumber: 2,
+        instruction: 'Execute intervals at prescribed intensity with full recovery between.',
+        tip: 'Focus on maintaining target power/heart rate throughout each interval.',
+        commonMistake: 'Starting intervals too hard'
+      },
+      {
+        stepNumber: 3,
+        instruction: 'Cool down with 10-15 minutes of easy spinning.',
+        tip: 'Allow heart rate and breathing to return to normal.',
+        commonMistake: 'Stopping immediately after the last interval'
+      }
+    ],
+    formTips: [
+      'Maintain efficient pedaling technique under load',
+      'Keep core engaged for power transfer',
+      'Use recovery periods to prepare for next interval',
+      'Stay relaxed despite high intensity'
+    ],
+    commonMistakes: [
+      'Going too hard on early intervals',
+      'Not taking adequate recovery between efforts',
+      'Poor pacing across the workout',
+      'Compromising technique when fatigued'
+    ],
+    modifications: [
+      {
+        level: 'easier',
+        description: 'Longer Recovery',
+        instruction: 'Increase recovery time between intervals to ensure quality.'
+      },
+      {
+        level: 'easier',
+        description: 'Lower Intensity',
+        instruction: 'Reduce target power/heart rate for the intervals.'
+      },
+      {
+        level: 'harder',
+        description: 'Shorter Recovery',
+        instruction: 'Reduce recovery time to increase workout difficulty.'
+      }
+    ],
+    safetyNotes: [
+      'Ensure you\'re well-rested before interval sessions',
+      'Stop if you experience any unusual symptoms',
+      'Build interval intensity gradually over time'
+    ],
+    estimatedDuration: '45-75 minutes',
+    caloriesPerMinute: 16
   }
 ];
 
 // Helper function to get exercise by ID
 export const getExerciseById = (id: string): ExerciseDefinition | undefined => {
-  return exerciseDatabase.find(exercise => exercise.id === id);
+  const exercise = exerciseDatabase.find(exercise => exercise.id === id);
+  if (!exercise) {
+    console.warn(`Exercise with id '${id}' not found in database`);
+  }
+  return exercise;
 };
 
 // Helper function to get exercises by muscle group
@@ -846,4 +1248,45 @@ export const getExercisesByEquipment = (equipment: string): ExerciseDefinition[]
   return exerciseDatabase.filter(exercise => 
     exercise.equipment.includes(equipment as any)
   );
+};
+
+// Helper function to search exercises by keywords (for better AI matching)
+export const searchExercisesByKeywords = (keywords: string[]): ExerciseDefinition[] => {
+  const results: ExerciseDefinition[] = [];
+  
+  exerciseDatabase.forEach(exercise => {
+    const exerciseText = `${exercise.name} ${exercise.description} ${exercise.primaryMuscles.join(' ')} ${exercise.secondaryMuscles.join(' ')}`.toLowerCase();
+    
+    // Check if any keyword matches
+    const hasMatch = keywords.some(keyword => 
+      exerciseText.includes(keyword.toLowerCase()) ||
+      exercise.id.includes(keyword.toLowerCase())
+    );
+    
+    if (hasMatch && !results.find(r => r.id === exercise.id)) {
+      results.push(exercise);
+    }
+  });
+  
+  return results;
+};
+
+// Helper function to get a fallback exercise for cardio activities
+export const getCardioFallbackExercise = (activityType: string): ExerciseDefinition | undefined => {
+  const activityMap: Record<string, string> = {
+    'running': 'easy-run',
+    'run': 'easy-run',
+    'jog': 'easy-run',
+    'tempo': 'tempo-run',
+    'interval': 'interval-training',
+    'long': 'long-run',
+    'cycling': 'steady-state-cycling',
+    'bike': 'steady-state-cycling',
+    'cycle': 'steady-state-cycling',
+    'cardio': 'jumping-jacks',
+    'hiit': 'burpee'
+  };
+  
+  const exerciseId = activityMap[activityType.toLowerCase()];
+  return exerciseId ? getExerciseById(exerciseId) : undefined;
 };
