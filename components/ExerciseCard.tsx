@@ -49,28 +49,9 @@ export default function ExerciseCard({
 
   // Get exercise demonstration image URL
   const getExerciseImageUrl = () => {
-    // Use the demonstration image from the exercise database if available
-    if (exercise.demonstrationImageUrl) {
-      return exercise.demonstrationImageUrl;
-    }
-    
-    // Create exercise-specific image URLs with proper search terms
-    const exerciseImageMap: Record<string, string> = {
-      'push-up': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing push-ups
-      'squat': 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing squats
-      'plank': 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person in plank position
-      'dumbbell-row': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing dumbbell rows
-      'lunge': 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing lunges
-      'jumping-jacks': 'https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing jumping jacks
-      'mountain-climbers': 'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing mountain climbers
-      'burpee': 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing burpees
-      'bench-press': 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person bench pressing
-      'deadlift': 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person deadlifting
-      'overhead-press': 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&h=400&fit=crop&crop=center&auto=format&q=80', // Person doing overhead press
-    };
-    
-    // Return exercise-specific image or fallback
-    return exerciseImageMap[exercise.id] || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80';
+    // Always use the demonstration image from the exercise database
+    // The exercise database already has the correct images for each exercise
+    return exercise.demonstrationImageUrl || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80';
   };
 
   return (

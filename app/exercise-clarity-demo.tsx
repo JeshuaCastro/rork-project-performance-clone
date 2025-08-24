@@ -15,60 +15,98 @@ import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 import ExerciseCard from '@/components/ExerciseCard';
 import { WorkoutExercise } from '@/types/exercises';
 
-// Sample workout data
+// Sample workout data - these should match to specific exercises with proper images
 const sampleWorkouts = [
   {
     day: 'Monday',
-    title: 'Upper Body Push',
-    description: 'Bench Press 5x5, Incline DB Press 3x8-10, Shoulder Press 3x8-10, Triceps work',
-    intensity: 'High',
-    type: 'strength' as const,
-  },
-  {
-    day: 'Tuesday',
-    title: 'HIIT Cardio',
-    description: '30 seconds work, 30 seconds rest x 10 exercises, 3 rounds. Focus on explosive movements.',
-    intensity: 'High',
-    type: 'cardio' as const,
-  },
-  {
-    day: 'Wednesday',
-    title: 'Full Body Strength',
-    description: 'Circuit: Squats, Push-ups, Rows, Lunges, Planks (3 rounds). Perfect for beginners.',
+    title: 'Upper Body',
+    description: 'Bench Press and upper body accessories',
     intensity: 'Medium',
     type: 'strength' as const,
   },
   {
+    day: 'Tuesday', 
+    title: 'Deadlift Focus',
+    description: 'Deadlift 4x5, back work',
+    intensity: 'High',
+    type: 'strength' as const,
+  },
+  {
+    day: 'Wednesday',
+    title: 'Push Day',
+    description: 'Chest, shoulders, triceps - bench press, overhead press, dips, tricep work',
+    intensity: 'Medium-High',
+    type: 'strength' as const,
+  },
+  {
     day: 'Thursday',
-    title: 'Active Recovery',
-    description: '30-45 minute walk or light yoga. Focus on mobility and gentle movement.',
-    intensity: 'Low',
-    type: 'recovery' as const,
+    title: 'Lower Body',
+    description: 'Squats, deadlifts, lunges, hip thrusts, and calf raises',
+    intensity: 'High',
+    type: 'strength' as const,
+  },
+  {
+    day: 'Friday',
+    title: 'Full Body',
+    description: 'Full body strength training focusing on compound movements: squats, deadlifts, bench press, rows, and overhead press',
+    intensity: 'Medium',
+    type: 'strength' as const,
+  },
+  {
+    day: 'Saturday',
+    title: 'HIIT Cardio',
+    description: 'High intensity interval training with jumping jacks, mountain climbers, and burpees',
+    intensity: 'High',
+    type: 'cardio' as const,
   },
 ];
 
-// Sample individual exercises
+// Sample individual exercises - these should show proper demonstration images
 const sampleExercises: WorkoutExercise[] = [
   {
-    exerciseId: 'push-up',
-    sets: 3,
-    reps: '8-12',
+    exerciseId: 'bench-press',
+    sets: 4,
+    reps: 8,
+    weight: '135 lbs',
+    restTime: '2 minutes',
     targetRPE: 7,
-    notes: 'Focus on proper form and controlled movement',
+    notes: 'Focus on controlled descent and explosive press',
+  },
+  {
+    exerciseId: 'deadlift',
+    sets: 5,
+    reps: 5,
+    weight: '185 lbs',
+    restTime: '3 minutes',
+    targetRPE: 8,
+    notes: 'Keep bar close to body, drive through heels',
   },
   {
     exerciseId: 'squat',
     sets: 4,
     reps: 10,
-    targetRPE: 8,
+    weight: 'bodyweight',
+    restTime: '90 seconds',
+    targetRPE: 6,
     notes: 'Keep chest up and drive through heels',
   },
   {
-    exerciseId: 'plank',
+    exerciseId: 'overhead-press',
     sets: 3,
-    duration: '30-45 seconds',
+    reps: '8-10',
+    weight: '95 lbs',
+    restTime: '2 minutes',
+    targetRPE: 7,
+    notes: 'Keep core tight, press straight up',
+  },
+  {
+    exerciseId: 'dumbbell-row',
+    sets: 3,
+    reps: 12,
+    weight: '40 lbs',
+    restTime: '90 seconds',
     targetRPE: 6,
-    notes: 'Maintain straight line from head to heels',
+    notes: 'Pull with back muscles, squeeze shoulder blades',
   },
 ];
 
@@ -165,7 +203,7 @@ export default function ExerciseClarityDemo() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Enhanced Workout Cards</Text>
                 <Text style={styles.sectionDescription}>
-                  These cards automatically parse workout descriptions and provide detailed exercise breakdowns with step-by-step instructions.
+                  These cards automatically parse workout descriptions and match them to specific exercises with proper demonstration images. Tap &ldquo;Show Exercises&rdquo; to see the parsed breakdown.
                 </Text>
               </View>
 
@@ -185,7 +223,7 @@ export default function ExerciseClarityDemo() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Individual Exercise Cards</Text>
                 <Text style={styles.sectionDescription}>
-                  Each exercise card provides comprehensive guidance including form tips, modifications, and safety notes.
+                  Each exercise shows the correct demonstration image from Unsplash that matches the actual exercise being performed. Tap &ldquo;Tap to see form&rdquo; for detailed instructions.
                 </Text>
               </View>
 
