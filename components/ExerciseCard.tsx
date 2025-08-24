@@ -47,27 +47,15 @@ export default function ExerciseCard({
     return parts.join(' × ') || 'As prescribed';
   };
 
-  // Generate Unsplash image URL based on exercise name
-  const getExerciseImageUrl = (exerciseName: string) => {
-    // Map common exercise names to specific Unsplash photo IDs for better consistency
-    const exerciseImageMap: { [key: string]: string } = {
-      'push-up': 'photo-1571019613454-1cb2f99b2d8b', // Push-up demonstration
-      'squat': 'photo-1566241440091-ec10de8db2e1', // Squat exercise
-      'deadlift': 'photo-1534438327276-14e5300c3a48', // Deadlift
-      'bench press': 'photo-1571019613454-1cb2f99b2d8b', // Bench press
-      'pull-up': 'photo-1571019613454-1cb2f99b2d8b', // Pull-up
-      'plank': 'photo-1571019613454-1cb2f99b2d8b', // Plank
-      'lunge': 'photo-1566241440091-ec10de8db2e1', // Lunge
-      'burpee': 'photo-1571019613454-1cb2f99b2d8b', // Burpee
-      'mountain climber': 'photo-1571019613454-1cb2f99b2d8b', // Mountain climbers
-      'jumping jack': 'photo-1571019613454-1cb2f99b2d8b', // Jumping jacks
-    };
+  // Get exercise demonstration image URL
+  const getExerciseImageUrl = () => {
+    // Use the demonstration image from the exercise database if available
+    if (exercise.demonstrationImageUrl) {
+      return exercise.demonstrationImageUrl;
+    }
     
-    // Clean exercise name and find matching image
-    const cleanName = exerciseName.toLowerCase().trim();
-    const photoId = exerciseImageMap[cleanName] || 'photo-1571019613454-1cb2f99b2d8b'; // Default fitness image
-    
-    return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`;
+    // Fallback to a default fitness image if no demonstration image is provided
+    return 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80';
   };
 
   return (
@@ -75,7 +63,7 @@ export default function ExerciseCard({
       {/* Exercise Image with Overlay */}
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: getExerciseImageUrl(exercise.name) }}
+          source={{ uri: getExerciseImageUrl() }}
           style={styles.exerciseImage}
           resizeMode="cover"
         />

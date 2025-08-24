@@ -10,6 +10,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['core'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -80,6 +81,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['core'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -156,6 +158,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['shoulders', 'back'],
     difficulty: 'beginner',
     equipment: ['yoga-mat'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -226,6 +229,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['biceps', 'shoulders'],
     difficulty: 'beginner',
     equipment: ['dumbbells', 'bench'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -297,6 +301,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['core'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -374,6 +379,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['legs', 'shoulders'],
     difficulty: 'beginner',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -445,6 +451,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['shoulders', 'legs'],
     difficulty: 'intermediate',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,
@@ -516,6 +523,7 @@ export const exerciseDatabase: ExerciseDefinition[] = [
     secondaryMuscles: ['chest', 'legs', 'core'],
     difficulty: 'intermediate',
     equipment: ['bodyweight'],
+    demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
     instructions: [
       {
         stepNumber: 1,

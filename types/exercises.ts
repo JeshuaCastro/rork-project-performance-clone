@@ -51,6 +51,7 @@ export interface ExerciseDefinition {
   safetyNotes: string[];
   videoUrl?: string;
   imageUrl?: string;
+  demonstrationImageUrl?: string; // URL for exercise demonstration image/gif
   estimatedDuration?: string; // e.g., "30 seconds", "10 reps"
   caloriesPerMinute?: number;
 }
