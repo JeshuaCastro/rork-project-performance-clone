@@ -91,7 +91,7 @@ export const useProgramStore = create<ProgramState>()(
       movementPatterns: ['squat', 'hinge', 'push', 'pull', 'lunge'],
       volumeProgression: 'linear',
       scientificRationale: 'Progressive overload through volume landmarks (MEV→MAV→MRV) with RPE-based autoregulation. Emphasizes compound movements with optimal frequency (2-3x/week per muscle group) and hypertrophy rep ranges (6-12 reps at RPE 6-8).'
-    },
+    } as GoalTemplate,
     {
       id: 'fat_loss',
       type: 'fat_loss',
@@ -103,7 +103,7 @@ export const useProgramStore = create<ProgramState>()(
       movementPatterns: ['squat', 'hinge', 'push', 'pull', 'carry'],
       volumeProgression: 'undulating',
       scientificRationale: 'High-frequency training with metabolic emphasis. Combines strength training for muscle preservation with conditioning work. Higher training density and shorter rest periods to maximize caloric expenditure.'
-    },
+    } as GoalTemplate,
     {
       id: 'endurance',
       type: 'endurance',
@@ -115,7 +115,7 @@ export const useProgramStore = create<ProgramState>()(
       movementPatterns: ['carry', 'squat', 'push', 'pull'],
       volumeProgression: 'undulating',
       scientificRationale: 'Polarized training: 80% easy aerobic work (RPE 3-5), 20% high-intensity intervals (RPE 8-9). Minimal strength work to support running economy and injury prevention.'
-    },
+    } as GoalTemplate,
     {
       id: 'strength',
       type: 'strength',
@@ -127,7 +127,7 @@ export const useProgramStore = create<ProgramState>()(
       movementPatterns: ['squat', 'hinge', 'push', 'pull'],
       volumeProgression: 'block',
       scientificRationale: 'Block periodization with accumulation→intensification→realization phases. Lower volume, higher intensity (RPE 7-9), focusing on neurological adaptations and skill acquisition in competition lifts.'
-    }
+    } as GoalTemplate
   ],
       goals: [],
       progress: {},
