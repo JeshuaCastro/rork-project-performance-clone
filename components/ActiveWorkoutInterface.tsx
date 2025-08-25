@@ -152,7 +152,7 @@ export default function ActiveWorkoutInterface({
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.workoutTitle}>Active Workout</Text>
+          <Text style={styles.workoutTitle}>{currentSession.workoutTitle ?? 'Active Workout'}</Text>
           <Text style={styles.workoutDuration}>{formatDuration(workoutDuration)}</Text>
         </View>
         
@@ -188,7 +188,7 @@ export default function ActiveWorkoutInterface({
         {/* Current Exercise Info */}
         <View style={styles.exerciseHeader}>
           <Text style={styles.exerciseName}>
-            {currentExerciseDefinition?.name || currentExercise.exerciseId}
+            {currentSession.exerciseNameMap?.[currentExercise.exerciseId] || currentExerciseDefinition?.name || currentExercise.exerciseId}
           </Text>
           <Text style={styles.exerciseProgress}>
             Exercise {(currentSession.currentExerciseIndex || 0) + 1} of {currentSession.exercises.length}

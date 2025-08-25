@@ -122,6 +122,8 @@ export interface WorkoutSession {
     postWorkoutStrain?: number;
     heartRateData?: number[];
   };
+  workoutTitle?: string;
+  exerciseNameMap?: Record<string, string>;
 }
 
 // Progressive overload tracking

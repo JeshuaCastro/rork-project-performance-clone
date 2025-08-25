@@ -66,9 +66,15 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     }
   };
 
-  const startWorkoutSession = useCallback((workoutId: string, exercises: TrackedWorkoutExercise[], programId?: string) => {
+  const startWorkoutSession = useCallback((
+    workoutId: string, 
+    exercises: TrackedWorkoutExercise[], 
+    programId?: string,
+    workoutTitle?: string,
+    exerciseNameMap?: Record<string, string>
+  ) => {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const userId = 'current_user'; // TODO: Get from auth context
+    const userId = 'current_user';
     
     const newSession: WorkoutSession = {
       id: sessionId,
@@ -86,7 +92,9 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
         }))
       })),
       currentExerciseIndex: 0,
-      currentSetIndex: 0
+      currentSetIndex: 0,
+      workoutTitle,
+      exerciseNameMap
     };
 
     setCurrentSession(newSession);

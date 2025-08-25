@@ -1457,7 +1457,28 @@ export default function ProgramDetailScreen() {
               // Remove from completed workouts and start again
               setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
               const tracked = buildTrackedExercises(workout);
-              startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+              startWorkoutSession(
+      `${programId || 'program'}-${Date.now()}`,
+      tracked,
+      programId,
+      workout.title,
+      (() => {
+        const map: Record<string, string> = {};
+        (workout.exercises || []).forEach((ex) => {
+          if (ex.name) {
+            const id = (() => {
+              const n = ex.name.toLowerCase().trim();
+              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
+              if (exact) return exact.id;
+              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
+              return partial ? partial.id : undefined;
+            })();
+            if (id) map[id] = ex.name;
+          }
+        });
+        return map;
+      })()
+    );
               setShowWorkoutModal(true);
             }
           }
@@ -1480,7 +1501,28 @@ export default function ProgramDetailScreen() {
               // End current workout (legacy) and start new tracked session
               setTimeout(() => {
                 const tracked = buildTrackedExercises(workout);
-                startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+                startWorkoutSession(
+      `${programId || 'program'}-${Date.now()}`,
+      tracked,
+      programId,
+      workout.title,
+      (() => {
+        const map: Record<string, string> = {};
+        (workout.exercises || []).forEach((ex) => {
+          if (ex.name) {
+            const id = (() => {
+              const n = ex.name.toLowerCase().trim();
+              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
+              if (exact) return exact.id;
+              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
+              return partial ? partial.id : undefined;
+            })();
+            if (id) map[id] = ex.name;
+          }
+        });
+        return map;
+      })()
+    );
                 setShowWorkoutModal(true);
               }, 300);
             }
@@ -1492,7 +1534,28 @@ export default function ProgramDetailScreen() {
     
     // Start set-tracking session
     const tracked = buildTrackedExercises(workout);
-    startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+    startWorkoutSession(
+      `${programId || 'program'}-${Date.now()}`,
+      tracked,
+      programId,
+      workout.title,
+      (() => {
+        const map: Record<string, string> = {};
+        (workout.exercises || []).forEach((ex) => {
+          if (ex.name) {
+            const id = (() => {
+              const n = ex.name.toLowerCase().trim();
+              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
+              if (exact) return exact.id;
+              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
+              return partial ? partial.id : undefined;
+            })();
+            if (id) map[id] = ex.name;
+          }
+        });
+        return map;
+      })()
+    );
     setShowWorkoutModal(true);
   };
   
