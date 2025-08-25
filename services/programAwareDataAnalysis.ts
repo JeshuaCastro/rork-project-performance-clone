@@ -1,6 +1,24 @@
 import { WhoopData, TrainingProgram, TodaysWorkout, UserProfile } from '@/types/whoop';
-import { ProgramGoal, GoalProgressSummary } from '@/types/programs';
-import { aiRecommendationEngine } from './aiRecommendationEngine';
+import { ProgramGoal, GoalProgressSummary, MesocyclePhase } from '@/types/programs';
+import { MESOCYCLE_PHASES, RPE_SCALE } from '@/constants/programMetrics';
+
+export interface ProgramAwareAnalysis {
+  currentPhase: MesocyclePhase;
+  volumeRecommendation: 'maintain' | 'increase' | 'decrease';
+  intensityAdjustment: number; // -2 to +2 RPE adjustment
+  exerciseSubstitutions: string[];
+  restDayRecommendation: boolean;
+  notes: string[];
+  autoregulationTriggers: string[];
+}
+
+export interface RPEGuidance {
+  targetRPE: number;
+  description: string;
+  guidance: string;
+  adjustedRPE: number;
+  autoregulationNotes: string[];
+}
 
 export interface WorkoutAdjustment {
   originalWorkout: TodaysWorkout;
@@ -14,6 +32,9 @@ export interface WorkoutAdjustment {
     hrv: number;
     sleepQuality: number;
   };
+  // Renaissance Periodization additions
+  renaissanceAnalysis?: ProgramAwareAnalysis;
+  rpeGuidance?: RPEGuidance;
 }
 
 export interface ProgramAdjustment {
@@ -41,6 +62,212 @@ export interface AutoAdjustmentSettings {
   respectProgramGoals: boolean;
 }
 
+/**
+ * Renaissance Periodization Service
+ * Implements scientific training principles with autoregulation
+ */
+export class RenaissancePeriodizationService {
+  /**
+   * Analyzes Whoop data and provides Renaissance Periodization recommendations
+   */
+  static analyzeRecoveryForProgram(
+    whoopData: WhoopData,
+    programGoal: ProgramGoal,
+    currentWeek: number
+  ): ProgramAwareAnalysis {
+    const recovery = whoopData.recovery?.find(r => r.date === new Date().toISOString().split('T')[0])?.score || 50;
+    const strain = whoopData.strain?.find(s => s.date === new Date().toISOString().split('T')[0])?.score || 10;
+    const sleep = whoopData.sleep?.find(s => s.date === new Date().toISOString().split('T')[0])?.efficiency || 80;
+    
+    // Determine current mesocycle phase
+    const currentPhase = this.getCurrentMesocyclePhase(programGoal, currentWeek);
+    const phaseConfig = MESOCYCLE_PHASES[currentPhase];
+    
+    // Initialize recommendations
+    let volumeRecommendation: ProgramAwareAnalysis['volumeRecommendation'] = 'maintain';
+    let intensityAdjustment = 0;
+    let exerciseSubstitutions: string[] = [];
+    let restDayRecommendation = false;
+    const notes: string[] = [];
+    const autoregulationTriggers: string[] = [];
+
+    // Apply autoregulation rules based on recovery metrics
+    if (recovery < 33) {
+      volumeRecommendation = 'decrease';
+      intensityAdjustment = -2;
+      restDayRecommendation = true;
+      exerciseSubstitutions = [
+        'Replace compound movements with isolation exercises',
+        'Substitute high-impact cardio with walking or swimming',
+        'Use machine exercises instead of free weights for safety'
+      ];
+      notes.push('🔴 Very low recovery (< 33%). Significant training modifications needed.');
+      autoregulationTriggers.push('CRITICAL_RECOVERY');
+    } else if (recovery < 50) {
+      volumeRecommendation = 'decrease';
+      intensityAdjustment = -1;
+      exerciseSubstitutions = [
+        'Reduce range of motion if joints feel stiff',
+        'Use lighter weights with focus on form'
+      ];
+      notes.push('🟡 Low recovery (33-50%). Reduce training load.');
+      autoregulationTriggers.push('LOW_RECOVERY');
+    } else if (recovery < 66) {
+      if (currentPhase === 'intensification' || currentPhase === 'realization') {
+        intensityAdjustment = -0.5;
+      }
+      notes.push('🟡 Moderate recovery (50-66%). Proceed with caution.');
+    } else {
+      if (currentPhase === 'accumulation' && recovery > 80) {
+        volumeRecommendation = 'increase';
+        notes.push('🟢 Excellent recovery (> 80%). Consider volume progression.');
+      } else {
+        notes.push('🟢 Good recovery (66-80%). Proceed with planned training.');
+      }
+    }
+
+    // High strain adjustments (overreaching prevention)
+    if (strain > 18) {
+      if (volumeRecommendation === 'increase') {
+        volumeRecommendation = 'maintain';
+      }
+      intensityAdjustment = Math.min(intensityAdjustment - 1, -2);
+      notes.push('⚠️ High strain (> 18). Risk of overreaching - reduce intensity.');
+      autoregulationTriggers.push('HIGH_STRAIN');
+    } else if (strain > 15) {
+      notes.push('🟡 Elevated strain (15-18). Monitor fatigue closely.');
+    }
+
+    // Sleep quality adjustments
+    if (sleep < 70) {
+      intensityAdjustment = Math.min(intensityAdjustment - 0.5, -2);
+      notes.push('😴 Poor sleep quality (< 70%). Reduce intensity for safety.');
+      autoregulationTriggers.push('POOR_SLEEP');
+    } else if (sleep < 80) {
+      notes.push('🟡 Moderate sleep quality (70-80%). Monitor energy levels.');
+    }
+
+    // Phase-specific guidance
+    notes.push(`📊 Current Phase: ${phaseConfig.name} - ${phaseConfig.focus}`);
+    
+    switch (currentPhase) {
+      case 'accumulation':
+        notes.push('🎯 Focus: Build volume progressively, perfect technique, adapt to training stress.');
+        break;
+      case 'intensification':
+        notes.push('🎯 Focus: Increase intensity while managing fatigue accumulation.');
+        if (recovery < 50) {
+          notes.push('⚠️ Consider extending accumulation phase if recovery is consistently low.');
+        }
+        break;
+      case 'realization':
+        notes.push('🎯 Focus: Peak performance, test maxes, demonstrate adaptations.');
+        if (recovery < 66) {
+          notes.push('⚠️ Sub-optimal recovery for peak performance. Consider light deload.');
+        }
+        break;
+      case 'deload':
+        volumeRecommendation = 'decrease';
+        intensityAdjustment = Math.min(intensityAdjustment - 1, -2);
+        notes.push('🎯 Focus: Active recovery, mobility, prepare for next mesocycle.');
+        break;
+    }
+
+    return {
+      currentPhase,
+      volumeRecommendation,
+      intensityAdjustment,
+      exerciseSubstitutions,
+      restDayRecommendation,
+      notes,
+      autoregulationTriggers
+    };
+  }
+
+  /**
+   * Determines current mesocycle phase based on program timeline
+   */
+  static getCurrentMesocyclePhase(programGoal: ProgramGoal, currentWeek: number): MesocyclePhase {
+    if (!programGoal.periodization) {
+      // Default phase distribution for programs without explicit periodization
+      const totalWeeks = programGoal.timeframe.unit === 'weeks' 
+        ? programGoal.timeframe.value 
+        : programGoal.timeframe.value * 4;
+      
+      const phaseProgress = currentWeek / totalWeeks;
+      
+      if (phaseProgress < 0.5) return 'accumulation';
+      if (phaseProgress < 0.75) return 'intensification';
+      if (phaseProgress < 0.95) return 'realization';
+      return 'deload';
+    }
+
+    const { mesocycleLength, phaseDistribution } = programGoal.periodization;
+    const weekInMesocycle = ((currentWeek - 1) % mesocycleLength) + 1;
+
+    if (weekInMesocycle <= phaseDistribution.accumulation) {
+      return 'accumulation';
+    } else if (weekInMesocycle <= phaseDistribution.accumulation + phaseDistribution.intensification) {
+      return 'intensification';
+    } else if (weekInMesocycle <= phaseDistribution.accumulation + phaseDistribution.intensification + phaseDistribution.realization) {
+      return 'realization';
+    } else {
+      return 'deload';
+    }
+  }
+
+  /**
+   * Generates RPE guidance with autoregulation
+   */
+  static generateRPEGuidance(
+    baseRPE: number,
+    analysis: ProgramAwareAnalysis
+  ): RPEGuidance {
+    const adjustedRPE = Math.max(1, Math.min(10, baseRPE + analysis.intensityAdjustment));
+    const rpeData = RPE_SCALE[adjustedRPE as keyof typeof RPE_SCALE];
+    
+    const autoregulationNotes: string[] = [];
+    
+    if (analysis.intensityAdjustment < 0) {
+      autoregulationNotes.push(`Reduced from RPE ${baseRPE} due to recovery metrics`);
+    } else if (analysis.intensityAdjustment > 0) {
+      autoregulationNotes.push(`Increased from RPE ${baseRPE} due to excellent recovery`);
+    }
+    
+    if (analysis.autoregulationTriggers.length > 0) {
+      autoregulationNotes.push(`Triggers: ${analysis.autoregulationTriggers.join(', ')}`);
+    }
+
+    return {
+      targetRPE: baseRPE,
+      description: rpeData.description,
+      guidance: rpeData.guidance,
+      adjustedRPE,
+      autoregulationNotes
+    };
+  }
+
+  /**
+   * Gets volume adjustment multiplier based on recommendation
+   */
+  static getVolumeAdjustmentMultiplier(recommendation: ProgramAwareAnalysis['volumeRecommendation']): number {
+    switch (recommendation) {
+      case 'increase': return 1.15; // 15% increase
+      case 'decrease': return 0.75; // 25% decrease
+      case 'maintain': return 1.0;
+      default: return 1.0;
+    }
+  }
+
+  /**
+   * Determines if workout should be skipped entirely
+   */
+  static shouldSkipWorkout(analysis: ProgramAwareAnalysis): boolean {
+    return analysis.restDayRecommendation && 
+           analysis.autoregulationTriggers.includes('CRITICAL_RECOVERY');
+  }
+}
+
 class ProgramAwareDataAnalysisService {
   private defaultSettings: AutoAdjustmentSettings = {
     enabled: true,
@@ -56,6 +283,7 @@ class ProgramAwareDataAnalysisService {
 
   /**
    * Analyzes current Whoop data and automatically adjusts today's workout
+   * Now includes Renaissance Periodization principles
    */
   public async analyzeAndAdjustTodaysWorkout(
     todaysWorkout: TodaysWorkout | null,
@@ -109,13 +337,38 @@ class ProgramAwareDataAnalysisService {
       getGoalSummary
     );
 
+    // Get Renaissance Periodization analysis
+    const currentWeek = this.getCurrentWeekOfProgram(todaysWorkout.programId, activePrograms, programGoals);
+    const associatedGoal = programGoals.find(goal => {
+      const summary = getGoalSummary(goal.id);
+      return summary && summary.percentComplete < 100;
+    });
+    
+    let renaissanceAnalysis: ProgramAwareAnalysis | undefined;
+    let rpeGuidance: RPEGuidance | undefined;
+    
+    if (associatedGoal) {
+      renaissanceAnalysis = RenaissancePeriodizationService.analyzeRecoveryForProgram(
+        whoopData,
+        associatedGoal,
+        currentWeek
+      );
+      
+      // Generate RPE guidance if workout has intensity information
+      const baseRPE = this.extractRPEFromWorkout(todaysWorkout);
+      if (baseRPE > 0) {
+        rpeGuidance = RenaissancePeriodizationService.generateRPEGuidance(baseRPE, renaissanceAnalysis);
+      }
+    }
+
     // Generate adjusted workout
     const adjustedWorkout = await this.generateAdjustedWorkout(
       todaysWorkout,
       whoopMetrics,
       adjustmentNeeded,
       programContext,
-      adjustmentSettings
+      adjustmentSettings,
+      renaissanceAnalysis
     );
 
     return {
@@ -124,7 +377,9 @@ class ProgramAwareDataAnalysisService {
       adjustmentReason: adjustmentNeeded.reason,
       adjustmentType: adjustmentNeeded.type,
       confidenceScore: adjustmentNeeded.confidence,
-      whoopMetrics
+      whoopMetrics,
+      renaissanceAnalysis,
+      rpeGuidance
     };
   }
 
@@ -193,7 +448,7 @@ class ProgramAwareDataAnalysisService {
     settings: AutoAdjustmentSettings
   ): { shouldAdjust: boolean; reason: string; type: WorkoutAdjustment['adjustmentType']; confidence: number } {
     const { recovery, strain, hrv, sleepQuality } = metrics;
-    const { aggressiveness, minRecoveryForIntense, maxStrainThreshold, sleepQualityThreshold, hrvThreshold } = settings;
+    const { aggressiveness, maxStrainThreshold, sleepQualityThreshold, hrvThreshold } = settings;
     
     let confidence = 0.5;
     let reasons: string[] = [];
@@ -258,13 +513,15 @@ class ProgramAwareDataAnalysisService {
 
   /**
    * Generates an adjusted workout based on Whoop metrics and program context
+   * Enhanced with Renaissance Periodization principles
    */
   private async generateAdjustedWorkout(
     originalWorkout: TodaysWorkout,
     metrics: { recovery: number; strain: number; hrv: number; sleepQuality: number },
     adjustmentNeeded: { type: WorkoutAdjustment['adjustmentType']; reason: string; confidence: number },
     programContext: any,
-    settings: AutoAdjustmentSettings
+    settings: AutoAdjustmentSettings,
+    renaissanceAnalysis?: ProgramAwareAnalysis
   ): Promise<TodaysWorkout> {
     const adjustedWorkout = { ...originalWorkout };
     const { recovery, strain, hrv, sleepQuality } = metrics;
@@ -321,6 +578,32 @@ class ProgramAwareDataAnalysisService {
         adjustedWorkout.description += ' + 10-15 minutes of cool-down and stretching';
         adjustedWorkout.duration = this.extendDurationForRecovery(adjustedWorkout.duration);
         break;
+    }
+
+    // Add Renaissance Periodization adjustments
+    if (renaissanceAnalysis) {
+      const volumeMultiplier = RenaissancePeriodizationService.getVolumeAdjustmentMultiplier(
+        renaissanceAnalysis.volumeRecommendation
+      );
+      
+      // Apply volume adjustments to description
+      if (volumeMultiplier !== 1.0) {
+        const volumeChange = Math.round((volumeMultiplier - 1) * 100);
+        adjustedWorkout.description += ` Volume adjusted: ${volumeChange > 0 ? '+' : ''}${volumeChange}% based on recovery metrics.`;
+      }
+      
+      // Add exercise substitutions
+      if (renaissanceAnalysis.exerciseSubstitutions.length > 0) {
+        adjustedWorkout.description += ` Exercise modifications: ${renaissanceAnalysis.exerciseSubstitutions.join(', ')}.`;
+      }
+      
+      // Add phase-specific notes
+      adjustedWorkout.description += ` Current training phase: ${renaissanceAnalysis.currentPhase}.`;
+      
+      // Add autoregulation notes
+      if (renaissanceAnalysis.notes.length > 0) {
+        adjustedWorkout.description += ` RP Notes: ${renaissanceAnalysis.notes.join(' ')}`;
+      }
     }
 
     // Add program-aware adjustments
@@ -584,6 +867,56 @@ class ProgramAwareDataAnalysisService {
         paceVsPlan: programContext?.goalSummary?.paceVsPlan || 'on_track'
       }
     };
+  }
+
+  /**
+   * Gets current week of program for periodization calculations
+   */
+  private getCurrentWeekOfProgram(
+    programId: string,
+    activePrograms: TrainingProgram[],
+    programGoals: ProgramGoal[]
+  ): number {
+    const program = activePrograms.find(p => p.id === programId);
+    if (!program) return 1;
+    
+    // Find associated goal to get start date
+    const associatedGoal = programGoals.find(goal => {
+      // This is a simplified association - in practice you'd have a more robust way to link programs to goals
+      return goal.type === program.type;
+    });
+    
+    if (!associatedGoal) return 1;
+    
+    const startDate = new Date(associatedGoal.startDate);
+    const currentDate = new Date();
+    const weeksDiff = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    
+    return Math.max(1, weeksDiff + 1);
+  }
+  
+  /**
+   * Extracts RPE from workout description or intensity
+   */
+  private extractRPEFromWorkout(workout: TodaysWorkout): number {
+    // Try to extract RPE from description
+    const rpeMatch = workout.description.match(/RPE\s*(\d+)/i);
+    if (rpeMatch) {
+      return parseInt(rpeMatch[1]);
+    }
+    
+    // Map intensity to RPE
+    const intensityToRPE: Record<string, number> = {
+      'Very Low': 3,
+      'Low': 4,
+      'Medium-Low': 5,
+      'Medium': 6,
+      'Medium-High': 7,
+      'High': 8,
+      'Very High': 9
+    };
+    
+    return intensityToRPE[workout.intensity] || 6;
   }
 
   /**
