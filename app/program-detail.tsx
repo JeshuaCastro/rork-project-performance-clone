@@ -187,6 +187,12 @@ export default function ProgramDetailScreen() {
     duration: number;
   } | null>(null);
   
+  // RPE tracking state
+  const [showRPEModal, setShowRPEModal] = useState(false);
+  const [selectedRPE, setSelectedRPE] = useState<number>(5);
+  const [rpeNotes, setRPENotes] = useState<string>('');
+  const [completedWorkoutForRPE, setCompletedWorkoutForRPE] = useState<Workout | null>(null);
+  
   // Program personalization state
   const [showPersonalizeModal, setShowPersonalizeModal] = useState(false);
   const [personalizationRequest, setPersonalizationRequest] = useState('');
@@ -1296,6 +1302,32 @@ export default function ProgramDetailScreen() {
     }
   };
   
+  // Get RPE color based on value
+  const getRPEColor = (rpe: number) => {
+    if (rpe <= 3) return '#4CAF50'; // Green - Easy
+    if (rpe <= 5) return '#8BC34A'; // Light Green - Moderate
+    if (rpe <= 7) return '#FFC107'; // Yellow - Hard
+    if (rpe <= 8) return '#FF9800'; // Orange - Very Hard
+    return '#F44336'; // Red - Maximum
+  };
+  
+  // Get RPE description
+  const getRPEDescription = (rpe: number) => {
+    const descriptions = {
+      1: "Very, very easy - No exertion at all",
+      2: "Very easy - Minimal exertion",
+      3: "Easy - Light exertion",
+      4: "Somewhat easy - Light to moderate exertion",
+      5: "Moderate - Moderate exertion",
+      6: "Somewhat hard - Moderate to vigorous exertion",
+      7: "Hard - Vigorous exertion",
+      8: "Very hard - Very vigorous exertion",
+      9: "Very, very hard - Extremely vigorous exertion",
+      10: "Maximum - Highest possible exertion"
+    };
+    return descriptions[rpe as keyof typeof descriptions] || "Select an RPE value";
+  };
+  
   // Calculate days until goal
   const calculateDaysUntilGoal = () => {
     if (!program?.goalDate) return null;
@@ -1457,12 +1489,40 @@ export default function ProgramDetailScreen() {
       return prev;
     });
     
-    // Hide workout modal and show summary modal
+    // Hide workout modal and show RPE modal first
     setShowWorkoutModal(false);
-    setShowSummaryModal(true);
+    setCompletedWorkoutForRPE(activeWorkout.workout);
+    setShowRPEModal(true);
     
     // Reset active workout
     setActiveWorkout(null);
+  };
+  
+  // Handle RPE submission
+  const handleRPESubmission = () => {
+    if (!completedWorkoutForRPE) return;
+    
+    // Store RPE data (you can extend this to save to your backend)
+    console.log('RPE submitted:', {
+      workout: completedWorkoutForRPE.title,
+      rpe: selectedRPE,
+      notes: rpeNotes,
+      date: new Date().toISOString()
+    });
+    
+    // Show success message
+    Alert.alert(
+      "RPE Recorded",
+      `Your RPE of ${selectedRPE}/10 has been recorded for ${completedWorkoutForRPE.title}. This will help optimize your future workouts.`,
+      [{ text: "OK" }]
+    );
+    
+    // Reset RPE state and show summary
+    setShowRPEModal(false);
+    setSelectedRPE(5);
+    setRPENotes('');
+    setCompletedWorkoutForRPE(null);
+    setShowSummaryModal(true);
   };
   
   // Handle manual logging to WHOOP
@@ -1905,6 +1965,59 @@ export default function ProgramDetailScreen() {
                   
                   <View style={styles.todayWorkouts}>
                     {todayWorkouts.map((workout, index) => renderWorkoutCard(workout))}
+                  </View>
+                </View>
+              )}
+              
+              {/* Renaissance Periodization Info */}
+              {program && (
+                <View style={styles.periodizationSection}>
+                  <View style={styles.periodizationHeader}>
+                    <Brain size={20} color={colors.primary} />
+                    <Text style={styles.periodizationTitle}>Scientific Programming</Text>
+                  </View>
+                  
+                  <View style={styles.periodizationContent}>
+                    <View style={styles.periodizationPhase}>
+                      <Text style={styles.phaseLabel}>Current Phase</Text>
+                      <Text style={styles.phaseValue}>
+                        {currentWeek <= 4 ? 'Accumulation' : 
+                         currentWeek <= 8 ? 'Intensification' : 
+                         currentWeek <= 12 ? 'Realization' : 'Deload'}
+                      </Text>
+                      <Text style={styles.phaseDescription}>
+                        {currentWeek <= 4 ? 'Building volume and work capacity' : 
+                         currentWeek <= 8 ? 'Increasing intensity while managing fatigue' : 
+                         currentWeek <= 12 ? 'Peak performance and skill refinement' : 'Recovery and adaptation'}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.rpeGuidance}>
+                      <Text style={styles.rpeLabel}>Target RPE Range</Text>
+                      <Text style={styles.rpeValue}>
+                        {currentWeek <= 4 ? '6-7' : 
+                         currentWeek <= 8 ? '7-8' : 
+                         currentWeek <= 12 ? '8-9' : '5-6'} / 10
+                      </Text>
+                      <Text style={styles.rpeExplanation}>
+                        Rate of Perceived Exertion - how hard the workout feels
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.volumeProgression}>
+                      <Text style={styles.volumeLabel}>Volume Progression</Text>
+                      <View style={styles.volumeBar}>
+                        <View 
+                          style={[
+                            styles.volumeFill,
+                            { width: `${Math.min(100, (currentWeek / 16) * 100)}%` }
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.volumeText}>
+                        Week {currentWeek} of progressive overload cycle
+                      </Text>
+                    </View>
                   </View>
                 </View>
               )}
@@ -2970,6 +3083,99 @@ export default function ProgramDetailScreen() {
                     </TouchableOpacity>
                   </>
                 )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        
+        {/* RPE Modal */}
+        <Modal
+          visible={showRPEModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowRPEModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Rate Your Workout</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowRPEModal(false);
+                    setShowSummaryModal(true);
+                  }}
+                >
+                  <X size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalScroll}>
+                <View style={styles.rpeContainer}>
+                  <Text style={styles.rpeTitle}>How hard did this workout feel?</Text>
+                  <Text style={styles.rpeSubtitle}>
+                    Rate of Perceived Exertion (RPE) helps optimize your training
+                  </Text>
+                  
+                  {completedWorkoutForRPE && (
+                    <View style={styles.workoutReminderCard}>
+                      <Text style={styles.workoutReminderTitle}>{completedWorkoutForRPE.title}</Text>
+                      <Text style={styles.workoutReminderType}>{completedWorkoutForRPE.type.toUpperCase()}</Text>
+                    </View>
+                  )}
+                  
+                  <View style={styles.rpeScale}>
+                    <Text style={styles.rpeScaleTitle}>Select your RPE (1-10)</Text>
+                    <View style={styles.rpeButtons}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rpe) => (
+                        <TouchableOpacity
+                          key={rpe}
+                          style={[
+                            styles.rpeButton,
+                            selectedRPE === rpe && styles.selectedRPEButton,
+                            { backgroundColor: getRPEColor(rpe) }
+                          ]}
+                          onPress={() => setSelectedRPE(rpe)}
+                        >
+                          <Text style={[
+                            styles.rpeButtonText,
+                            selectedRPE === rpe && styles.selectedRPEButtonText
+                          ]}>
+                            {rpe}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    
+                    <View style={styles.rpeDescriptions}>
+                      <Text style={styles.rpeDescriptionText}>
+                        {getRPEDescription(selectedRPE)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.rpeNotesSection}>
+                    <Text style={styles.rpeNotesLabel}>Additional Notes (Optional)</Text>
+                    <TextInput
+                      style={styles.rpeNotesInput}
+                      placeholder="How did you feel? Any issues with form, energy, etc."
+                      placeholderTextColor={colors.textSecondary}
+                      value={rpeNotes}
+                      onChangeText={setRPENotes}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.submitRPEButton}
+                    onPress={handleRPESubmission}
+                  >
+                    <CheckCircle2 size={20} color={colors.text} />
+                    <Text style={styles.submitRPEText}>Submit RPE</Text>
+                  </TouchableOpacity>
+                </View>
               </ScrollView>
             </View>
           </View>
@@ -4902,6 +5108,215 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,
+  },
+  // Renaissance Periodization styles
+  periodizationSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  periodizationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  periodizationTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  periodizationContent: {
+    gap: 16,
+  },
+  periodizationPhase: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+  },
+  phaseLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  phaseValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  phaseDescription: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  rpeGuidance: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+  },
+  rpeLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  rpeValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.warning,
+    marginBottom: 4,
+  },
+  rpeExplanation: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  volumeProgression: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 12,
+  },
+  volumeLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  volumeBar: {
+    height: 6,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  volumeFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  volumeText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  // RPE Modal styles
+  rpeContainer: {
+    padding: 10,
+  },
+  rpeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  rpeSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  workoutReminderCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  workoutReminderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  workoutReminderType: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  rpeScale: {
+    marginBottom: 24,
+  },
+  rpeScaleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  rpeButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  rpeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedRPEButton: {
+    borderColor: colors.text,
+    transform: [{ scale: 1.1 }],
+  },
+  rpeButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  selectedRPEButtonText: {
+    color: colors.text,
+  },
+  rpeDescriptions: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  rpeDescriptionText: {
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  rpeNotesSection: {
+    marginBottom: 24,
+  },
+  rpeNotesLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  rpeNotesInput: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 16,
+    color: colors.text,
+    fontSize: 16,
+    minHeight: 80,
+  },
+  submitRPEButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  submitRPEText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   // Strain Analysis styles
   strainAnalysisContainer: {
