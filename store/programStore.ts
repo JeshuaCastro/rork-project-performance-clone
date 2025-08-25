@@ -79,7 +79,7 @@ const createDefaultPeriodization = (goalType: GoalType, totalWeeks: number): Per
 export const useProgramStore = create<ProgramState>()(
   persist(
     (set, get) => ({
-      templates: ENHANCED_GOAL_TEMPLATES,
+      templates: ENHANCED_GOAL_TEMPLATES as GoalTemplate[],
       goals: [],
       progress: {},
       workoutTemplates: [],
