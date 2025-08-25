@@ -76,7 +76,85 @@ export interface ExerciseProgression {
   notes?: string;
 }
 
-// For tracking completed exercises
+// Set-by-set tracking data structure
+export interface WorkoutSet {
+  setNumber: number;
+  targetReps: number | string; // Can be "8-12" or specific number
+  actualReps?: number;
+  targetWeight?: number;
+  actualWeight?: number;
+  targetRPE?: number;
+  actualRPE?: number;
+  restTime?: number; // in seconds
+  completed: boolean;
+  startTime?: string; // ISO timestamp
+  endTime?: string; // ISO timestamp
+  notes?: string;
+}
+
+// Enhanced workout exercise with set tracking
+export interface TrackedWorkoutExercise extends WorkoutExercise {
+  sets: WorkoutSet[];
+  totalSets: number;
+  completedSets: number;
+  isCompleted: boolean;
+  startTime?: string;
+  endTime?: string;
+  exerciseNotes?: string;
+}
+
+// Workout session state for active workouts
+export interface WorkoutSession {
+  id: string;
+  workoutId: string;
+  programId?: string;
+  userId: string;
+  startTime: string; // ISO timestamp
+  endTime?: string; // ISO timestamp
+  status: 'not_started' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
+  exercises: TrackedWorkoutExercise[];
+  currentExerciseIndex: number;
+  currentSetIndex: number;
+  totalDuration?: number; // in seconds
+  notes?: string;
+  whoopData?: {
+    preWorkoutRecovery?: number;
+    postWorkoutStrain?: number;
+    heartRateData?: number[];
+  };
+}
+
+// Progressive overload tracking
+export interface ProgressiveOverloadData {
+  exerciseId: string;
+  userId: string;
+  history: WorkoutPerformance[];
+  personalRecords: PersonalRecord[];
+  progressionTrend: 'improving' | 'plateauing' | 'declining';
+  nextRecommendedWeight?: number;
+  nextRecommendedReps?: number;
+  lastUpdated: string;
+}
+
+export interface WorkoutPerformance {
+  date: string;
+  sessionId: string;
+  sets: WorkoutSet[];
+  totalVolume: number; // weight * reps * sets
+  averageRPE: number;
+  oneRepMaxEstimate?: number;
+  notes?: string;
+}
+
+export interface PersonalRecord {
+  type: '1RM' | 'volume' | 'reps' | 'endurance';
+  value: number;
+  date: string;
+  sessionId: string;
+  notes?: string;
+}
+
+// For tracking completed exercises (legacy - keeping for backward compatibility)
 export interface CompletedExercise {
   exerciseId: string;
   date: string;

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useWhoopStore } from '@/store/whoopStore';
+import { WorkoutSessionProvider } from '@/store/workoutSessionStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Platform, View, StyleSheet } from 'react-native';
@@ -55,21 +56,22 @@ export default function RootLayout() {
   }, []);
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" backgroundColor="#121212" />
-      <Stack screenOptions={{ 
-        headerShown: false,
-        contentStyle: { 
-          backgroundColor: '#121212',
-        },
-        // iOS-specific navigation options
-        ...(Platform.OS === 'ios' && {
-          presentation: 'card',
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          animationTypeForReplace: 'push',
-        })
-      }}>
+    <WorkoutSessionProvider>
+      <View style={styles.container}>
+        <StatusBar style="light" backgroundColor="#121212" />
+        <Stack screenOptions={{ 
+          headerShown: false,
+          contentStyle: { 
+            backgroundColor: '#121212',
+          },
+          // iOS-specific navigation options
+          ...(Platform.OS === 'ios' && {
+            presentation: 'card',
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            animationTypeForReplace: 'push',
+          })
+        }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen 
           name="modal" 
@@ -153,8 +155,9 @@ export default function RootLayout() {
             })
           }} 
         />
-      </Stack>
-    </View>
+        </Stack>
+      </View>
+    </WorkoutSessionProvider>
   );
 }
 
