@@ -23,37 +23,37 @@ export default function WorkoutTimer({
   const initialTime = useRef(defaultRestTime);
 
   useEffect(() => {
-    if (isRunning && timeRemaining > 0) {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
+            // stop
             setIsRunning(false);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
             onTimerComplete?.();
-            
-            // Haptic feedback for timer completion
             if (Platform.OS !== 'web') {
-              // Note: Haptics would be imported and used here if available
               console.log('Timer completed - haptic feedback would trigger');
             }
-            
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
-    } else {
+    }
+    return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
     };
-  }, [isRunning, timeRemaining, onTimerComplete]);
+  }, [isRunning, onTimerComplete]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -62,7 +62,7 @@ export default function WorkoutTimer({
   };
 
   const handlePlayPause = () => {
-    setIsRunning(!isRunning);
+    setIsRunning(prev => !prev);
   };
 
   const handleReset = () => {
@@ -104,6 +104,14 @@ export default function WorkoutTimer({
     if (isRunning) return 'Resting...';
     return 'Rest Timer';
   };
+
+  // Keep defaults in sync when prop changes or remounts
+  useEffect(() => {
+    setTimeRemaining(defaultRestTime);
+    initialTime.current = defaultRestTime;
+    setCustomTime(defaultRestTime);
+    setIsRunning(autoStart);
+  }, [defaultRestTime, autoStart]);
 
   return (
     <View style={styles.container}>
@@ -154,7 +162,6 @@ export default function WorkoutTimer({
         <View style={styles.controlButton} />
       </View>
 
-      {/* Quick Time Buttons */}
       <View style={styles.quickTimeContainer}>
         <Text style={styles.quickTimeLabel}>Quick Set:</Text>
         <View style={styles.quickTimeButtons}>

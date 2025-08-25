@@ -1376,9 +1376,42 @@ export default function ProgramDetailScreen() {
   }, []);
 
   const buildTrackedExercises = (workout: Workout): TrackedWorkoutExercise[] => {
-    const parsed: WorkoutExercise[] = parseWorkoutToExercises(workout.title, workout.description);
-    return parsed.map((we) => {
-      const totalSets = typeof we.sets === 'number' ? we.sets : 3;
+    const normalize = (s: string) => s.toLowerCase().trim();
+
+    const findExerciseIdByName = (name: string): string | null => {
+      const n = normalize(name);
+      // Exact match first
+      const exact = exerciseDatabase.find((ex) => normalize(ex.name) === n);
+      if (exact) return exact.id;
+      // Contains match
+      const partial = exerciseDatabase.find((ex) => normalize(ex.name).includes(n) || n.includes(normalize(ex.name)));
+      if (partial) return partial.id;
+      return null;
+    };
+
+    const sourceExercises: WorkoutExercise[] = (() => {
+      if (workout.exercises && workout.exercises.length > 0) {
+        return workout.exercises
+          .map((ex) => {
+            const id = findExerciseIdByName(ex.name);
+            if (!id) return null;
+            const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : undefined;
+            const repsVal = ex.reps ? (ex.reps.match(/^\d+(?:-\d+)?$/) ? (ex.reps.includes('-') ? ex.reps : parseInt(ex.reps, 10)) : ex.reps) : undefined;
+            return {
+              exerciseId: id,
+              sets: Number.isFinite(setsNum) ? (setsNum as number) : undefined,
+              reps: repsVal as number | string | undefined,
+              duration: ex.duration,
+              notes: ex.notes,
+            } as WorkoutExercise;
+          })
+          .filter((v): v is WorkoutExercise => v !== null);
+      }
+      return parseWorkoutToExercises(workout.title, workout.description);
+    })();
+
+    return sourceExercises.map((we) => {
+      const totalSets = typeof we.sets === 'number' && we.sets > 0 ? we.sets : 3;
       const reps = we.reps ?? '8-12';
       const restSec = (() => {
         const m = (we.restTime ?? '').match(/(\d+)/);
@@ -1386,7 +1419,7 @@ export default function ProgramDetailScreen() {
       })();
       const sets: WorkoutSet[] = Array.from({ length: totalSets }).map((_, i) => ({
         setNumber: i + 1,
-        targetReps: reps as any,
+        targetReps: reps as number | string,
         targetWeight: undefined,
         targetRPE: undefined,
         restTime: restSec,
