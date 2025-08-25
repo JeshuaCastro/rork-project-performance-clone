@@ -57,7 +57,7 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useWhoopStore } from '@/store/whoopStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
-import NutritionTracker from '@/components/NutritionTracker';
+
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 
 // Define workout type
@@ -2081,117 +2081,7 @@ export default function ProgramDetailScreen() {
                 )}
               </View>
               
-              {/* Nutrition Plan - Collapsible */}
-              {(nutritionPlan || macroTargets) && (
-                <View style={styles.sectionContainer}>
-                  <TouchableOpacity 
-                    style={styles.sectionHeader}
-                    onPress={() => setNutritionExpanded(!nutritionExpanded)}
-                  >
-                    <View style={styles.sectionTitleContainer}>
-                      <Utensils size={20} color={colors.primary} />
-                      <Text style={styles.sectionTitle}>Nutrition Plan</Text>
-                    </View>
-                    {nutritionExpanded ? 
-                      <ChevronUp size={20} color={colors.text} /> : 
-                      <ChevronDown size={20} color={colors.text} />
-                    }
-                  </TouchableOpacity>
-                  
-                  {nutritionExpanded && (
-                    <View style={styles.sectionContent}>
-                      <View style={styles.nutritionSummary}>
-                        <View style={styles.macroContainer}>
-                          <View style={styles.macroItem}>
-                            <Flame size={20} color={colors.primary} />
-                            <Text style={styles.macroLabel}>Calories</Text>
-                            <Text style={styles.macroValue}>{nutritionPlan?.calories || macroTargets?.calories || 0}</Text>
-                          </View>
-                          
-                          <View style={styles.macroItem}>
-                            <Text style={styles.macroCircle}>P</Text>
-                            <Text style={styles.macroLabel}>Protein</Text>
-                            <Text style={styles.macroValue}>{nutritionPlan?.protein || macroTargets?.protein || 0}g</Text>
-                          </View>
-                          
-                          <View style={styles.macroItem}>
-                            <Text style={styles.macroCircle}>C</Text>
-                            <Text style={styles.macroLabel}>Carbs</Text>
-                            <Text style={styles.macroValue}>{nutritionPlan?.carbs || macroTargets?.carbs || 0}g</Text>
-                          </View>
-                          
-                          <View style={styles.macroItem}>
-                            <Text style={styles.macroCircle}>F</Text>
-                            <Text style={styles.macroLabel}>Fat</Text>
-                            <Text style={styles.macroValue}>{nutritionPlan?.fat || macroTargets?.fat || 0}g</Text>
-                          </View>
-                        </View>
-                        
-                        {nutritionPlan?.recommendations && nutritionPlan.recommendations.length > 0 && (
-                          <View style={styles.recommendationsContainer}>
-                            <Text style={styles.recommendationsTitle}>Recommendations</Text>
-                            
-                            {nutritionPlan.recommendations.map((recommendation, index) => (
-                              <View key={index} style={styles.recommendationItem}>
-                                <View style={styles.bulletPoint} />
-                                <Text style={styles.recommendationText} numberOfLines={3} ellipsizeMode="tail">
-                                  {recommendation}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                        
-                        <TouchableOpacity 
-                          style={styles.nutritionButton}
-                          onPress={() => router.push('/profile')}
-                        >
-                          <Text style={styles.nutritionButtonText}>
-                            {userProfile.name ? "Update Profile & Nutrition Targets" : "Complete Profile for Personalized Targets"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-              
-              {/* Nutrition Tracker - Collapsible */}
-              <View style={styles.sectionContainer}>
-                <TouchableOpacity 
-                  style={styles.sectionHeader}
-                  onPress={() => setNutritionTrackerExpanded(!nutritionTrackerExpanded)}
-                >
-                  <View style={styles.sectionTitleContainer}>
-                    <Scale size={20} color={colors.primary} />
-                    <Text style={styles.sectionTitle}>Nutrition Tracker</Text>
-                  </View>
-                  {nutritionTrackerExpanded ? 
-                    <ChevronUp size={20} color={colors.text} /> : 
-                    <ChevronDown size={20} color={colors.text} />
-                  }
-                </TouchableOpacity>
-                
-                {nutritionTrackerExpanded && (
-                  <View style={styles.sectionContent}>
-                    {userProfile && userProfile.name ? (
-                      <NutritionTracker />
-                    ) : (
-                      <View style={styles.completeProfileContainer}>
-                        <Text style={styles.completeProfileText}>
-                          Complete your profile to access nutrition tracking
-                        </Text>
-                        <TouchableOpacity 
-                          style={styles.completeProfileButton}
-                          onPress={() => router.push('/profile')}
-                        >
-                          <Text style={styles.completeProfileButtonText}>Complete Profile</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
+
               
               {/* Recovery Strategies - Collapsible */}
               {aiPlan && aiPlan.recoveryStrategies && (
