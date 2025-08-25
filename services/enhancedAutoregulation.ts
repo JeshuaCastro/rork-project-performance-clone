@@ -1,1 +1,304 @@
-import { WhoopData, RecoveryData, StrainData, SleepData } from '@/types/whoop';\nimport { ProgramGoal, AutoregulationConfig, WorkoutTemplate, ProgramExercise } from '@/types/programs';\nimport { mapWhoopActivityToExercises, getIntensityFromStrain, WhoopExerciseRecommendation } from './whoopExerciseMapping';\n\n// Enhanced autoregulation based on WHOOP data and Renaissance Periodization principles\nexport interface EnhancedAutoregulationResult {\n  shouldAdjust: boolean;\n  adjustments: {\n    volumeMultiplier: number; // 0.5 = 50% reduction, 1.2 = 20% increase\n    intensityAdjustment: number; // RPE adjustment (-2 to +1)\n    exerciseSubstitutions: ExerciseSubstitution[];\n    restDayRecommended: boolean;\n    deloadRecommended: boolean;\n  };\n  reasoning: string[];\n  recoveryGuidance: string;\n  nextDayRecommendations: string[];\n}\n\nexport interface ExerciseSubstitution {\n  originalExerciseId: string;\n  recommendedExerciseId: string;\n  reason: string;\n}\n\nexport interface RecoveryMetrics {\n  recovery: number;\n  recoveryTrend: number; // 7-day trend\n  strain: number;\n  strainTrend: number; // 7-day trend\n  sleepQuality: number;\n  sleepDuration: number; // hours\n  hrvTrend: number; // 7-day HRV trend\n  restingHRTrend: number; // 7-day RHR trend\n}\n\n/**\n * Calculates comprehensive recovery metrics from WHOOP data\n */\nexport const calculateRecoveryMetrics = (whoopData: WhoopData): RecoveryMetrics => {\n  const recentRecovery = whoopData.recovery.slice(0, 7);\n  const recentStrain = whoopData.strain.slice(0, 7);\n  const recentSleep = whoopData.sleep.slice(0, 7);\n  \n  // Current values (most recent)\n  const currentRecovery = recentRecovery[0]?.score || 50;\n  const currentStrain = recentStrain[0]?.score || 10;\n  const currentSleep = recentSleep[0];\n  \n  // Calculate trends (7-day moving average vs previous 7 days)\n  const recoveryTrend = calculateTrend(recentRecovery.map(r => r.score));\n  const strainTrend = calculateTrend(recentStrain.map(s => s.score));\n  const hrvTrend = calculateTrend(recentRecovery.map(r => r.hrvMs));\n  const restingHRTrend = calculateTrend(recentRecovery.map(r => r.restingHeartRate));\n  \n  return {\n    recovery: currentRecovery,\n    recoveryTrend,\n    strain: currentStrain,\n    strainTrend,\n    sleepQuality: currentSleep?.qualityScore || 70,\n    sleepDuration: (currentSleep?.duration || 420) / 60, // Convert to hours\n    hrvTrend,\n    restingHRTrend\n  };\n};\n\n/**\n * Calculates trend from array of values (positive = improving, negative = declining)\n */\nconst calculateTrend = (values: number[]): number => {\n  if (values.length < 4) return 0;\n  \n  const recent = values.slice(0, Math.floor(values.length / 2));\n  const older = values.slice(Math.floor(values.length / 2));\n  \n  const recentAvg = recent.reduce((sum, val) => sum + val, 0) / recent.length;\n  const olderAvg = older.reduce((sum, val) => sum + val, 0) / older.length;\n  \n  return ((recentAvg - olderAvg) / olderAvg) * 100; // Percentage change\n};\n\n/**\n * Enhanced autoregulation that considers multiple factors and Renaissance Periodization principles\n */\nexport const performEnhancedAutoregulation = (\n  goal: ProgramGoal,\n  whoopData: WhoopData,\n  currentWorkout?: WorkoutTemplate\n): EnhancedAutoregulationResult => {\n  const metrics = calculateRecoveryMetrics(whoopData);\n  const autoregConfig = goal.autoregulation || {\n    enabled: true,\n    recoveryThreshold: 66,\n    strainThreshold: 15,\n    sleepThreshold: 7,\n    adjustmentRules: []\n  };\n  \n  console.log('Enhanced autoregulation metrics:', metrics);\n  \n  let shouldAdjust = false;\n  let volumeMultiplier = 1.0;\n  let intensityAdjustment = 0;\n  const exerciseSubstitutions: ExerciseSubstitution[] = [];\n  let restDayRecommended = false;\n  let deloadRecommended = false;\n  const reasoning: string[] = [];\n  const nextDayRecommendations: string[] = [];\n  \n  // 1. Recovery-based adjustments\n  if (metrics.recovery < 33) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.6; // 40% reduction\n    intensityAdjustment -= 2;\n    restDayRecommended = true;\n    reasoning.push(`Very low recovery (${metrics.recovery}%) - significant load reduction recommended`);\n    nextDayRecommendations.push('Consider a complete rest day or very light active recovery');\n  } else if (metrics.recovery < 50) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.8; // 20% reduction\n    intensityAdjustment -= 1;\n    reasoning.push(`Low recovery (${metrics.recovery}%) - moderate load reduction`);\n    nextDayRecommendations.push('Focus on sleep quality and stress management');\n  } else if (metrics.recovery > 80) {\n    volumeMultiplier *= 1.1; // 10% increase\n    reasoning.push(`High recovery (${metrics.recovery}%) - can handle slightly increased load`);\n    nextDayRecommendations.push('Good recovery allows for normal or increased training intensity');\n  }\n  \n  // 2. Strain accumulation analysis\n  const recentStrainAvg = whoopData.strain.slice(0, 3).reduce((sum, s) => sum + s.score, 0) / 3;\n  if (recentStrainAvg > 16) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.85; // 15% reduction\n    reasoning.push(`High recent strain average (${recentStrainAvg.toFixed(1)}) - reducing load to prevent overreaching`);\n    nextDayRecommendations.push('Monitor for signs of overreaching - prioritize recovery');\n  }\n  \n  // 3. Sleep quality impact\n  if (metrics.sleepDuration < 6) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.75; // 25% reduction\n    intensityAdjustment -= 1;\n    reasoning.push(`Insufficient sleep (${metrics.sleepDuration.toFixed(1)}h) - reducing training load`);\n    nextDayRecommendations.push('Prioritize sleep - aim for 7-9 hours tonight');\n  } else if (metrics.sleepQuality < 60) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.9; // 10% reduction\n    reasoning.push(`Poor sleep quality (${metrics.sleepQuality}%) - slight load reduction`);\n    nextDayRecommendations.push('Focus on sleep hygiene and recovery practices');\n  }\n  \n  // 4. Trend analysis for early intervention\n  if (metrics.recoveryTrend < -10) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.85;\n    reasoning.push(`Declining recovery trend (${metrics.recoveryTrend.toFixed(1)}%) - proactive load reduction`);\n    \n    if (metrics.recoveryTrend < -20) {\n      deloadRecommended = true;\n      reasoning.push('Significant recovery decline suggests need for deload week');\n    }\n  }\n  \n  if (metrics.strainTrend > 15) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.9;\n    reasoning.push(`Increasing strain trend (${metrics.strainTrend.toFixed(1)}%) - managing load accumulation`);\n  }\n  \n  // 5. HRV and RHR trend analysis\n  if (metrics.hrvTrend < -10 || metrics.restingHRTrend > 5) {\n    shouldAdjust = true;\n    volumeMultiplier *= 0.85;\n    intensityAdjustment -= 1;\n    reasoning.push('Autonomic stress indicators suggest need for recovery focus');\n    nextDayRecommendations.push('Consider stress management techniques and lighter training');\n  }\n  \n  // 6. Exercise substitutions based on recovery state\n  if (currentWorkout && (metrics.recovery < 50 || metrics.sleepDuration < 6)) {\n    currentWorkout.exercises.forEach(exercise => {\n      // Substitute high-impact exercises with lower-impact alternatives\n      if (exercise.targetRPE >= 8) {\n        const substitution = findRecoveryFriendlySubstitution(exercise);\n        if (substitution) {\n          exerciseSubstitutions.push(substitution);\n        }\n      }\n    });\n  }\n  \n  // 7. Periodization-aware adjustments\n  if (goal.periodization) {\n    const currentPhase = getCurrentMesocyclePhase(goal);\n    if (currentPhase === 'deload' && !deloadRecommended) {\n      volumeMultiplier *= 0.6;\n      intensityAdjustment -= 1;\n      reasoning.push('Scheduled deload phase - reducing load for recovery');\n    } else if (currentPhase === 'realization' && metrics.recovery < 70) {\n      shouldAdjust = true;\n      reasoning.push('Peak phase requires high recovery - adjusting for optimal performance');\n    }\n  }\n  \n  // Generate recovery guidance\n  let recoveryGuidance = '';\n  if (restDayRecommended) {\n    recoveryGuidance = 'Complete rest or very light active recovery recommended. Focus on sleep, nutrition, and stress management.';\n  } else if (deloadRecommended) {\n    recoveryGuidance = 'Consider implementing a deload week with 40-60% volume reduction to allow for recovery and adaptation.';\n  } else if (shouldAdjust) {\n    recoveryGuidance = 'Training load adjusted based on recovery metrics. Monitor how you feel and adjust further if needed.';\n  } else {\n    recoveryGuidance = 'Recovery metrics support normal training load. Maintain current program intensity.';\n  }\n  \n  // Ensure reasonable bounds\n  volumeMultiplier = Math.max(0.4, Math.min(1.3, volumeMultiplier));\n  intensityAdjustment = Math.max(-3, Math.min(1, intensityAdjustment));\n  \n  return {\n    shouldAdjust,\n    adjustments: {\n      volumeMultiplier,\n      intensityAdjustment,\n      exerciseSubstitutions,\n      restDayRecommended,\n      deloadRecommended\n    },\n    reasoning,\n    recoveryGuidance,\n    nextDayRecommendations\n  };\n};\n\n/**\n * Finds recovery-friendly exercise substitutions\n */\nconst findRecoveryFriendlySubstitution = (exercise: ProgramExercise): ExerciseSubstitution | null => {\n  const substitutionMap: Record<string, string> = {\n    'deadlift': 'glute-bridge',\n    'squat': 'wall-sit',\n    'bench-press': 'push-up',\n    'overhead-press': 'wall-push-up',\n    'burpee': 'jumping-jacks',\n    'mountain-climbers': 'plank',\n    'interval-training': 'easy-run',\n    'tempo-run': 'easy-run',\n    'cycling-intervals': 'steady-state-cycling'\n  };\n  \n  const substitution = substitutionMap[exercise.exerciseId];\n  if (substitution) {\n    return {\n      originalExerciseId: exercise.exerciseId,\n      recommendedExerciseId: substitution,\n      reason: 'Lower impact alternative for recovery-focused training'\n    };\n  }\n  \n  return null;\n};\n\n/**\n * Gets current mesocycle phase (simplified version)\n */\nconst getCurrentMesocyclePhase = (goal: ProgramGoal): string => {\n  if (!goal.periodization) return 'accumulation';\n  \n  const startDate = new Date(goal.startDate);\n  const currentDate = new Date();\n  const weeksElapsed = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));\n  const weekInMesocycle = (weeksElapsed % goal.periodization.mesocycleLength) + 1;\n  \n  const { phaseDistribution } = goal.periodization;\n  if (weekInMesocycle <= phaseDistribution.accumulation) {\n    return 'accumulation';\n  } else if (weekInMesocycle <= phaseDistribution.accumulation + phaseDistribution.intensification) {\n    return 'intensification';\n  } else if (weekInMesocycle <= phaseDistribution.accumulation + phaseDistribution.intensification + phaseDistribution.realization) {\n    return 'realization';\n  } else {\n    return 'deload';\n  }\n};\n\n/**\n * Applies autoregulation adjustments to a workout template\n */\nexport const applyAutoregulationToWorkout = (\n  workout: WorkoutTemplate,\n  autoregResult: EnhancedAutoregulationResult\n): WorkoutTemplate => {\n  if (!autoregResult.shouldAdjust) {\n    return workout;\n  }\n  \n  const adjustedWorkout: WorkoutTemplate = {\n    ...workout,\n    exercises: workout.exercises.map(exercise => {\n      // Check for substitutions first\n      const substitution = autoregResult.adjustments.exerciseSubstitutions.find(\n        sub => sub.originalExerciseId === exercise.exerciseId\n      );\n      \n      if (substitution) {\n        return {\n          ...exercise,\n          exerciseId: substitution.recommendedExerciseId,\n          sets: Math.max(1, Math.round(exercise.sets * autoregResult.adjustments.volumeMultiplier)),\n          targetRPE: Math.max(1, Math.min(10, exercise.targetRPE + autoregResult.adjustments.intensityAdjustment)),\n          autoregulationGuidelines: [\n            ...exercise.autoregulationGuidelines,\n            `Substituted due to recovery: ${substitution.reason}`\n          ]\n        };\n      }\n      \n      // Apply volume and intensity adjustments\n      return {\n        ...exercise,\n        sets: Math.max(1, Math.round(exercise.sets * autoregResult.adjustments.volumeMultiplier)),\n        targetRPE: Math.max(1, Math.min(10, exercise.targetRPE + autoregResult.adjustments.intensityAdjustment)),\n        autoregulationGuidelines: [\n          ...exercise.autoregulationGuidelines,\n          `Adjusted for recovery: ${autoregResult.adjustments.volumeMultiplier < 1 ? 'reduced' : 'maintained'} volume`\n        ]\n      };\n    }),\n    totalVolume: Math.round(workout.totalVolume * autoregResult.adjustments.volumeMultiplier),\n    targetRPE: Math.max(1, Math.min(10, workout.targetRPE + autoregResult.adjustments.intensityAdjustment)),\n    autoregulationNotes: [\n      ...workout.autoregulationNotes,\n      ...autoregResult.reasoning\n    ]\n  };\n  \n  return adjustedWorkout;\n};\n\n/**\n * Provides readiness score for training\n */\nexport const calculateTrainingReadiness = (metrics: RecoveryMetrics): {\n  score: number; // 0-100\n  category: 'poor' | 'fair' | 'good' | 'excellent';\n  recommendation: string;\n} => {\n  // Weighted scoring system\n  const recoveryWeight = 0.4;\n  const sleepWeight = 0.3;\n  const trendWeight = 0.2;\n  const strainWeight = 0.1;\n  \n  const recoveryScore = metrics.recovery;\n  const sleepScore = Math.min(100, (metrics.sleepDuration / 8) * 100 * (metrics.sleepQuality / 100));\n  const trendScore = Math.max(0, Math.min(100, 50 + metrics.recoveryTrend));\n  const strainScore = Math.max(0, 100 - (metrics.strain * 5)); // Lower strain = higher score\n  \n  const totalScore = Math.round(\n    recoveryScore * recoveryWeight +\n    sleepScore * sleepWeight +\n    trendScore * trendWeight +\n    strainScore * strainWeight\n  );\n  \n  let category: 'poor' | 'fair' | 'good' | 'excellent';\n  let recommendation: string;\n  \n  if (totalScore >= 80) {\n    category = 'excellent';\n    recommendation = 'Excellent readiness for high-intensity training. Consider pushing limits today.';\n  } else if (totalScore >= 65) {\n    category = 'good';\n    recommendation = 'Good readiness for normal training intensity. Proceed with planned workout.';\n  } else if (totalScore >= 45) {\n    category = 'fair';\n    recommendation = 'Fair readiness. Consider reducing intensity or volume by 10-20%.';\n  } else {\n    category = 'poor';\n    recommendation = 'Poor readiness. Focus on recovery activities or take a rest day.';\n  }\n  \n  return {\n    score: totalScore,\n    category,\n    recommendation\n  };\n};
+import { WhoopData } from '@/types/whoop';
+import { ProgramGoal, AutoregulationConfig, WorkoutTemplate, ProgramExercise, GoalType } from '@/types/programs';
+import { mapWhoopActivityToExercises, WhoopExerciseRecommendation } from './whoopExerciseMapping';
+
+// Enhanced autoregulation based on WHOOP data and Renaissance Periodization principles
+export interface EnhancedAutoregulationResult {
+  shouldAdjust: boolean;
+  adjustments: {
+    volumeMultiplier: number; // 0.5 = 50% reduction, 1.2 = 20% increase
+    intensityAdjustment: number; // RPE adjustment (-2 to +1)
+    exerciseSubstitutions: ExerciseSubstitution[];
+    restDayRecommended: boolean;
+    deloadRecommended: boolean;
+  };
+  reasoning: string[];
+  recoveryGuidance: string;
+  nextDayRecommendations: string[];
+}
+
+export interface ExerciseSubstitution {
+  originalExerciseId: string;
+  recommendedExerciseId: string;
+  reason: string;
+}
+
+export interface RecoveryMetrics {
+  recovery: number;
+  recoveryTrend: number; // 7-day trend
+  strain: number;
+  strainTrend: number; // 7-day trend
+  sleepQuality: number;
+  sleepDuration: number; // hours
+  hrvTrend: number; // 7-day HRV trend
+  restingHRTrend: number; // 7-day RHR trend
+}
+
+/**
+ * Calculates comprehensive recovery metrics from WHOOP data
+ */
+export const calculateRecoveryMetrics = (whoopData: WhoopData): RecoveryMetrics => {
+  const recentRecovery = whoopData.recovery.slice(0, 7);
+  const recentStrain = whoopData.strain.slice(0, 7);
+  const recentSleep = whoopData.sleep.slice(0, 7);
+  
+  // Current values (most recent)
+  const currentRecovery = recentRecovery[0]?.score || 50;
+  const currentStrain = recentStrain[0]?.score || 10;
+  const currentSleep = recentSleep[0];
+  
+  // Calculate trends (7-day moving average vs previous 7 days)
+  const recoveryTrend = calculateTrend(recentRecovery.map(r => r.score));
+  const strainTrend = calculateTrend(recentStrain.map(s => s.score));
+  
+  // Sleep metrics
+  const sleepQuality = currentSleep?.efficiency || 85;
+  const sleepDuration = currentSleep?.duration ? currentSleep.duration / (1000 * 60 * 60) : 7.5;
+  
+  // HRV and RHR trends (mock calculation - would need actual HRV/RHR data)
+  const hrvTrend = calculateTrend(recentRecovery.map(r => r.score * 0.5 + 25)); // Approximation
+  const restingHRTrend = calculateTrend(recentRecovery.map(r => 70 - (r.score * 0.2))); // Approximation
+  
+  return {
+    recovery: currentRecovery,
+    recoveryTrend,
+    strain: currentStrain,
+    strainTrend,
+    sleepQuality,
+    sleepDuration,
+    hrvTrend,
+    restingHRTrend
+  };
+};
+
+/**
+ * Calculate trend from array of values (positive = improving, negative = declining)
+ */
+const calculateTrend = (values: number[]): number => {
+  if (values.length < 2) return 0;
+  
+  const firstHalf = values.slice(0, Math.floor(values.length / 2));
+  const secondHalf = values.slice(Math.floor(values.length / 2));
+  
+  const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+  
+  return firstAvg - secondAvg; // Positive means recent values are higher
+};
+
+/**
+ * Enhanced autoregulation engine using Renaissance Periodization principles
+ */
+export const performEnhancedAutoregulation = (
+  whoopData: WhoopData,
+  programGoal: ProgramGoal,
+  config: AutoregulationConfig,
+  workoutTemplate: WorkoutTemplate,
+  weekInProgram: number
+): EnhancedAutoregulationResult => {
+  const metrics = calculateRecoveryMetrics(whoopData);
+  const reasoning: string[] = [];
+  const nextDayRecommendations: string[] = [];
+  
+  // Base adjustment factors
+  let volumeMultiplier = 1.0;
+  let intensityAdjustment = 0;
+  let restDayRecommended = false;
+  let deloadRecommended = false;
+  const exerciseSubstitutions: ExerciseSubstitution[] = [];
+  
+  // Recovery-based adjustments (Renaissance Periodization approach)
+  if (metrics.recovery < 30) {
+    volumeMultiplier = 0.5;
+    intensityAdjustment = -2;
+    restDayRecommended = true;
+    reasoning.push("Very low recovery (<30%) - significant volume reduction recommended");
+    nextDayRecommendations.push("Consider complete rest or light mobility work");
+  } else if (metrics.recovery < 50) {
+    volumeMultiplier = 0.7;
+    intensityAdjustment = -1;
+    reasoning.push("Low recovery (30-50%) - moderate volume reduction");
+    nextDayRecommendations.push("Focus on technique and lighter loads");
+  } else if (metrics.recovery > 80) {
+    volumeMultiplier = 1.1;
+    intensityAdjustment = 0;
+    reasoning.push("High recovery (>80%) - slight volume increase possible");
+    nextDayRecommendations.push("Good day for intensity or volume progression");
+  }
+  
+  // Sleep-based adjustments
+  if (metrics.sleepDuration < 6) {
+    volumeMultiplier *= 0.8;
+    intensityAdjustment -= 1;
+    reasoning.push(`Insufficient sleep (${metrics.sleepDuration.toFixed(1)}h) - reducing intensity`);
+  } else if (metrics.sleepQuality < 70) {
+    volumeMultiplier *= 0.9;
+    reasoning.push(`Poor sleep quality (${metrics.sleepQuality}%) - slight volume reduction`);
+  }
+  
+  // Strain trend analysis
+  if (metrics.strainTrend > 3) {
+    volumeMultiplier *= 0.8;
+    reasoning.push("High strain trend - reducing volume to prevent overreaching");
+    nextDayRecommendations.push("Monitor recovery closely over next few days");
+  }
+  
+  // Recovery trend analysis
+  if (metrics.recoveryTrend < -10) {
+    deloadRecommended = weekInProgram > 3;
+    volumeMultiplier *= 0.6;
+    reasoning.push("Declining recovery trend - deload may be needed");
+    if (deloadRecommended) {
+      nextDayRecommendations.push("Consider implementing a deload week");
+    }
+  }
+  
+  // Exercise substitutions based on recovery state
+  if (metrics.recovery < 50 && workoutTemplate.exercises) {
+    workoutTemplate.exercises.forEach(exercise => {
+      // Check if exercise targets legs based on movement pattern
+      if (['squat', 'lunge'].includes(exercise.movementPattern) && metrics.recovery < 40) {
+        exerciseSubstitutions.push({
+          originalExerciseId: exercise.exerciseId,
+          recommendedExerciseId: `${exercise.exerciseId}_light`,
+          reason: "Low recovery - substituting with lighter leg exercise"
+        });
+      }
+      
+      // Check if exercise is compound based on movement pattern
+      if (['squat', 'hinge'].includes(exercise.movementPattern) && metrics.recovery < 35) {
+        exerciseSubstitutions.push({
+          originalExerciseId: exercise.exerciseId,
+          recommendedExerciseId: `${exercise.exerciseId}_isolation`,
+          reason: "Very low recovery - substituting compound with isolation exercise"
+        });
+      }
+    });
+  }
+  
+  // Generate recovery guidance
+  let recoveryGuidance = "";
+  if (metrics.recovery < 50) {
+    recoveryGuidance = "Focus on sleep, hydration, and stress management. Consider additional recovery modalities.";
+  } else if (metrics.recovery > 70) {
+    recoveryGuidance = "Good recovery state. Maintain current recovery practices.";
+  } else {
+    recoveryGuidance = "Moderate recovery. Ensure adequate sleep and nutrition.";
+  }
+  
+  // Add program-specific adjustments
+  if (programGoal.type === 'strength' && metrics.recovery < 60) {
+    intensityAdjustment -= 1;
+    reasoning.push("Strength program requires high CNS readiness - reducing intensity");
+  } else if (programGoal.type === 'endurance' && metrics.sleepDuration < 7) {
+    volumeMultiplier *= 0.85;
+    reasoning.push("Endurance training requires adequate recovery - reducing volume");
+  }
+  
+  const shouldAdjust = volumeMultiplier !== 1.0 || 
+                      intensityAdjustment !== 0 || 
+                      exerciseSubstitutions.length > 0 ||
+                      restDayRecommended ||
+                      deloadRecommended;
+  
+  return {
+    shouldAdjust,
+    adjustments: {
+      volumeMultiplier,
+      intensityAdjustment,
+      exerciseSubstitutions,
+      restDayRecommended,
+      deloadRecommended
+    },
+    reasoning,
+    recoveryGuidance,
+    nextDayRecommendations
+  };
+};
+
+/**
+ * Apply autoregulation adjustments to a workout template
+ */
+export const applyAutoregulationAdjustments = (
+  workoutTemplate: WorkoutTemplate,
+  adjustments: EnhancedAutoregulationResult['adjustments']
+): WorkoutTemplate => {
+  if (!workoutTemplate.exercises) return workoutTemplate;
+  
+  const adjustedExercises = workoutTemplate.exercises.map(exercise => {
+    // Apply volume adjustments
+    const adjustedSets = Math.max(1, Math.round(exercise.sets * adjustments.volumeMultiplier));
+    
+    // Apply intensity adjustments (modify RPE targets)
+    const adjustedRpe = Math.max(6, Math.min(10, exercise.targetRPE + adjustments.intensityAdjustment));
+    
+    // Check for exercise substitutions
+    const substitution = adjustments.exerciseSubstitutions.find(
+      sub => sub.originalExerciseId === exercise.exerciseId
+    );
+    
+    return {
+      ...exercise,
+      sets: adjustedSets,
+      targetRPE: adjustedRpe,
+      exerciseId: substitution?.recommendedExerciseId || exercise.exerciseId,
+      autoregulationGuidelines: substitution ? 
+        [...exercise.autoregulationGuidelines, `Auto-adjusted: ${substitution.reason}`] : 
+        exercise.autoregulationGuidelines
+    };
+  });
+  
+  return {
+    ...workoutTemplate,
+    exercises: adjustedExercises
+  };
+};
+
+/**
+ * Generate personalized workout recommendations based on WHOOP data
+ */
+export const generatePersonalizedWorkoutRecommendations = (
+  whoopData: WhoopData,
+  programGoal: GoalType
+): WhoopExerciseRecommendation[] => {
+  const metrics = calculateRecoveryMetrics(whoopData);
+  const recentActivities = whoopData.strain.slice(0, 3);
+  
+  const recommendations: WhoopExerciseRecommendation[] = [];
+  
+  // Generate recommendations based on strain data
+  // Since StrainData doesn't have activities, we'll create mock sport IDs based on strain levels
+  recentActivities.forEach(strainData => {
+    // Map strain levels to likely activities
+    let sportId = 90; // General fitness default
+    if (strainData.score > 15) {
+      sportId = 1; // High intensity - functional fitness
+    } else if (strainData.score > 10) {
+      sportId = 10; // Moderate - running
+    } else {
+      sportId = 70; // Low - yoga/recovery
+    }
+    
+    const exerciseRecommendations = mapWhoopActivityToExercises(sportId, strainData.score);
+    recommendations.push(...exerciseRecommendations);
+  });
+  
+  // Filter and prioritize based on recovery state
+  return recommendations
+    .filter(rec => {
+      // Filter based on adaptations intensity
+      const intensity = rec.adaptations.targetRPE;
+      if (metrics.recovery < 50 && intensity >= 8) return false;
+      if (metrics.recovery < 30 && intensity >= 6) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // Prioritize based on recovery state and program goal
+      if (metrics.recovery > 70) {
+        return b.confidenceScore - a.confidenceScore; // High confidence first when recovered
+      } else {
+        return a.adaptations.targetRPE - b.adaptations.targetRPE; // Low intensity first when not recovered
+      }
+    })
+    .slice(0, 10); // Limit to top 10 recommendations
+};
