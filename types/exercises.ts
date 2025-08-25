@@ -93,7 +93,7 @@ export interface WorkoutSet {
 }
 
 // Enhanced workout exercise with set tracking
-export interface TrackedWorkoutExercise extends WorkoutExercise {
+export interface TrackedWorkoutExercise extends Omit<WorkoutExercise, 'sets'> {
   sets: WorkoutSet[];
   totalSets: number;
   completedSets: number;
