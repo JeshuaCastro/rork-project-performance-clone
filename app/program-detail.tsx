@@ -131,7 +131,7 @@ export default function ProgramDetailScreen() {
     isRunning: boolean;
   } | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [timerInterval, setTimerInterval] = useState<number | null>(null);
+  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   
   // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
