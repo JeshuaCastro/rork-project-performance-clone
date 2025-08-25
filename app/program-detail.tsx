@@ -59,6 +59,11 @@ import { useWhoopStore } from '@/store/whoopStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
+import ActiveWorkoutInterface from '@/components/ActiveWorkoutInterface';
+import { exerciseDatabase } from '@/constants/exerciseDatabase';
+import { parseWorkoutToExercises } from '@/utils/exerciseParser';
+import { useWorkoutSession } from '@/store/workoutSessionStore';
+import { WorkoutExercise, TrackedWorkoutExercise, WorkoutSet, ExerciseDefinition } from '@/types/exercises';
 
 // Define workout type
 interface Workout {
@@ -1361,6 +1366,48 @@ export default function ProgramDetailScreen() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const { startWorkoutSession, cancelWorkoutSession } = useWorkoutSession();
+
+  // Build exercise definitions map once
+  const exerciseDefinitions: Record<string, ExerciseDefinition> = useMemo(() => {
+    const map: Record<string, ExerciseDefinition> = {};
+    exerciseDatabase.forEach((ex) => { map[ex.id] = ex; });
+    return map;
+  }, []);
+
+  const buildTrackedExercises = (workout: Workout): TrackedWorkoutExercise[] => {
+    const parsed: WorkoutExercise[] = parseWorkoutToExercises(workout.title, workout.description);
+    return parsed.map((we) => {
+      const totalSets = typeof we.sets === 'number' ? we.sets : 3;
+      const reps = we.reps ?? '8-12';
+      const restSec = (() => {
+        const m = (we.restTime ?? '').match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : 90;
+      })();
+      const sets: WorkoutSet[] = Array.from({ length: totalSets }).map((_, i) => ({
+        setNumber: i + 1,
+        targetReps: reps as any,
+        targetWeight: undefined,
+        targetRPE: undefined,
+        restTime: restSec,
+        completed: false,
+      }));
+      return {
+        exerciseId: we.exerciseId,
+        reps: we.reps,
+        duration: we.duration,
+        weight: we.weight,
+        restTime: we.restTime,
+        notes: we.notes,
+        targetRPE: we.targetRPE,
+        sets,
+        totalSets,
+        completedSets: 0,
+        isCompleted: false,
+      };
+    });
+  };
+
   // Handle starting a workout
   const handleStartWorkout = async (workout: Workout) => {
     // Check if this workout is already completed
@@ -1376,7 +1423,9 @@ export default function ProgramDetailScreen() {
             onPress: () => {
               // Remove from completed workouts and start again
               setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
-              startManualWorkout(workout);
+              const tracked = buildTrackedExercises(workout);
+              startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+              setShowWorkoutModal(true);
             }
           }
         ]
@@ -1395,11 +1444,12 @@ export default function ProgramDetailScreen() {
             style: "destructive",
             onPress: () => {
               // End current workout
-              handleEndWorkout();
-              // Start new workout after a short delay
+              // End current workout (legacy) and start new tracked session
               setTimeout(() => {
-                startManualWorkout(workout);
-              }, 500);
+                const tracked = buildTrackedExercises(workout);
+                startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+                setShowWorkoutModal(true);
+              }, 300);
             }
           }
         ]
@@ -1407,8 +1457,10 @@ export default function ProgramDetailScreen() {
       return;
     }
     
-    // Start manual tracking
-    startManualWorkout(workout);
+    // Start set-tracking session
+    const tracked = buildTrackedExercises(workout);
+    startWorkoutSession(`${programId || 'program'}-${Date.now()}`, tracked, programId);
+    setShowWorkoutModal(true);
   };
   
   // Handle workout card click to show details
@@ -1417,17 +1469,8 @@ export default function ProgramDetailScreen() {
     setShowWorkoutDetailModal(true);
   };
   
-  // Start manual workout tracking
-  const startManualWorkout = (workout: Workout) => {
-    const now = new Date();
-    setActiveWorkout({
-      workout,
-      startTime: now,
-      elapsedTime: 0,
-      isRunning: true
-    });
-    setShowWorkoutModal(true);
-  };
+  // Replaced manual workout tracking with set-tracking session (handled in handleStartWorkout)
+  const startManualWorkout = (_workout: Workout) => {};
   
   // Pause/resume the workout timer
   const toggleWorkoutTimer = () => {
@@ -2316,112 +2359,19 @@ export default function ProgramDetailScreen() {
           </View>
         </Modal>
         
-        {/* Active Workout Modal */}
+        {/* Active Workout Modal - Set Tracking */}
         <Modal
           visible={showWorkoutModal}
           transparent={true}
           animationType="slide"
-          onRequestClose={() => {
-            Alert.alert(
-              "Close Workout?",
-              "Do you want to end your current workout?",
-              [
-                { text: "Cancel", style: "cancel" },
-                { 
-                  text: "End Workout", 
-                  style: "destructive",
-                  onPress: handleEndWorkout
-                }
-              ]
-            );
-          }}
+          onRequestClose={() => setShowWorkoutModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">Active Workout</Text>
-                <TouchableOpacity 
-                  style={styles.closeButton}
-                  onPress={() => {
-                    Alert.alert(
-                      "Close Workout?",
-                      "Do you want to end your current workout?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        { 
-                          text: "End Workout", 
-                          style: "destructive",
-                          onPress: handleEndWorkout
-                        }
-                      ]
-                    );
-                  }}
-                >
-                  <StopCircle size={24} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
-              
-              {activeWorkout && (
-                <>
-                  <View style={styles.workoutInfo}>
-                    <Text style={styles.workoutInfoTitle} numberOfLines={1} ellipsizeMode="tail">
-                      {activeWorkout.workout.title}
-                    </Text>
-                    <Text style={styles.workoutInfoDescription} numberOfLines={3} ellipsizeMode="tail">
-                      {activeWorkout.workout.description}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.timerContainer}>
-                    <Timer size={32} color={colors.primary} />
-                    <Text style={styles.timerText}>{formatTime(activeWorkout.elapsedTime)}</Text>
-                  </View>
-                  
-                  <View style={styles.workoutControls}>
-                    <TouchableOpacity 
-                      style={[styles.workoutControlButton, styles.pauseButton]}
-                      onPress={toggleWorkoutTimer}
-                    >
-                      {activeWorkout.isRunning ? (
-                        <>
-                          <Pause size={24} color={colors.text} />
-                          <Text style={styles.controlButtonText}>Pause</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={24} color={colors.text} />
-                          <Text style={styles.controlButtonText}>Resume</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.workoutControlButton, styles.endButton]}
-                      onPress={handleEndWorkout}
-                    >
-                      <CheckCircle2 size={24} color={colors.text} />
-                      <Text style={styles.controlButtonText}>Finish</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <View style={styles.workoutStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Started</Text>
-                      <Text style={styles.statValue}>{activeWorkout.startTime.toLocaleTimeString()}</Text>
-                    </View>
-                    
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Intensity</Text>
-                      <View style={[
-                        styles.intensityBadge,
-                        { backgroundColor: getIntensityColor(activeWorkout.workout.intensity) }
-                      ]}>
-                        <Text style={styles.intensityText}>{activeWorkout.workout.intensity}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </>
-              )}
+            <View style={[styles.modalContent, { padding: 0 }]}> 
+              <ActiveWorkoutInterface
+                exerciseDefinitions={exerciseDefinitions}
+                onClose={() => setShowWorkoutModal(false)}
+              />
             </View>
           </View>
         </Modal>
