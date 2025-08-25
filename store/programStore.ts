@@ -12,6 +12,8 @@ import type {
   WorkoutTemplate,
   MesocyclePhase,
   ExerciseSelection,
+  MovementPattern,
+  VolumeProgression,
 } from '@/types/programs';
 
 interface ProgramState {
@@ -80,55 +82,55 @@ export const useProgramStore = create<ProgramState>()(
   persist(
     (set, get) => ({
       templates: [
-    {
-      id: 'muscle_gain',
-      type: 'muscle_gain',
-      title: 'Muscle Gain',
-      defaultMetricKey: 'muscle_mass',
-      description: 'Build lean muscle mass through progressive overload and optimal nutrition',
-      suggestedTimeframes: [{ value: 12, unit: 'weeks' }, { value: 16, unit: 'weeks' }],
-      exampleTargets: ['Gain 5kg muscle mass', 'Increase arm circumference by 2cm'],
-      movementPatterns: ['squat', 'hinge', 'push', 'pull', 'lunge'],
-      volumeProgression: 'linear',
-      scientificRationale: 'Progressive overload through volume landmarks (MEV→MAV→MRV) with RPE-based autoregulation. Emphasizes compound movements with optimal frequency (2-3x/week per muscle group) and hypertrophy rep ranges (6-12 reps at RPE 6-8).'
-    } as GoalTemplate,
-    {
-      id: 'fat_loss',
-      type: 'fat_loss',
-      title: 'Fat Loss',
-      defaultMetricKey: 'body_fat_pct',
-      description: 'Reduce body fat while preserving muscle mass through strategic training and nutrition',
-      suggestedTimeframes: [{ value: 8, unit: 'weeks' }, { value: 12, unit: 'weeks' }],
-      exampleTargets: ['Lose 5% body fat', 'Reduce waist circumference by 5cm'],
-      movementPatterns: ['squat', 'hinge', 'push', 'pull', 'carry'],
-      volumeProgression: 'undulating',
-      scientificRationale: 'High-frequency training with metabolic emphasis. Combines strength training for muscle preservation with conditioning work. Higher training density and shorter rest periods to maximize caloric expenditure.'
-    } as GoalTemplate,
-    {
-      id: 'endurance',
-      type: 'endurance',
-      title: 'Endurance',
-      defaultMetricKey: '5k_time',
-      description: 'Improve cardiovascular fitness and endurance performance',
-      suggestedTimeframes: [{ value: 12, unit: 'weeks' }, { value: 16, unit: 'weeks' }],
-      exampleTargets: ['Run 5K under 25 minutes', 'Complete first half marathon'],
-      movementPatterns: ['carry', 'squat', 'push', 'pull'],
-      volumeProgression: 'undulating',
-      scientificRationale: 'Polarized training: 80% easy aerobic work (RPE 3-5), 20% high-intensity intervals (RPE 8-9). Minimal strength work to support running economy and injury prevention.'
-    } as GoalTemplate,
-    {
-      id: 'strength',
-      type: 'strength',
-      title: 'Strength',
-      defaultMetricKey: 'one_rep_max_total',
-      description: 'Increase maximum strength in key compound movements',
-      suggestedTimeframes: [{ value: 12, unit: 'weeks' }, { value: 16, unit: 'weeks' }],
-      exampleTargets: ['Squat 2x bodyweight', 'Deadlift 2.5x bodyweight'],
-      movementPatterns: ['squat', 'hinge', 'push', 'pull'],
-      volumeProgression: 'block',
-      scientificRationale: 'Block periodization with accumulation→intensification→realization phases. Lower volume, higher intensity (RPE 7-9), focusing on neurological adaptations and skill acquisition in competition lifts.'
-    } as GoalTemplate
-  ],
+        {
+          id: 'muscle_gain',
+          type: 'muscle_gain' as GoalType,
+          title: 'Muscle Gain',
+          defaultMetricKey: 'muscle_mass',
+          description: 'Build lean muscle mass through progressive overload and optimal nutrition',
+          suggestedTimeframes: [{ value: 12, unit: 'weeks' as const }, { value: 16, unit: 'weeks' as const }],
+          exampleTargets: ['Gain 5kg muscle mass', 'Increase arm circumference by 2cm'],
+          movementPatterns: ['squat', 'hinge', 'push', 'pull', 'lunge'] as MovementPattern[],
+          volumeProgression: 'linear' as VolumeProgression,
+          scientificRationale: 'Progressive overload through volume landmarks (MEV→MAV→MRV) with RPE-based autoregulation. Emphasizes compound movements with optimal frequency (2-3x/week per muscle group) and hypertrophy rep ranges (6-12 reps at RPE 6-8).'
+        },
+        {
+          id: 'fat_loss',
+          type: 'fat_loss' as GoalType,
+          title: 'Fat Loss',
+          defaultMetricKey: 'body_fat_pct',
+          description: 'Reduce body fat while preserving muscle mass through strategic training and nutrition',
+          suggestedTimeframes: [{ value: 8, unit: 'weeks' as const }, { value: 12, unit: 'weeks' as const }],
+          exampleTargets: ['Lose 5% body fat', 'Reduce waist circumference by 5cm'],
+          movementPatterns: ['squat', 'hinge', 'push', 'pull', 'carry'] as MovementPattern[],
+          volumeProgression: 'undulating' as VolumeProgression,
+          scientificRationale: 'High-frequency training with metabolic emphasis. Combines strength training for muscle preservation with conditioning work. Higher training density and shorter rest periods to maximize caloric expenditure.'
+        },
+        {
+          id: 'endurance',
+          type: 'endurance' as GoalType,
+          title: 'Endurance',
+          defaultMetricKey: '5k_time',
+          description: 'Improve cardiovascular fitness and endurance performance',
+          suggestedTimeframes: [{ value: 12, unit: 'weeks' as const }, { value: 16, unit: 'weeks' as const }],
+          exampleTargets: ['Run 5K under 25 minutes', 'Complete first half marathon'],
+          movementPatterns: ['carry', 'squat', 'push', 'pull'] as MovementPattern[],
+          volumeProgression: 'undulating' as VolumeProgression,
+          scientificRationale: 'Polarized training: 80% easy aerobic work (RPE 3-5), 20% high-intensity intervals (RPE 8-9). Minimal strength work to support running economy and injury prevention.'
+        },
+        {
+          id: 'strength',
+          type: 'strength' as GoalType,
+          title: 'Strength',
+          defaultMetricKey: 'one_rep_max_total',
+          description: 'Increase maximum strength in key compound movements',
+          suggestedTimeframes: [{ value: 12, unit: 'weeks' as const }, { value: 16, unit: 'weeks' as const }],
+          exampleTargets: ['Squat 2x bodyweight', 'Deadlift 2.5x bodyweight'],
+          movementPatterns: ['squat', 'hinge', 'push', 'pull'] as MovementPattern[],
+          volumeProgression: 'block' as VolumeProgression,
+          scientificRationale: 'Block periodization with accumulation→intensification→realization phases. Lower volume, higher intensity (RPE 7-9), focusing on neurological adaptations and skill acquisition in competition lifts.'
+        }
+      ],
       goals: [],
       progress: {},
       workoutTemplates: [],
