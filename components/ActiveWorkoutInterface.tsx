@@ -60,7 +60,7 @@ export default function ActiveWorkoutInterface({
   const exerciseHistory = currentExercise ? getExerciseHistory(currentExercise.exerciseId) : [];
   const lastPerformance = exerciseHistory.length > 0 ? exerciseHistory[exerciseHistory.length - 1] : undefined;
 
-  if (!currentSession || !currentExercise || !currentSet) {
+  if (!currentSession || !currentExercise || (!currentSet && !isCardio)) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -231,7 +231,7 @@ export default function ActiveWorkoutInterface({
               <Text style={styles.cardioDescription}>{currentExerciseDefinition.description}</Text>
             ) : null}
           </View>
-        ) : (
+        ) : currentSet ? (
           <ProgressiveOverloadDisplay
             exerciseId={currentExercise.exerciseId}
             exerciseName={currentExerciseDefinition?.name || currentExercise.exerciseId}
@@ -242,7 +242,7 @@ export default function ActiveWorkoutInterface({
               rpe: currentSet.targetRPE
             }}
           />
-        )}
+        ) : null}
 
         {/* Rest Timer - strength only */}
         {!isCardio && showTimer && (
@@ -254,7 +254,7 @@ export default function ActiveWorkoutInterface({
         )}
 
         {/* Set Tracker - strength only */}
-        {!isCardio && (
+        {!isCardio && currentSet && (
           <SetTrackerComponent
             currentSet={currentSet}
             setNumber={currentSet.setNumber}
