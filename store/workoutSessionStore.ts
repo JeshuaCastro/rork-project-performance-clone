@@ -83,14 +83,33 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       userId,
       startTime: new Date().toISOString(),
       status: 'in_progress',
-      exercises: exercises.map(exercise => ({
-        ...exercise,
-        sets: exercise.sets.map((set, index) => ({
-          ...set,
-          setNumber: index + 1,
-          completed: false
-        }))
-      })),
+      exercises: exercises.map(exercise => {
+        // Check if this is a cardio exercise
+        const isCardio = exercise.duration || 
+          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('run')) ||
+          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('bike')) ||
+          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('swim')) ||
+          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('walk'));
+        
+        // For cardio exercises, create a single dummy set if no sets exist
+        let sets = exercise.sets;
+        if (isCardio && (!sets || sets.length === 0)) {
+          sets = [{
+            setNumber: 1,
+            targetReps: 1, // Dummy value for cardio
+            completed: false
+          }];
+        }
+        
+        return {
+          ...exercise,
+          sets: sets.map((set, index) => ({
+            ...set,
+            setNumber: index + 1,
+            completed: false
+          }))
+        };
+      }),
       currentExerciseIndex: 0,
       currentSetIndex: 0,
       workoutTitle,
@@ -201,10 +220,24 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     const updatedSession = { ...currentSession };
     const currentExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
     
-    // Check if there are more sets in current exercise
-    if (updatedSession.currentSetIndex < currentExercise.sets.length - 1) {
-      updatedSession.currentSetIndex += 1;
-    } else {
+    // Check if this is a cardio exercise
+    const isCardio = currentExercise.duration || 
+      (updatedSession.exerciseNameMap && updatedSession.exerciseNameMap[currentExercise.exerciseId]?.toLowerCase().includes('run')) ||
+      (updatedSession.exerciseNameMap && updatedSession.exerciseNameMap[currentExercise.exerciseId]?.toLowerCase().includes('bike')) ||
+      (updatedSession.exerciseNameMap && updatedSession.exerciseNameMap[currentExercise.exerciseId]?.toLowerCase().includes('swim')) ||
+      (updatedSession.exerciseNameMap && updatedSession.exerciseNameMap[currentExercise.exerciseId]?.toLowerCase().includes('walk'));
+    
+    // For cardio exercises, mark the single set as completed and move to next exercise
+    if (isCardio) {
+      // Mark current set as completed
+      updatedSession.exercises[updatedSession.currentExerciseIndex].sets[updatedSession.currentSetIndex].completed = true;
+      updatedSession.exercises[updatedSession.currentExerciseIndex].sets[updatedSession.currentSetIndex].endTime = new Date().toISOString();
+      
+      // Update completion status
+      const updatedExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
+      updatedExercise.completedSets = updatedExercise.sets.filter(set => set.completed).length;
+      updatedExercise.isCompleted = true; // Cardio exercises are completed after one "set"
+      
       // Move to next exercise
       if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
         updatedSession.currentExerciseIndex += 1;
@@ -213,6 +246,21 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
         // Workout completed
         completeWorkoutSession();
         return;
+      }
+    } else {
+      // For strength exercises, follow normal set progression
+      if (updatedSession.currentSetIndex < currentExercise.sets.length - 1) {
+        updatedSession.currentSetIndex += 1;
+      } else {
+        // Move to next exercise
+        if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
+          updatedSession.currentExerciseIndex += 1;
+          updatedSession.currentSetIndex = 0;
+        } else {
+          // Workout completed
+          completeWorkoutSession();
+          return;
+        }
       }
     }
 

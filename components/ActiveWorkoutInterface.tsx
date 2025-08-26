@@ -54,18 +54,45 @@ export default function ActiveWorkoutInterface({
     const primary = currentExerciseDefinition?.primaryMuscles ?? [];
     const equip = currentExerciseDefinition?.equipment ?? [];
     const hasDuration = Boolean(currentExercise?.duration);
-    return primary.includes('cardio') || equip.includes('cardio-equipment') || hasDuration;
-  }, [currentExerciseDefinition, currentExercise?.duration]);
+    const exerciseName = currentExerciseDefinition?.name?.toLowerCase() || currentExercise?.exerciseId?.toLowerCase() || '';
+    const isRunning = exerciseName.includes('run') || exerciseName.includes('jog');
+    const isCycling = exerciseName.includes('bike') || exerciseName.includes('cycle');
+    const isSwimming = exerciseName.includes('swim');
+    const isWalking = exerciseName.includes('walk');
+    const isCardioExercise = isRunning || isCycling || isSwimming || isWalking;
+    
+    return primary.includes('cardio') || equip.includes('cardio-equipment') || hasDuration || isCardioExercise;
+  }, [currentExerciseDefinition, currentExercise?.duration, currentExercise?.exerciseId]);
+  
+  const isIntervalCardio = useMemo(() => {
+    const exerciseName = currentExerciseDefinition?.name?.toLowerCase() || currentExercise?.exerciseId?.toLowerCase() || '';
+    return exerciseName.includes('sprint') || exerciseName.includes('interval') || exerciseName.includes('hiit');
+  }, [currentExerciseDefinition, currentExercise?.exerciseId]);
 
   const exerciseHistory = currentExercise ? getExerciseHistory(currentExercise.exerciseId) : [];
   const lastPerformance = exerciseHistory.length > 0 ? exerciseHistory[exerciseHistory.length - 1] : undefined;
 
-  if (!currentSession || !currentExercise || (!currentSet && !isCardio)) {
+  if (!currentSession || !currentExercise) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <AlertTriangle size={48} color={colors.danger} />
           <Text style={styles.errorText}>No active workout session</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  // For strength exercises, we need a current set
+  if (!isCardio && !currentSet) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <AlertTriangle size={48} color={colors.danger} />
+          <Text style={styles.errorText}>No active set found</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -180,13 +207,18 @@ export default function ActiveWorkoutInterface({
               style={[
                 styles.progressFill,
                 { 
-                  width: `${(workoutProgress.completedSets / workoutProgress.totalSets) * 100}%` 
+                  width: isCardio 
+                    ? `${((workoutProgress.completedExercises + (currentSession.currentExerciseIndex > 0 ? 1 : 0)) / workoutProgress.totalExercises) * 100}%`
+                    : `${(workoutProgress.completedSets / workoutProgress.totalSets) * 100}%` 
                 }
               ]} 
             />
           </View>
           <Text style={styles.progressText}>
-            {workoutProgress.completedSets}/{workoutProgress.totalSets} sets • {workoutProgress.completedExercises}/{workoutProgress.totalExercises} exercises
+            {isCardio 
+              ? `${workoutProgress.completedExercises}/${workoutProgress.totalExercises} exercises`
+              : `${workoutProgress.completedSets}/${workoutProgress.totalSets} sets • ${workoutProgress.completedExercises}/${workoutProgress.totalExercises} exercises`
+            }
           </Text>
         </View>
       )}
@@ -206,18 +238,22 @@ export default function ActiveWorkoutInterface({
         {isCardio ? (
           <View style={styles.cardioContainer} testID="cardio-panel">
             <View style={styles.cardioHeaderRow}>
-              <Text style={styles.cardioTitle}>Cardio Session</Text>
-              <Text style={styles.cardioBadge}>Endurance</Text>
+              <Text style={styles.cardioTitle}>
+                {isIntervalCardio ? 'Interval Training' : 'Cardio Session'}
+              </Text>
+              <Text style={styles.cardioBadge}>
+                {isIntervalCardio ? 'HIIT' : 'Endurance'}
+              </Text>
             </View>
             <View style={styles.cardioStatsRow}>
               <View style={styles.cardioStat}>
                 <Text style={styles.cardioStatLabel}>Elapsed</Text>
                 <Text style={styles.cardioStatValue}>{formatDuration(workoutDuration)}</Text>
               </View>
-              {currentExercise.restTime ? (
+              {currentExercise.duration ? (
                 <View style={styles.cardioStat}>
-                  <Text style={styles.cardioStatLabel}>Target</Text>
-                  <Text style={styles.cardioStatValue}>{currentExercise.restTime}</Text>
+                  <Text style={styles.cardioStatLabel}>Target Duration</Text>
+                  <Text style={styles.cardioStatValue}>{currentExercise.duration}</Text>
                 </View>
               ) : null}
               {currentExerciseDefinition?.caloriesPerMinute ? (
@@ -230,6 +266,17 @@ export default function ActiveWorkoutInterface({
             {currentExerciseDefinition?.description ? (
               <Text style={styles.cardioDescription}>{currentExerciseDefinition.description}</Text>
             ) : null}
+            
+            {/* Cardio Action Button */}
+            <TouchableOpacity 
+              style={styles.cardioCompleteButton}
+              onPress={() => {
+                // For cardio, we complete the entire exercise, not individual sets
+                moveToNextSet();
+              }}
+            >
+              <Text style={styles.cardioCompleteButtonText}>Complete Exercise</Text>
+            </TouchableOpacity>
           </View>
         ) : currentSet ? (
           <ProgressiveOverloadDisplay
@@ -290,16 +337,21 @@ export default function ActiveWorkoutInterface({
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.skipButton}
-          onPress={handleSkipSet}
-        >
-          <SkipForward size={20} color={colors.textSecondary} />
-          <Text style={styles.skipButtonText}>Skip Set</Text>
-        </TouchableOpacity>
+        {!isCardio && (
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={handleSkipSet}
+          >
+            <SkipForward size={20} color={colors.textSecondary} />
+            <Text style={styles.skipButtonText}>Skip Set</Text>
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity 
-          style={styles.completeWorkoutButton}
+          style={[
+            styles.completeWorkoutButton,
+            isCardio && styles.cardioCompleteWorkoutButton
+          ]}
           onPress={handleCompleteWorkout}
         >
           <CheckCircle2 size={20} color="#FFFFFF" />
@@ -467,6 +519,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 8,
+  },
+  cardioCompleteButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  cardioCompleteButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  cardioCompleteWorkoutButton: {
+    flex: 1,
   },
   bottomActions: {
     flexDirection: 'row',
