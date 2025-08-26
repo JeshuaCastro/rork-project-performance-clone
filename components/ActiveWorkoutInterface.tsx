@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { colors } from '@/constants/colors';
 import { X, Pause, Play, CheckCircle2, SkipForward, AlertTriangle } from 'lucide-react-native';
@@ -49,6 +49,17 @@ export default function ActiveWorkoutInterface({
     return () => clearInterval(interval);
   }, [currentSession, isWorkoutActive]);
 
+  const currentExerciseDefinition = exerciseDefinitions[currentExercise?.exerciseId ?? ''];
+  const isCardio = useMemo(() => {
+    const primary = currentExerciseDefinition?.primaryMuscles ?? [];
+    const equip = currentExerciseDefinition?.equipment ?? [];
+    const hasDuration = Boolean(currentExercise?.duration);
+    return primary.includes('cardio') || equip.includes('cardio-equipment') || hasDuration;
+  }, [currentExerciseDefinition, currentExercise?.duration]);
+
+  const exerciseHistory = currentExercise ? getExerciseHistory(currentExercise.exerciseId) : [];
+  const lastPerformance = exerciseHistory.length > 0 ? exerciseHistory[exerciseHistory.length - 1] : undefined;
+
   if (!currentSession || !currentExercise || !currentSet) {
     return (
       <SafeAreaView style={styles.container}>
@@ -62,10 +73,6 @@ export default function ActiveWorkoutInterface({
       </SafeAreaView>
     );
   }
-
-  const currentExerciseDefinition = exerciseDefinitions[currentExercise.exerciseId];
-  const exerciseHistory = getExerciseHistory(currentExercise.exerciseId);
-  const lastPerformance = exerciseHistory[exerciseHistory.length - 1];
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -195,20 +202,50 @@ export default function ActiveWorkoutInterface({
           </Text>
         </View>
 
-        {/* Progressive Overload Display */}
-        <ProgressiveOverloadDisplay
-          exerciseId={currentExercise.exerciseId}
-          exerciseName={currentExerciseDefinition?.name || currentExercise.exerciseId}
-          history={exerciseHistory}
-          currentTargets={{
-            reps: currentSet.targetReps,
-            weight: currentSet.targetWeight,
-            rpe: currentSet.targetRPE
-          }}
-        />
+        {/* Strength: Progressive Overload Display; Cardio: Cardio panel */}
+        {isCardio ? (
+          <View style={styles.cardioContainer} testID="cardio-panel">
+            <View style={styles.cardioHeaderRow}>
+              <Text style={styles.cardioTitle}>Cardio Session</Text>
+              <Text style={styles.cardioBadge}>Endurance</Text>
+            </View>
+            <View style={styles.cardioStatsRow}>
+              <View style={styles.cardioStat}>
+                <Text style={styles.cardioStatLabel}>Elapsed</Text>
+                <Text style={styles.cardioStatValue}>{formatDuration(workoutDuration)}</Text>
+              </View>
+              {currentExercise.restTime ? (
+                <View style={styles.cardioStat}>
+                  <Text style={styles.cardioStatLabel}>Target</Text>
+                  <Text style={styles.cardioStatValue}>{currentExercise.restTime}</Text>
+                </View>
+              ) : null}
+              {currentExerciseDefinition?.caloriesPerMinute ? (
+                <View style={styles.cardioStat}>
+                  <Text style={styles.cardioStatLabel}>Cal/min</Text>
+                  <Text style={styles.cardioStatValue}>{currentExerciseDefinition.caloriesPerMinute}</Text>
+                </View>
+              ) : null}
+            </View>
+            {currentExerciseDefinition?.description ? (
+              <Text style={styles.cardioDescription}>{currentExerciseDefinition.description}</Text>
+            ) : null}
+          </View>
+        ) : (
+          <ProgressiveOverloadDisplay
+            exerciseId={currentExercise.exerciseId}
+            exerciseName={currentExerciseDefinition?.name || currentExercise.exerciseId}
+            history={exerciseHistory}
+            currentTargets={{
+              reps: currentSet.targetReps,
+              weight: currentSet.targetWeight,
+              rpe: currentSet.targetRPE
+            }}
+          />
+        )}
 
-        {/* Rest Timer */}
-        {showTimer && (
+        {/* Rest Timer - strength only */}
+        {!isCardio && showTimer && (
           <WorkoutTimer
             defaultRestTime={parseInt(currentExercise.restTime?.replace(/\D/g, '') || '90')}
             onTimerComplete={() => setShowTimer(false)}
@@ -216,18 +253,20 @@ export default function ActiveWorkoutInterface({
           />
         )}
 
-        {/* Set Tracker */}
-        <SetTrackerComponent
-          currentSet={currentSet}
-          setNumber={currentSet.setNumber}
-          exerciseId={currentExercise.exerciseId}
-          previousPerformance={lastPerformance ? {
-            weight: lastPerformance.sets[currentSet.setNumber - 1]?.actualWeight,
-            reps: lastPerformance.sets[currentSet.setNumber - 1]?.actualReps,
-            rpe: lastPerformance.sets[currentSet.setNumber - 1]?.actualRPE
-          } : undefined}
-          onSetComplete={handleSetComplete}
-        />
+        {/* Set Tracker - strength only */}
+        {!isCardio && (
+          <SetTrackerComponent
+            currentSet={currentSet}
+            setNumber={currentSet.setNumber}
+            exerciseId={currentExercise.exerciseId}
+            previousPerformance={lastPerformance ? {
+              weight: lastPerformance.sets[currentSet.setNumber - 1]?.actualWeight,
+              reps: lastPerformance.sets[currentSet.setNumber - 1]?.actualReps,
+              rpe: lastPerformance.sets[currentSet.setNumber - 1]?.actualRPE
+            } : undefined}
+            onSetComplete={handleSetComplete}
+          />
+        )}
 
         {/* Exercise Instructions */}
         {currentExerciseDefinition && (
@@ -379,6 +418,55 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 18,
     marginBottom: 4,
+  },
+  cardioContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  cardioHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  cardioTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.text,
+  },
+  cardioBadge: {
+    fontSize: 12,
+    color: colors.primary,
+    backgroundColor: 'rgba(93, 95, 239, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  cardioStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  cardioStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  cardioStatLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  cardioStatValue: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.text,
+  },
+  cardioDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 8,
   },
   bottomActions: {
     flexDirection: 'row',
