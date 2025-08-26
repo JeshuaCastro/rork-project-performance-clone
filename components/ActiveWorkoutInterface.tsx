@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { colors } from '@/constants/colors';
 import { X, Pause, Play, CheckCircle2, SkipForward, AlertTriangle } from 'lucide-react-native';
@@ -25,7 +25,6 @@ export default function ActiveWorkoutInterface({
     isWorkoutActive,
     isWorkoutPaused,
     completeCurrentSet,
-    completeCardioExercise,
     pauseWorkoutSession,
     resumeWorkoutSession,
     completeWorkoutSession,
@@ -50,30 +49,7 @@ export default function ActiveWorkoutInterface({
     return () => clearInterval(interval);
   }, [currentSession, isWorkoutActive]);
 
-  const currentExerciseDefinition = exerciseDefinitions[currentExercise?.exerciseId ?? ''];
-  const isCardio = useMemo(() => {
-    const primary = currentExerciseDefinition?.primaryMuscles ?? [];
-    const equip = currentExerciseDefinition?.equipment ?? [];
-    const hasDuration = Boolean(currentExercise?.duration);
-    const exerciseName = currentExerciseDefinition?.name?.toLowerCase() || currentExercise?.exerciseId?.toLowerCase() || '';
-    const isRunning = exerciseName.includes('run') || exerciseName.includes('jog');
-    const isCycling = exerciseName.includes('bike') || exerciseName.includes('cycle');
-    const isSwimming = exerciseName.includes('swim');
-    const isWalking = exerciseName.includes('walk');
-    const isCardioExercise = isRunning || isCycling || isSwimming || isWalking;
-    
-    return primary.includes('cardio') || equip.includes('cardio-equipment') || hasDuration || isCardioExercise;
-  }, [currentExerciseDefinition, currentExercise?.duration, currentExercise?.exerciseId]);
-  
-  const isIntervalCardio = useMemo(() => {
-    const exerciseName = currentExerciseDefinition?.name?.toLowerCase() || currentExercise?.exerciseId?.toLowerCase() || '';
-    return exerciseName.includes('sprint') || exerciseName.includes('interval') || exerciseName.includes('hiit');
-  }, [currentExerciseDefinition, currentExercise?.exerciseId]);
-
-  const exerciseHistory = currentExercise ? getExerciseHistory(currentExercise.exerciseId) : [];
-  const lastPerformance = exerciseHistory.length > 0 ? exerciseHistory[exerciseHistory.length - 1] : undefined;
-
-  if (!currentSession || !currentExercise) {
+  if (!currentSession || !currentExercise || !currentSet) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -86,21 +62,10 @@ export default function ActiveWorkoutInterface({
       </SafeAreaView>
     );
   }
-  
-  // For strength exercises, we need a current set
-  if (!isCardio && !currentSet) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <AlertTriangle size={48} color={colors.danger} />
-          <Text style={styles.errorText}>No active set found</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+
+  const currentExerciseDefinition = exerciseDefinitions[currentExercise.exerciseId];
+  const exerciseHistory = getExerciseHistory(currentExercise.exerciseId);
+  const lastPerformance = exerciseHistory[exerciseHistory.length - 1];
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -208,18 +173,13 @@ export default function ActiveWorkoutInterface({
               style={[
                 styles.progressFill,
                 { 
-                  width: isCardio 
-                    ? `${((workoutProgress.completedExercises + (currentSession.currentExerciseIndex > 0 ? 1 : 0)) / workoutProgress.totalExercises) * 100}%`
-                    : `${(workoutProgress.completedSets / workoutProgress.totalSets) * 100}%` 
+                  width: `${(workoutProgress.completedSets / workoutProgress.totalSets) * 100}%` 
                 }
               ]} 
             />
           </View>
           <Text style={styles.progressText}>
-            {isCardio 
-              ? `${workoutProgress.completedExercises}/${workoutProgress.totalExercises} exercises`
-              : `${workoutProgress.completedSets}/${workoutProgress.totalSets} sets • ${workoutProgress.completedExercises}/${workoutProgress.totalExercises} exercises`
-            }
+            {workoutProgress.completedSets}/{workoutProgress.totalSets} sets • {workoutProgress.completedExercises}/{workoutProgress.totalExercises} exercises
           </Text>
         </View>
       )}
@@ -235,65 +195,20 @@ export default function ActiveWorkoutInterface({
           </Text>
         </View>
 
-        {/* Strength: Progressive Overload Display; Cardio: Cardio panel */}
-        {isCardio ? (
-          <View style={styles.cardioContainer} testID="cardio-panel">
-            <View style={styles.cardioHeaderRow}>
-              <Text style={styles.cardioTitle}>
-                {isIntervalCardio ? 'Interval Training' : 'Cardio Session'}
-              </Text>
-              <Text style={styles.cardioBadge}>
-                {isIntervalCardio ? 'HIIT' : 'Endurance'}
-              </Text>
-            </View>
-            <View style={styles.cardioStatsRow}>
-              <View style={styles.cardioStat}>
-                <Text style={styles.cardioStatLabel}>Elapsed</Text>
-                <Text style={styles.cardioStatValue}>{formatDuration(workoutDuration)}</Text>
-              </View>
-              {currentExercise.duration ? (
-                <View style={styles.cardioStat}>
-                  <Text style={styles.cardioStatLabel}>Target Duration</Text>
-                  <Text style={styles.cardioStatValue}>{currentExercise.duration}</Text>
-                </View>
-              ) : null}
-              {currentExerciseDefinition?.caloriesPerMinute ? (
-                <View style={styles.cardioStat}>
-                  <Text style={styles.cardioStatLabel}>Cal/min</Text>
-                  <Text style={styles.cardioStatValue}>{currentExerciseDefinition.caloriesPerMinute}</Text>
-                </View>
-              ) : null}
-            </View>
-            {currentExerciseDefinition?.description ? (
-              <Text style={styles.cardioDescription}>{currentExerciseDefinition.description}</Text>
-            ) : null}
-            
-            {/* Cardio Action Button */}
-            <TouchableOpacity 
-              style={styles.cardioCompleteButton}
-              onPress={() => {
-                // For cardio, we complete the entire exercise with cardio-specific logic
-                completeCardioExercise(workoutDuration, undefined, undefined, undefined);
-              }}
-            >
-              <Text style={styles.cardioCompleteButtonText}>Complete Exercise</Text>
-            </TouchableOpacity>
-          </View>
-        ) : currentSet ? (
-          <ProgressiveOverloadDisplay
-            exerciseId={currentExercise.exerciseId}
-            exerciseName={currentExerciseDefinition?.name || currentExercise.exerciseId}
-            history={exerciseHistory}
-            currentTargets={{
-              reps: currentSet.targetReps,
-              weight: currentSet.targetWeight,
-              rpe: currentSet.targetRPE
-            }}
-          />
-        ) : null}
+        {/* Progressive Overload Display */}
+        <ProgressiveOverloadDisplay
+          exerciseId={currentExercise.exerciseId}
+          exerciseName={currentExerciseDefinition?.name || currentExercise.exerciseId}
+          history={exerciseHistory}
+          currentTargets={{
+            reps: currentSet.targetReps,
+            weight: currentSet.targetWeight,
+            rpe: currentSet.targetRPE
+          }}
+        />
 
-        {/* Rest Timer - strength only */}
-        {!isCardio && showTimer && (
+        {/* Rest Timer */}
+        {showTimer && (
           <WorkoutTimer
             defaultRestTime={parseInt(currentExercise.restTime?.replace(/\D/g, '') || '90')}
             onTimerComplete={() => setShowTimer(false)}
@@ -301,20 +216,18 @@ export default function ActiveWorkoutInterface({
           />
         )}
 
-        {/* Set Tracker - strength only */}
-        {!isCardio && currentSet && (
-          <SetTrackerComponent
-            currentSet={currentSet}
-            setNumber={currentSet.setNumber}
-            exerciseId={currentExercise.exerciseId}
-            previousPerformance={lastPerformance ? {
-              weight: lastPerformance.sets[currentSet.setNumber - 1]?.actualWeight,
-              reps: lastPerformance.sets[currentSet.setNumber - 1]?.actualReps,
-              rpe: lastPerformance.sets[currentSet.setNumber - 1]?.actualRPE
-            } : undefined}
-            onSetComplete={handleSetComplete}
-          />
-        )}
+        {/* Set Tracker */}
+        <SetTrackerComponent
+          currentSet={currentSet}
+          setNumber={currentSet.setNumber}
+          exerciseId={currentExercise.exerciseId}
+          previousPerformance={lastPerformance ? {
+            weight: lastPerformance.sets[currentSet.setNumber - 1]?.actualWeight,
+            reps: lastPerformance.sets[currentSet.setNumber - 1]?.actualReps,
+            rpe: lastPerformance.sets[currentSet.setNumber - 1]?.actualRPE
+          } : undefined}
+          onSetComplete={handleSetComplete}
+        />
 
         {/* Exercise Instructions */}
         {currentExerciseDefinition && (
@@ -338,21 +251,16 @@ export default function ActiveWorkoutInterface({
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        {!isCardio && (
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={handleSkipSet}
-          >
-            <SkipForward size={20} color={colors.textSecondary} />
-            <Text style={styles.skipButtonText}>Skip Set</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={styles.skipButton}
+          onPress={handleSkipSet}
+        >
+          <SkipForward size={20} color={colors.textSecondary} />
+          <Text style={styles.skipButtonText}>Skip Set</Text>
+        </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[
-            styles.completeWorkoutButton,
-            isCardio && styles.cardioCompleteWorkoutButton
-          ]}
+          style={styles.completeWorkoutButton}
           onPress={handleCompleteWorkout}
         >
           <CheckCircle2 size={20} color="#FFFFFF" />
@@ -471,70 +379,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 18,
     marginBottom: 4,
-  },
-  cardioContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  cardioHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  cardioTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: colors.text,
-  },
-  cardioBadge: {
-    fontSize: 12,
-    color: colors.primary,
-    backgroundColor: 'rgba(93, 95, 239, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  cardioStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  cardioStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  cardioStatLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  cardioStatValue: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: colors.text,
-  },
-  cardioDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-  cardioCompleteButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  cardioCompleteButtonText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-  },
-  cardioCompleteWorkoutButton: {
-    flex: 1,
   },
   bottomActions: {
     flexDirection: 'row',

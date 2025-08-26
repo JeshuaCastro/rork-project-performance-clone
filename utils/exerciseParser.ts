@@ -120,28 +120,12 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
     } else if (combined.includes('bodyweight') && combined.includes('strength')) {
       matchedExercises = ['push-up', 'squat', 'lunge', 'plank'];
     } else if (combined.includes('running') || combined.includes('run') || combined.includes('jog')) {
-      // Running specificity
-      if (combined.includes('tempo')) {
-        matchedExercises = ['tempo-run'];
-      } else if (combined.includes('interval') || combined.includes('repeats') || combined.includes('speed work')) {
-        matchedExercises = ['interval-training'];
-      } else if (combined.includes('long')) {
-        matchedExercises = ['long-run'];
-      } else if (combined.includes('easy') || combined.includes('recovery')) {
-        matchedExercises = ['easy-run'];
-      } else {
-        matchedExercises = ['easy-run'];
-      }
+      // For cardio workouts, we'll use a generic cardio exercise
+      matchedExercises = ['jumping-jacks']; // Placeholder for running
     } else if (combined.includes('cycling') || combined.includes('bike')) {
-      // Cycling specificity
-      if (combined.includes('interval')) {
-        matchedExercises = ['cycling-intervals'];
-      } else {
-        matchedExercises = ['steady-state-cycling'];
-      }
+      matchedExercises = ['jumping-jacks']; // Placeholder for cycling
     } else if (combined.includes('swimming') || combined.includes('swim')) {
-      // No swim in DB; default to cardio placeholder
-      matchedExercises = ['jumping-jacks'];
+      matchedExercises = ['jumping-jacks']; // Placeholder for swimming
     }
   }
 
@@ -153,12 +137,8 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
       matchedExercises = ['bench-press', 'dumbbell-row', 'overhead-press'];
     } else if (combined.includes('lower') || combined.includes('leg') || combined.includes('glute') || combined.includes('quad') || combined.includes('hamstring')) {
       matchedExercises = ['squat', 'deadlift', 'lunge'];
-    } else if (combined.includes('cardio') || combined.includes('endurance') || combined.includes('aerobic')) {
-      matchedExercises = ['easy-run'];
-    } else if (combined.includes('run') || combined.includes('jog')) {
-      matchedExercises = ['easy-run'];
-    } else if (combined.includes('cycle') || combined.includes('bike')) {
-      matchedExercises = ['steady-state-cycling'];
+    } else if (combined.includes('cardio') || combined.includes('run') || combined.includes('endurance') || combined.includes('aerobic')) {
+      matchedExercises = ['jumping-jacks', 'mountain-climbers'];
     } else if (combined.includes('core') || combined.includes('ab') || combined.includes('stability')) {
       matchedExercises = ['plank'];
     } else if (combined.includes('strength') || combined.includes('resistance') || combined.includes('weight')) {
