@@ -25,6 +25,7 @@ export default function ActiveWorkoutInterface({
     isWorkoutActive,
     isWorkoutPaused,
     completeCurrentSet,
+    completeCardioExercise,
     pauseWorkoutSession,
     resumeWorkoutSession,
     completeWorkoutSession,
@@ -271,8 +272,8 @@ export default function ActiveWorkoutInterface({
             <TouchableOpacity 
               style={styles.cardioCompleteButton}
               onPress={() => {
-                // For cardio, we complete the entire exercise, not individual sets
-                moveToNextSet();
+                // For cardio, we complete the entire exercise with cardio-specific logic
+                completeCardioExercise(workoutDuration, undefined, undefined, undefined);
               }}
             >
               <Text style={styles.cardioCompleteButtonText}>Complete Exercise</Text>

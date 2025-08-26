@@ -146,7 +146,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     persistSession(updatedSession);
   }, [currentSession]);
 
-  const updateProgressiveOverloadData = (completedSession: WorkoutSession) => {
+  const updateProgressiveOverloadData = useCallback((completedSession: WorkoutSession) => {
     const updatedData = { ...progressiveOverloadData };
 
     completedSession.exercises.forEach(exercise => {
@@ -192,30 +192,62 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
 
     setProgressiveOverloadData(updatedData);
     persistProgressiveOverloadData(updatedData);
-  };
+  }, [progressiveOverloadData]);
 
-  const memoizedFunctions = useMemo(() => ({
-    startWorkoutSession,
-    updateCurrentSet
-  }), [startWorkoutSession, updateCurrentSet]);
-
-  const completeCurrentSet = useCallback((actualReps: number, actualWeight?: number, actualRPE?: number, notes?: string) => {
+  const completeWorkoutSession = useCallback(() => {
     if (!currentSession) return;
 
-    const setData: Partial<WorkoutSet> = {
-      actualReps,
-      actualWeight,
-      actualRPE,
-      notes,
-      completed: true,
-      endTime: new Date().toISOString()
+    // Mark all exercises as completed if they aren't already
+    const updatedExercises = currentSession.exercises.map(exercise => {
+      if (!exercise.isCompleted) {
+        // Check if this is a cardio exercise
+        const isCardio = exercise.duration || 
+          (currentSession.exerciseNameMap && currentSession.exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('run')) ||
+          (currentSession.exerciseNameMap && currentSession.exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('bike')) ||
+          (currentSession.exerciseNameMap && currentSession.exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('swim')) ||
+          (currentSession.exerciseNameMap && currentSession.exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('walk'));
+        
+        if (isCardio) {
+          // For cardio, mark as completed if any time has passed
+          return {
+            ...exercise,
+            isCompleted: true,
+            endTime: new Date().toISOString(),
+            completedSets: exercise.sets?.length || 1,
+            totalSets: exercise.sets?.length || 1,
+            sets: exercise.sets?.map(set => ({ ...set, completed: true, endTime: new Date().toISOString() })) || []
+          };
+        } else {
+          // For strength, only mark completed if all sets are actually done
+          const completedSets = exercise.sets?.filter(set => set.completed).length || 0;
+          const totalSets = exercise.sets?.length || 0;
+          return {
+            ...exercise,
+            isCompleted: completedSets === totalSets && totalSets > 0,
+            endTime: completedSets === totalSets ? new Date().toISOString() : exercise.endTime
+          };
+        }
+      }
+      return exercise;
+    });
+
+    const completedSession: WorkoutSession = {
+      ...currentSession,
+      exercises: updatedExercises,
+      status: 'completed',
+      endTime: new Date().toISOString(),
+      totalDuration: Math.floor((new Date().getTime() - new Date(currentSession.startTime).getTime()) / 1000)
     };
 
-    memoizedFunctions.updateCurrentSet(setData);
-    
-    // Move to next set or exercise
-    moveToNextSet();
-  }, [currentSession, memoizedFunctions]);
+    // Update progressive overload data
+    updateProgressiveOverloadData(completedSession);
+
+    // Clear current session
+    setCurrentSession(null);
+    persistSession(null);
+
+    return completedSession;
+  }, [currentSession, updateProgressiveOverloadData]);
 
   const moveToNextSet = useCallback(() => {
     if (!currentSession) return;
@@ -256,6 +288,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       updatedExercise.completedSets = updatedExercise.sets.filter(set => set.completed).length;
       updatedExercise.totalSets = updatedExercise.totalSets ?? updatedExercise.sets.length ?? 1;
       updatedExercise.isCompleted = true;
+      updatedExercise.endTime = new Date().toISOString();
       
       // Move to next exercise
       if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
@@ -271,6 +304,13 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       if (updatedSession.currentSetIndex < currentExercise.sets.length - 1) {
         updatedSession.currentSetIndex += 1;
       } else {
+        // Mark exercise as completed when all sets are done
+        const exerciseCompleted = currentExercise.sets.every(set => set.completed);
+        if (exerciseCompleted) {
+          updatedSession.exercises[updatedSession.currentExerciseIndex].isCompleted = true;
+          updatedSession.exercises[updatedSession.currentExerciseIndex].endTime = new Date().toISOString();
+        }
+        
         // Move to next exercise
         if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
           updatedSession.currentExerciseIndex += 1;
@@ -285,27 +325,65 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
 
     setCurrentSession(updatedSession);
     persistSession(updatedSession);
-  }, [currentSession]);
+  }, [currentSession, completeWorkoutSession]);
 
-  const completeWorkoutSession = useCallback(() => {
+  const completeCardioExercise = useCallback((duration?: number, distance?: number, calories?: number, notes?: string) => {
     if (!currentSession) return;
 
-    const completedSession: WorkoutSession = {
-      ...currentSession,
-      status: 'completed',
-      endTime: new Date().toISOString(),
-      totalDuration: Math.floor((new Date().getTime() - new Date(currentSession.startTime).getTime()) / 1000)
+    const updatedSession = { ...currentSession };
+    const currentExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
+    
+    // Mark the cardio exercise as completed
+    currentExercise.isCompleted = true;
+    currentExercise.endTime = new Date().toISOString();
+    currentExercise.exerciseNotes = notes;
+    
+    // For cardio, we mark the single dummy set as completed with cardio-specific data
+    if (currentExercise.sets && currentExercise.sets.length > 0) {
+      currentExercise.sets[0].completed = true;
+      currentExercise.sets[0].endTime = new Date().toISOString();
+      currentExercise.sets[0].actualReps = duration || 1; // Store duration in reps field for cardio
+      currentExercise.sets[0].notes = notes;
+      currentExercise.completedSets = 1;
+      currentExercise.totalSets = 1;
+    }
+    
+    // Move to next exercise or complete workout
+    if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
+      updatedSession.currentExerciseIndex += 1;
+      updatedSession.currentSetIndex = 0;
+    } else {
+      // All exercises completed
+      completeWorkoutSession();
+      return;
+    }
+
+    setCurrentSession(updatedSession);
+    persistSession(updatedSession);
+  }, [currentSession, completeWorkoutSession]);
+
+  const memoizedFunctions = useMemo(() => ({
+    startWorkoutSession,
+    updateCurrentSet
+  }), [startWorkoutSession, updateCurrentSet]);
+
+  const completeCurrentSet = useCallback((actualReps: number, actualWeight?: number, actualRPE?: number, notes?: string) => {
+    if (!currentSession) return;
+
+    const setData: Partial<WorkoutSet> = {
+      actualReps,
+      actualWeight,
+      actualRPE,
+      notes,
+      completed: true,
+      endTime: new Date().toISOString()
     };
 
-    // Update progressive overload data
-    updateProgressiveOverloadData(completedSession);
-
-    // Clear current session
-    setCurrentSession(null);
-    persistSession(null);
-
-    return completedSession;
-  }, [currentSession, progressiveOverloadData]);
+    memoizedFunctions.updateCurrentSet(setData);
+    
+    // Move to next set or exercise
+    moveToNextSet();
+  }, [currentSession, memoizedFunctions, moveToNextSet]);
 
   const pauseWorkoutSession = useCallback(() => {
     if (!currentSession) return;
@@ -381,6 +459,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     // Set tracking
     updateCurrentSet: memoizedFunctions.updateCurrentSet,
     completeCurrentSet,
+    completeCardioExercise,
     moveToNextSet,
     
     // Progressive overload
@@ -408,6 +487,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     resumeWorkoutSession,
     cancelWorkoutSession,
     completeCurrentSet,
+    completeCardioExercise,
     moveToNextSet,
     getExerciseHistory,
     getRecommendedWeight
