@@ -85,29 +85,31 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       status: 'in_progress',
       exercises: exercises.map(exercise => {
         // Check if this is a cardio exercise
-        const isCardio = exercise.duration || 
-          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('run')) ||
-          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('bike')) ||
-          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('swim')) ||
-          (exerciseNameMap && exerciseNameMap[exercise.exerciseId]?.toLowerCase().includes('walk'));
+        const exerciseName = (exerciseNameMap?.[exercise.exerciseId]?.toLowerCase() ?? '');
+        const isCardio = Boolean(exercise.duration) || exerciseName.includes('run') || exerciseName.includes('bike') || exerciseName.includes('swim') || exerciseName.includes('walk') || exerciseName.includes('jog');
         
         // For cardio exercises, create a single dummy set if no sets exist
         let sets = exercise.sets;
         if (isCardio && (!sets || sets.length === 0)) {
           sets = [{
             setNumber: 1,
-            targetReps: 1, // Dummy value for cardio
+            targetReps: 1,
             completed: false
           }];
         }
         
+        const normalizedSets = (sets ?? []).map((set, index) => ({
+          ...set,
+          setNumber: index + 1,
+          completed: false
+        }));
+        
         return {
           ...exercise,
-          sets: sets.map((set, index) => ({
-            ...set,
-            setNumber: index + 1,
-            completed: false
-          }))
+          sets: normalizedSets,
+          totalSets: normalizedSets.length,
+          completedSets: 0,
+          isCompleted: false
         };
       }),
       currentExerciseIndex: 0,
@@ -137,6 +139,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     // Update completion status
     const updatedExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
     updatedExercise.completedSets = updatedExercise.sets.filter(set => set.completed).length;
+    updatedExercise.totalSets = updatedExercise.totalSets ?? updatedExercise.sets.length;
     updatedExercise.isCompleted = updatedExercise.completedSets === updatedExercise.totalSets;
 
     setCurrentSession(updatedSession);
@@ -165,7 +168,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       const totalVolume = completedSets.reduce((sum, set) => {
         return sum + (set.actualWeight || 0) * (set.actualReps || 0);
       }, 0);
-      const averageRPE = completedSets.reduce((sum, set) => sum + (set.actualRPE || 0), 0) / completedSets.length;
+      const averageRPE = completedSets.length > 0 ? completedSets.reduce((sum, set) => sum + (set.actualRPE || 0), 0) / completedSets.length : 0;
 
       const performance: WorkoutPerformance = {
         date: completedSession.startTime.split('T')[0],
@@ -220,6 +223,21 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     const updatedSession = { ...currentSession };
     const currentExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
     
+    // Edge case: no sets defined for strength exercise — mark exercise complete and advance
+    if (!currentExercise.sets || currentExercise.sets.length === 0) {
+      updatedSession.exercises[updatedSession.currentExerciseIndex].isCompleted = true;
+      if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
+        updatedSession.currentExerciseIndex += 1;
+        updatedSession.currentSetIndex = 0;
+      } else {
+        completeWorkoutSession();
+        return;
+      }
+      setCurrentSession(updatedSession);
+      persistSession(updatedSession);
+      return;
+    }
+    
     // Check if this is a cardio exercise
     const isCardio = currentExercise.duration || 
       (updatedSession.exerciseNameMap && updatedSession.exerciseNameMap[currentExercise.exerciseId]?.toLowerCase().includes('run')) ||
@@ -236,7 +254,8 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       // Update completion status
       const updatedExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
       updatedExercise.completedSets = updatedExercise.sets.filter(set => set.completed).length;
-      updatedExercise.isCompleted = true; // Cardio exercises are completed after one "set"
+      updatedExercise.totalSets = updatedExercise.totalSets ?? updatedExercise.sets.length ?? 1;
+      updatedExercise.isCompleted = true;
       
       // Move to next exercise
       if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
@@ -376,8 +395,8 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     workoutProgress: currentSession ? {
       completedExercises: currentSession.exercises.filter(ex => ex.isCompleted).length,
       totalExercises: currentSession.exercises.length,
-      completedSets: currentSession.exercises.reduce((sum, ex) => sum + ex.completedSets, 0),
-      totalSets: currentSession.exercises.reduce((sum, ex) => sum + ex.totalSets, 0)
+      completedSets: currentSession.exercises.reduce((sum, ex) => sum + (ex.completedSets ?? 0), 0),
+      totalSets: currentSession.exercises.reduce((sum, ex) => sum + (ex.totalSets ?? (ex.sets?.length ?? 0)), 0)
     } : null
   }), [
     currentSession,
