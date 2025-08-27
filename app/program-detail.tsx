@@ -1463,7 +1463,48 @@ export default function ProgramDetailScreen() {
     return { exercises, nameMap };
   };
 
-  // Handle starting a workout
+  // Detect workout type based on content and exercises
+  const detectWorkoutType = (workout: Workout): 'strength' | 'cardio' | 'hybrid' => {
+    const title = workout.title.toLowerCase();
+    const description = workout.description.toLowerCase();
+    
+    // Check for explicit cardio keywords
+    const cardioKeywords = ['run', 'cardio', 'hiit', 'bike', 'cycling', 'swim', 'rowing', 'elliptical', 'treadmill', 'zone 2', 'tempo', 'interval', 'steady state'];
+    const strengthKeywords = ['squat', 'deadlift', 'bench', 'press', 'curl', 'row', 'pull', 'push', 'lift', 'strength', 'weight', 'dumbbell', 'barbell'];
+    
+    const hasCardioKeywords = cardioKeywords.some(keyword => title.includes(keyword) || description.includes(keyword));
+    const hasStrengthKeywords = strengthKeywords.some(keyword => title.includes(keyword) || description.includes(keyword));
+    
+    // Check exercises if available
+    let hasCardioExercises = false;
+    let hasStrengthExercises = false;
+    
+    if (workout.exercises && workout.exercises.length > 0) {
+      workout.exercises.forEach(exercise => {
+        const exerciseName = exercise.name?.toLowerCase() || '';
+        if (cardioKeywords.some(keyword => exerciseName.includes(keyword))) {
+          hasCardioExercises = true;
+        }
+        if (strengthKeywords.some(keyword => exerciseName.includes(keyword)) || exercise.sets || exercise.reps) {
+          hasStrengthExercises = true;
+        }
+      });
+    }
+    
+    // Determine workout type
+    const isCardio = hasCardioKeywords || hasCardioExercises;
+    const isStrength = hasStrengthKeywords || hasStrengthExercises;
+    
+    if (isCardio && isStrength) {
+      return 'hybrid';
+    } else if (isCardio) {
+      return 'cardio';
+    } else {
+      return 'strength'; // Default to strength for structured workouts
+    }
+  };
+
+  // Handle starting a workout with type detection
   const handleStartWorkout = async (workout: Workout) => {
     // Check if this workout is already completed
     const workoutKey = `${workout.day}-${workout.title}`;
@@ -1478,15 +1519,7 @@ export default function ProgramDetailScreen() {
             onPress: () => {
               // Remove from completed workouts and start again
               setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
-              const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
-              startWorkoutSession(
-                `${programId || 'program'}-${Date.now()}`,
-                tracked,
-                programId,
-                workout.title,
-                nameMap
-              );
-              setShowWorkoutModal(true);
+              startWorkoutWithTypeDetection(workout);
             }
           }
         ]
@@ -1504,18 +1537,9 @@ export default function ProgramDetailScreen() {
             text: "End Current & Start New", 
             style: "destructive",
             onPress: () => {
-              // End current workout
-              // End current workout (legacy) and start new tracked session
+              // End current workout and start new one
               setTimeout(() => {
-                const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
-                startWorkoutSession(
-                  `${programId || 'program'}-${Date.now()}`,
-                  tracked,
-                  programId,
-                  workout.title,
-                  nameMap
-                );
-                setShowWorkoutModal(true);
+                startWorkoutWithTypeDetection(workout);
               }, 300);
             }
           }
@@ -1524,13 +1548,52 @@ export default function ProgramDetailScreen() {
       return;
     }
     
-    // Start set-tracking session with planned exercises
+    startWorkoutWithTypeDetection(workout);
+  };
+
+  // Start workout with appropriate interface based on type
+  const startWorkoutWithTypeDetection = (workout: Workout) => {
+    const workoutType = detectWorkoutType(workout);
+    
+    console.log('=== WORKOUT TYPE DETECTION ===');
+    console.log('Workout:', workout.title);
+    console.log('Detected type:', workoutType);
+    console.log('Original type:', workout.type);
+    console.log('=== END DETECTION ===');
+    
+    if (workoutType === 'cardio') {
+      // For cardio workouts, start a simple timer-based interface
+      startCardioWorkout(workout);
+    } else if (workoutType === 'strength' || workoutType === 'hybrid') {
+      // For strength and hybrid workouts, use the progressive overload interface
+      startStrengthWorkout(workout);
+    } else {
+      // Fallback to strength interface
+      startStrengthWorkout(workout);
+    }
+  };
+
+  // Start cardio workout with timer-based interface
+  const startCardioWorkout = (workout: Workout) => {
+    // For cardio workouts, use the legacy timer interface
+    setActiveWorkout({
+      workout,
+      startTime: new Date(),
+      elapsedTime: 0,
+      isRunning: true
+    });
+    setShowWorkoutModal(true);
+  };
+
+  // Start strength workout with progressive overload interface
+  const startStrengthWorkout = (workout: Workout) => {
+    // For strength workouts, use the set-tracking interface
     const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
-    console.log('=== STARTING WORKOUT SESSION ===');
+    console.log('=== STARTING STRENGTH WORKOUT SESSION ===');
     console.log('Original workout exercises:', workout.exercises?.map(ex => ({ name: ex.name, sets: ex.sets, reps: ex.reps })));
     console.log('Tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, totalSets: ex.totalSets, sets: ex.sets.length })));
     console.log('Exercise name mapping:', nameMap);
-    console.log('=== END WORKOUT SESSION DEBUG ===');
+    console.log('=== END STRENGTH WORKOUT SESSION DEBUG ===');
     
     startWorkoutSession(
       `${programId || 'program'}-${Date.now()}`,
@@ -2438,7 +2501,7 @@ export default function ProgramDetailScreen() {
           </View>
         </Modal>
         
-        {/* Active Workout Modal - Set Tracking */}
+        {/* Active Workout Modal - Conditional Interface */}
         <Modal
           visible={showWorkoutModal}
           transparent={true}
@@ -2446,11 +2509,84 @@ export default function ProgramDetailScreen() {
           onRequestClose={() => setShowWorkoutModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { padding: 0 }]}> 
-              <ActiveWorkoutInterface
-                exerciseDefinitions={exerciseDefinitions}
-                onClose={() => setShowWorkoutModal(false)}
-              />
+            <View style={[styles.modalContent, { padding: activeWorkout ? 20 : 0 }]}> 
+              {activeWorkout ? (
+                // Cardio/Timer-based workout interface
+                <>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">
+                      {activeWorkout.workout.title}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.closeButton}
+                      onPress={() => setShowWorkoutModal(false)}
+                    >
+                      <X size={24} color={colors.text} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <ScrollView style={styles.modalScroll}>
+                    <View style={styles.workoutInfo}>
+                      <Text style={styles.workoutInfoTitle}>{activeWorkout.workout.title}</Text>
+                      <Text style={styles.workoutInfoDescription}>{activeWorkout.workout.description}</Text>
+                    </View>
+                    
+                    <View style={styles.timerContainer}>
+                      <Text style={styles.timerText}>{formatTime(activeWorkout.elapsedTime)}</Text>
+                    </View>
+                    
+                    <View style={styles.workoutControls}>
+                      <TouchableOpacity 
+                        style={[styles.workoutControlButton, styles.pauseButton]}
+                        onPress={toggleWorkoutTimer}
+                      >
+                        {activeWorkout.isRunning ? (
+                          <Pause size={20} color={colors.text} />
+                        ) : (
+                          <Play size={20} color={colors.text} />
+                        )}
+                        <Text style={styles.controlButtonText}>
+                          {activeWorkout.isRunning ? 'Pause' : 'Resume'}
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={[styles.workoutControlButton, styles.endButton]}
+                        onPress={handleEndWorkout}
+                      >
+                        <StopCircle size={20} color={colors.text} />
+                        <Text style={styles.controlButtonText}>End Workout</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.workoutStats}>
+                      <View style={styles.statItem}>
+                        <Clock size={16} color={colors.primary} />
+                        <Text style={styles.statLabel}>Duration</Text>
+                        <Text style={styles.statValue}>{formatTime(activeWorkout.elapsedTime)}</Text>
+                      </View>
+                      
+                      <View style={styles.statItem}>
+                        <Activity size={16} color={colors.primary} />
+                        <Text style={styles.statLabel}>Type</Text>
+                        <Text style={styles.statValue}>Cardio</Text>
+                      </View>
+                      
+                      <View style={styles.statItem}>
+                        <Dumbbell size={16} color={colors.primary} />
+                        <Text style={styles.statLabel}>Intensity</Text>
+                        <Text style={styles.statValue}>{activeWorkout.workout.intensity}</Text>
+                      </View>
+                    </View>
+                  </ScrollView>
+                </>
+              ) : (
+                // Strength/Progressive overload workout interface
+                <ActiveWorkoutInterface
+                  exerciseDefinitions={exerciseDefinitions}
+                  onClose={() => setShowWorkoutModal(false)}
+                />
+              )}
             </View>
           </View>
         </Modal>
