@@ -68,6 +68,11 @@ export default function ActiveCardioWorkout({
   const [currentInterval, setCurrentInterval] = useState<number>(1);
   const [totalIntervals, setTotalIntervals] = useState<number>(1);
   const [heartRateZone, setHeartRateZone] = useState<number>(1); // 1-5 zones
+  const [structuredWorkout, setStructuredWorkout] = useState<boolean>(false);
+  const [workoutPhase, setWorkoutPhase] = useState<'warmup' | 'work' | 'rest' | 'cooldown'>('warmup');
+  const [phaseTimer, setPhaseTimer] = useState<number>(0);
+  const [workoutPlan, setWorkoutPlan] = useState<Array<{phase: string, duration: number}>>([]);
+  const [currentPhaseIndex, setCurrentPhaseIndex] = useState<number>(0);
 
   // Timer for workout duration
   useEffect(() => {
@@ -264,6 +269,31 @@ export default function ActiveCardioWorkout({
     return () => clearInterval(interval);
   }, [isIntervalActive, intervalTimer, currentInterval, totalIntervals]);
 
+  // Structured workout phase timer
+  useEffect(() => {
+    if (!structuredWorkout || phaseTimer <= 0) return;
+
+    const interval = setInterval(() => {
+      setPhaseTimer(prev => {
+        if (prev <= 1) {
+          // Auto-advance to next phase
+          if (currentPhaseIndex < workoutPlan.length - 1) {
+            const nextPhaseIndex = currentPhaseIndex + 1;
+            setCurrentPhaseIndex(nextPhaseIndex);
+            return workoutPlan[nextPhaseIndex].duration;
+          } else {
+            // Workout complete
+            setStructuredWorkout(false);
+            return 0;
+          }
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [structuredWorkout, phaseTimer, currentPhaseIndex, workoutPlan]);
+
   if (!currentSession) {
     return (
       <ActiveWorkoutBase
@@ -382,8 +412,42 @@ export default function ActiveCardioWorkout({
           </View>
         )}
 
+        {/* Structured Workout Phase */}
+        {structuredWorkout && workoutPlan.length > 0 && (
+          <View style={styles.structuredWorkoutCard}>
+            <View style={styles.structuredWorkoutHeader}>
+              <Timer size={20} color={colors.primary} />
+              <Text style={styles.structuredWorkoutTitle}>
+                {workoutPlan[currentPhaseIndex]?.phase.toUpperCase()} PHASE
+              </Text>
+              <Text style={styles.structuredWorkoutProgress}>
+                {currentPhaseIndex + 1}/{workoutPlan.length}
+              </Text>
+            </View>
+            <Text style={styles.structuredWorkoutTimer}>{formatTime(phaseTimer)}</Text>
+            <View style={styles.structuredWorkoutControls}>
+              <TouchableOpacity 
+                style={styles.skipPhaseButton} 
+                onPress={() => {
+                  if (currentPhaseIndex < workoutPlan.length - 1) {
+                    setCurrentPhaseIndex(prev => prev + 1);
+                    setPhaseTimer(workoutPlan[currentPhaseIndex + 1].duration);
+                  } else {
+                    setStructuredWorkout(false);
+                  }
+                }}
+              >
+                <Text style={styles.skipPhaseText}>Next Phase</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.stopStructuredButton} onPress={() => setStructuredWorkout(false)}>
+                <Text style={styles.stopStructuredText}>Stop Structured</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Interval Timer */}
-        {isIntervalActive && (
+        {isIntervalActive && !structuredWorkout && (
           <View style={styles.intervalCard}>
             <View style={styles.intervalHeader}>
               <Timer size={20} color={colors.primary} />
@@ -443,10 +507,94 @@ export default function ActiveCardioWorkout({
           </View>
         </View>
 
+        {/* Structured Workout Templates */}
+        {!isIntervalActive && !structuredWorkout && (
+          <View style={styles.structuredWorkoutTemplatesCard}>
+            <Text style={styles.structuredWorkoutTemplatesTitle}>Structured Workouts</Text>
+            <View style={styles.structuredWorkoutTemplatesGrid}>
+              <TouchableOpacity 
+                style={styles.structuredWorkoutTemplate}
+                onPress={() => {
+                  const plan = [
+                    { phase: 'Warm-up', duration: 300 }, // 5 min
+                    { phase: 'Work', duration: 1200 }, // 20 min
+                    { phase: 'Cool-down', duration: 300 } // 5 min
+                  ];
+                  setWorkoutPlan(plan);
+                  setCurrentPhaseIndex(0);
+                  setPhaseTimer(plan[0].duration);
+                  setStructuredWorkout(true);
+                }}
+              >
+                <Text style={styles.structuredWorkoutTemplateName}>Easy Run</Text>
+                <Text style={styles.structuredWorkoutTemplateDesc}>30min • Steady pace</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.structuredWorkoutTemplate}
+                onPress={() => {
+                  const plan = [
+                    { phase: 'Warm-up', duration: 600 }, // 10 min
+                    { phase: 'Work', duration: 240 }, // 4 min
+                    { phase: 'Rest', duration: 120 }, // 2 min
+                    { phase: 'Work', duration: 240 }, // 4 min
+                    { phase: 'Rest', duration: 120 }, // 2 min
+                    { phase: 'Work', duration: 240 }, // 4 min
+                    { phase: 'Cool-down', duration: 600 } // 10 min
+                  ];
+                  setWorkoutPlan(plan);
+                  setCurrentPhaseIndex(0);
+                  setPhaseTimer(plan[0].duration);
+                  setStructuredWorkout(true);
+                }}
+              >
+                <Text style={styles.structuredWorkoutTemplateName}>Intervals</Text>
+                <Text style={styles.structuredWorkoutTemplateDesc}>32min • 3×4min work</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.structuredWorkoutTemplate}
+                onPress={() => {
+                  const plan = [
+                    { phase: 'Warm-up', duration: 900 }, // 15 min
+                    { phase: 'Work', duration: 1200 }, // 20 min threshold
+                    { phase: 'Cool-down', duration: 300 } // 5 min
+                  ];
+                  setWorkoutPlan(plan);
+                  setCurrentPhaseIndex(0);
+                  setPhaseTimer(plan[0].duration);
+                  setStructuredWorkout(true);
+                }}
+              >
+                <Text style={styles.structuredWorkoutTemplateName}>Threshold</Text>
+                <Text style={styles.structuredWorkoutTemplateDesc}>40min • Lactate threshold</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.structuredWorkoutTemplate}
+                onPress={() => {
+                  const plan = [
+                    { phase: 'Warm-up', duration: 1200 }, // 20 min
+                    { phase: 'Work', duration: 3600 }, // 60 min
+                    { phase: 'Cool-down', duration: 600 } // 10 min
+                  ];
+                  setWorkoutPlan(plan);
+                  setCurrentPhaseIndex(0);
+                  setPhaseTimer(plan[0].duration);
+                  setStructuredWorkout(true);
+                }}
+              >
+                <Text style={styles.structuredWorkoutTemplateName}>Long Run</Text>
+                <Text style={styles.structuredWorkoutTemplateDesc}>90min • Endurance</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Interval Controls */}
-        {!isIntervalActive && (
+        {!isIntervalActive && !structuredWorkout && (
           <View style={styles.intervalControlsCard}>
-            <Text style={styles.intervalControlsTitle}>Interval Training</Text>
+            <Text style={styles.intervalControlsTitle}>Quick Intervals</Text>
             <View style={styles.intervalControlsRow}>
               <TouchableOpacity 
                 style={styles.intervalButton}
@@ -508,7 +656,7 @@ export default function ActiveCardioWorkout({
 
           {/* Effort Level Tracking */}
           <View style={styles.effortContainer}>
-            <Text style={styles.inputLabel}>Effort Level (1-10)</Text>
+            <Text style={styles.inputLabel}>Perceived Effort (1-10)</Text>
             <View style={styles.effortScale}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
                 <TouchableOpacity
@@ -529,10 +677,18 @@ export default function ActiveCardioWorkout({
               ))}
             </View>
             <View style={styles.effortLabels}>
-              <Text style={styles.effortLabelText}>Easy</Text>
+              <Text style={styles.effortLabelText}>Recovery</Text>
               <Text style={styles.effortLabelText}>Moderate</Text>
               <Text style={styles.effortLabelText}>Hard</Text>
-              <Text style={styles.effortLabelText}>Max</Text>
+              <Text style={styles.effortLabelText}>All-out</Text>
+            </View>
+            <View style={styles.effortDescription}>
+              <Text style={styles.effortDescriptionText}>
+                {effortLevel <= 3 && 'Very easy, can hold conversation easily'}
+                {effortLevel >= 4 && effortLevel <= 6 && 'Moderate effort, can talk in short sentences'}
+                {effortLevel >= 7 && effortLevel <= 8 && 'Hard effort, difficult to talk'}
+                {effortLevel >= 9 && 'Very hard to maximum effort'}
+              </Text>
             </View>
           </View>
 
@@ -901,6 +1057,102 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: colors.text,
   },
+  // Structured Workout Styles
+  structuredWorkoutCard: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  structuredWorkoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+  },
+  structuredWorkoutTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
+  structuredWorkoutProgress: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500' as const,
+  },
+  structuredWorkoutTimer: {
+    fontSize: 42,
+    fontWeight: '300' as const,
+    color: '#FFFFFF',
+    marginBottom: 16,
+    fontFamily: 'monospace',
+  },
+  structuredWorkoutControls: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skipPhaseButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  skipPhaseText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  stopStructuredButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  stopStructuredText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  structuredWorkoutTemplatesCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  structuredWorkoutTemplatesTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.text,
+    marginBottom: 12,
+  },
+  structuredWorkoutTemplatesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  structuredWorkoutTemplate: {
+    flex: 1,
+    minWidth: '48%',
+    backgroundColor: colors.ios.secondaryBackground,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  structuredWorkoutTemplateName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  structuredWorkoutTemplateDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   // Interval Controls Styles
   intervalControlsCard: {
     backgroundColor: colors.card,
@@ -929,6 +1181,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: colors.text,
+  },
+  effortDescription: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+  },
+  effortDescriptionText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   // Effort Level Styles
   effortContainer: {

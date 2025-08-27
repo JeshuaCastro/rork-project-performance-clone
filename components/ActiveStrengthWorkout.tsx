@@ -37,6 +37,8 @@ export default function ActiveStrengthWorkout({
   const [currentRPE, setCurrentRPE] = useState<string>('');
   const [setNotes, setSetNotes] = useState<string>('');
   const [showProgressiveOverload, setShowProgressiveOverload] = useState<boolean>(true);
+  const [customRestTime, setCustomRestTime] = useState<string>('');
+  const [showRestTimerSettings, setShowRestTimerSettings] = useState<boolean>(false);
 
   // Timer for workout duration
   useEffect(() => {
@@ -109,9 +111,10 @@ export default function ActiveStrengthWorkout({
 
     completeCurrentSet(reps, weight, rpe, setNotes);
 
-    // Start rest timer if there's a target rest time
-    if (currentSet?.restTime) {
-      setRestTimer(currentSet.restTime);
+    // Start rest timer - use custom time if set, otherwise use target rest time
+    const restTime = customRestTime ? parseInt(customRestTime) : currentSet?.restTime;
+    if (restTime && restTime > 0) {
+      setRestTimer(restTime);
       setIsResting(true);
     }
 
@@ -194,12 +197,30 @@ export default function ActiveStrengthWorkout({
           <View style={styles.restTimerContainer}>
             <View style={styles.restTimerContent}>
               <Clock size={24} color={colors.warning} />
-              <Text style={styles.restTimerText}>
-                Rest: {Math.floor(restTimer / 60)}:{(restTimer % 60).toString().padStart(2, '0')}
-              </Text>
-              <TouchableOpacity style={styles.skipRestButton} onPress={handleSkipRest}>
-                <Text style={styles.skipRestText}>Skip</Text>
-              </TouchableOpacity>
+              <View style={styles.restTimerInfo}>
+                <Text style={styles.restTimerText}>
+                  Rest: {Math.floor(restTimer / 60)}:{(restTimer % 60).toString().padStart(2, '0')}
+                </Text>
+                <Text style={styles.restTimerSubtext}>Take your time to recover</Text>
+              </View>
+              <View style={styles.restTimerActions}>
+                <TouchableOpacity style={styles.addTimeButton} onPress={() => setRestTimer(prev => prev + 30)}>
+                  <Text style={styles.addTimeText}>+30s</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.skipRestButton} onPress={handleSkipRest}>
+                  <Text style={styles.skipRestText}>Skip</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.restTimerProgress}>
+              <View 
+                style={[
+                  styles.restTimerProgressFill,
+                  { 
+                    width: `${((customRestTime ? parseInt(customRestTime) : currentSet?.restTime || 0) - restTimer) / (customRestTime ? parseInt(customRestTime) : currentSet?.restTime || 1) * 100}%`
+                  }
+                ]}
+              />
             </View>
           </View>
         )}
@@ -387,6 +408,52 @@ export default function ActiveStrengthWorkout({
             />
           </View>
 
+          {/* Rest Timer Settings */}
+          <View style={styles.restTimerSettingsContainer}>
+            <TouchableOpacity 
+              style={styles.restTimerToggle}
+              onPress={() => setShowRestTimerSettings(!showRestTimerSettings)}
+            >
+              <RotateCcw size={16} color={colors.primary} />
+              <Text style={styles.restTimerToggleText}>Rest Timer Settings</Text>
+            </TouchableOpacity>
+            
+            {showRestTimerSettings && (
+              <View style={styles.restTimerSettings}>
+                <Text style={styles.restTimerSettingsLabel}>Custom Rest Time (seconds)</Text>
+                <View style={styles.restTimerInputContainer}>
+                  <TextInput
+                    style={styles.restTimerInput}
+                    value={customRestTime}
+                    onChangeText={setCustomRestTime}
+                    keyboardType="numeric"
+                    placeholder={currentSet?.restTime?.toString() || '90'}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <View style={styles.restTimerPresets}>
+                    {[60, 90, 120, 180].map(time => (
+                      <TouchableOpacity
+                        key={time}
+                        style={[
+                          styles.restTimerPreset,
+                          customRestTime === time.toString() && styles.restTimerPresetSelected
+                        ]}
+                        onPress={() => setCustomRestTime(time.toString())}
+                      >
+                        <Text style={[
+                          styles.restTimerPresetText,
+                          customRestTime === time.toString() && styles.restTimerPresetTextSelected
+                        ]}>
+                          {time}s
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+
           {/* Set Completion Interface */}
           <View style={styles.setCompletionContainer}>
             <TouchableOpacity 
@@ -422,6 +489,19 @@ export default function ActiveStrengthWorkout({
                   )}
                 </View>
               </View>
+              
+              {/* Progressive Overload Indicator */}
+              {currentWeight && exerciseHistory.length > 0 && (
+                <View style={styles.progressIndicator}>
+                  <TrendingUp size={14} color={colors.success} />
+                  <Text style={styles.progressIndicatorText}>
+                    {parseFloat(currentWeight) > (exerciseHistory[exerciseHistory.length - 1]?.sets[0]?.actualWeight || 0) ? 
+                      `+${(parseFloat(currentWeight) - (exerciseHistory[exerciseHistory.length - 1]?.sets[0]?.actualWeight || 0)).toFixed(1)} lbs progress!` :
+                      'Maintaining strength'
+                    }
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -533,13 +613,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  restTimerInfo: {
+    flex: 1,
+    alignItems: 'center',
   },
   restTimerText: {
     fontSize: 18,
     fontWeight: '600' as const,
     color: colors.text,
-    flex: 1,
-    textAlign: 'center',
+  },
+  restTimerSubtext: {
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.7)',
+    marginTop: 2,
+  },
+  restTimerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addTimeButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  addTimeText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
   skipRestButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -551,6 +654,90 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     fontWeight: '600' as const,
+  },
+  restTimerProgress: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  restTimerProgressFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 2,
+  },
+  restTimerSettingsContainer: {
+    marginBottom: 16,
+  },
+  restTimerToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  restTimerToggleText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500' as const,
+  },
+  restTimerSettings: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  restTimerSettingsLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  restTimerInputContainer: {
+    gap: 8,
+  },
+  restTimerInput: {
+    backgroundColor: colors.card,
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  restTimerPresets: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  restTimerPreset: {
+    flex: 1,
+    backgroundColor: colors.ios.tertiaryBackground,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  restTimerPresetSelected: {
+    backgroundColor: colors.primary,
+  },
+  restTimerPresetText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: colors.textSecondary,
+  },
+  restTimerPresetTextSelected: {
+    color: '#FFFFFF',
+  },
+  progressIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.ios.separator,
+  },
+  progressIndicatorText: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '500' as const,
   },
   exerciseCard: {
     backgroundColor: colors.card,
