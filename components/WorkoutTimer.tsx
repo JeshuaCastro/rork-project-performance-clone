@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { colors } from '@/constants/colors';
 import { Play, Pause, RotateCcw, Clock, Settings } from 'lucide-react-native';
@@ -18,25 +18,31 @@ export default function WorkoutTimer({
   const [isRunning, setIsRunning] = useState(autoStart);
   const [customTime, setCustomTime] = useState(defaultRestTime);
 
-  
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialTime = useRef(defaultRestTime);
+  const isTimerActiveRef = useRef(false);
 
-  useEffect(() => {
+  // Clear interval helper function
+  const clearTimerInterval = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (isRunning) {
+    isTimerActiveRef.current = false;
+  }, []);
+
+  // Start timer helper function
+  const startTimer = useCallback(() => {
+    // Always clear existing interval first
+    clearTimerInterval();
+    
+    if (isRunning && timeRemaining > 0) {
+      isTimerActiveRef.current = true;
       intervalRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            // stop
+            // Timer completed
             setIsRunning(false);
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
             onTimerComplete?.();
             if (Platform.OS !== 'web') {
               console.log('Timer completed - haptic feedback would trigger');
@@ -47,13 +53,24 @@ export default function WorkoutTimer({
         });
       }, 1000);
     }
+  }, [isRunning, timeRemaining, onTimerComplete, clearTimerInterval]);
+
+  // Main timer effect - single source of truth
+  useEffect(() => {
+    startTimer();
+    
+    // Cleanup function
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearTimerInterval();
     };
-  }, [isRunning, onTimerComplete]);
+  }, [startTimer, clearTimerInterval]);
+
+  // Component unmount cleanup
+  useEffect(() => {
+    return () => {
+      clearTimerInterval();
+    };
+  }, [clearTimerInterval]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -61,14 +78,16 @@ export default function WorkoutTimer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
+    if (timeRemaining === 0) return;
     setIsRunning(prev => !prev);
-  };
+  }, [timeRemaining]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
+    clearTimerInterval();
     setIsRunning(false);
     setTimeRemaining(initialTime.current);
-  };
+  }, [clearTimerInterval]);
 
   const handleCustomTime = () => {
     Alert.alert(
@@ -85,12 +104,13 @@ export default function WorkoutTimer({
     );
   };
 
-  const setCustomRestTime = (seconds: number) => {
+  const setCustomRestTime = useCallback((seconds: number) => {
+    clearTimerInterval();
     setCustomTime(seconds);
     setTimeRemaining(seconds);
     initialTime.current = seconds;
     setIsRunning(false);
-  };
+  }, [clearTimerInterval]);
 
   const getTimerColor = () => {
     if (timeRemaining === 0) return colors.success;
@@ -107,11 +127,12 @@ export default function WorkoutTimer({
 
   // Keep defaults in sync when prop changes or remounts
   useEffect(() => {
+    clearTimerInterval();
     setTimeRemaining(defaultRestTime);
     initialTime.current = defaultRestTime;
     setCustomTime(defaultRestTime);
     setIsRunning(autoStart);
-  }, [defaultRestTime, autoStart]);
+  }, [defaultRestTime, autoStart, clearTimerInterval]);
 
   return (
     <View style={styles.container}>
