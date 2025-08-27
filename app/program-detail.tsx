@@ -1375,8 +1375,9 @@ export default function ProgramDetailScreen() {
     return map;
   }, []);
 
-  const buildTrackedExercises = (workout: Workout): TrackedWorkoutExercise[] => {
+  const buildTrackedExercises = (workout: Workout): { exercises: TrackedWorkoutExercise[], nameMap: Record<string, string> } => {
     const normalize = (s: string) => s.toLowerCase().trim();
+    const nameMap: Record<string, string> = {};
 
     const findExerciseIdByName = (name: string): string | null => {
       const n = normalize(name);
@@ -1392,14 +1393,17 @@ export default function ProgramDetailScreen() {
     // Use planned exercises directly from the workout instead of parsing
     const sourceExercises: WorkoutExercise[] = (() => {
       if (workout.exercises && workout.exercises.length > 0) {
+        console.log('Using planned exercises from workout:', workout.exercises.map(ex => ex.name));
         // Map planned exercises directly to WorkoutExercise format
         return workout.exercises
+          .filter((ex) => ex.name && ex.name.trim())
           .map((ex) => {
-            const id = findExerciseIdByName(ex.name);
+            const id = findExerciseIdByName(ex.name!);
             if (!id) {
               console.warn(`Could not find exercise ID for: ${ex.name}`);
               // Create a fallback ID based on the exercise name
-              const fallbackId = ex.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+              const fallbackId = ex.name!.toLowerCase().replace(/[^a-z0-9]/g, '_');
+              nameMap[fallbackId] = ex.name!;
               return {
                 exerciseId: fallbackId,
                 sets: ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3,
@@ -1408,6 +1412,8 @@ export default function ProgramDetailScreen() {
                 notes: ex.notes,
               } as WorkoutExercise;
             }
+            // Store the mapping for display
+            nameMap[id] = ex.name!;
             const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3;
             const repsVal = ex.reps || '8-12';
             return {
@@ -1424,7 +1430,7 @@ export default function ProgramDetailScreen() {
       return parseWorkoutToExercises(workout.title, workout.description);
     })();
 
-    return sourceExercises.map((we) => {
+    const exercises = sourceExercises.map((we) => {
       const totalSets = typeof we.sets === 'number' && we.sets > 0 ? we.sets : 3;
       const reps = we.reps ?? '8-12';
       const restSec = (() => {
@@ -1453,6 +1459,8 @@ export default function ProgramDetailScreen() {
         isCompleted: false,
       };
     });
+    
+    return { exercises, nameMap };
   };
 
   // Handle starting a workout
@@ -1470,29 +1478,14 @@ export default function ProgramDetailScreen() {
             onPress: () => {
               // Remove from completed workouts and start again
               setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
-              const tracked = buildTrackedExercises(workout);
+              const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
               startWorkoutSession(
-      `${programId || 'program'}-${Date.now()}`,
-      tracked,
-      programId,
-      workout.title,
-      (() => {
-        const map: Record<string, string> = {};
-        (workout.exercises || []).forEach((ex) => {
-          if (ex.name) {
-            const id = (() => {
-              const n = ex.name.toLowerCase().trim();
-              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
-              if (exact) return exact.id;
-              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
-              return partial ? partial.id : undefined;
-            })();
-            if (id) map[id] = ex.name;
-          }
-        });
-        return map;
-      })()
-    );
+                `${programId || 'program'}-${Date.now()}`,
+                tracked,
+                programId,
+                workout.title,
+                nameMap
+              );
               setShowWorkoutModal(true);
             }
           }
@@ -1514,29 +1507,14 @@ export default function ProgramDetailScreen() {
               // End current workout
               // End current workout (legacy) and start new tracked session
               setTimeout(() => {
-                const tracked = buildTrackedExercises(workout);
+                const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
                 startWorkoutSession(
-      `${programId || 'program'}-${Date.now()}`,
-      tracked,
-      programId,
-      workout.title,
-      (() => {
-        const map: Record<string, string> = {};
-        (workout.exercises || []).forEach((ex) => {
-          if (ex.name) {
-            const id = (() => {
-              const n = ex.name.toLowerCase().trim();
-              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
-              if (exact) return exact.id;
-              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
-              return partial ? partial.id : undefined;
-            })();
-            if (id) map[id] = ex.name;
-          }
-        });
-        return map;
-      })()
-    );
+                  `${programId || 'program'}-${Date.now()}`,
+                  tracked,
+                  programId,
+                  workout.title,
+                  nameMap
+                );
                 setShowWorkoutModal(true);
               }, 300);
             }
@@ -1547,35 +1525,16 @@ export default function ProgramDetailScreen() {
     }
     
     // Start set-tracking session with planned exercises
-    const tracked = buildTrackedExercises(workout);
-    console.log('Starting workout with tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, sets: ex.totalSets })));
-    
-    // Create exercise name mapping for display
-    const exerciseNameMap: Record<string, string> = {};
-    (workout.exercises || []).forEach((ex) => {
-      if (ex.name) {
-        const normalize = (s: string) => s.toLowerCase().trim();
-        const n = normalize(ex.name);
-        // Try to find matching exercise ID
-        const exact = exerciseDatabase.find((d) => normalize(d.name) === n);
-        if (exact) {
-          exerciseNameMap[exact.id] = ex.name;
-        } else {
-          // Use fallback ID for exercises not in database
-          const fallbackId = ex.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-          exerciseNameMap[fallbackId] = ex.name;
-        }
-      }
-    });
-    
-    console.log('Exercise name mapping:', exerciseNameMap);
+    const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
+    console.log('Starting workout with tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, name: nameMap[ex.exerciseId], sets: ex.totalSets })));
+    console.log('Exercise name mapping:', nameMap);
     
     startWorkoutSession(
       `${programId || 'program'}-${Date.now()}`,
       tracked,
       programId,
       workout.title,
-      exerciseNameMap
+      nameMap
     );
     setShowWorkoutModal(true);
   };
