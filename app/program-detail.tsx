@@ -1391,9 +1391,9 @@ export default function ProgramDetailScreen() {
 
     const sourceExercises: WorkoutExercise[] = (() => {
       if (workout.exercises && workout.exercises.length > 0) {
-        const mapped = workout.exercises
+        return workout.exercises
           .map((ex) => {
-            const id = ex?.name ? findExerciseIdByName(ex.name) : null;
+            const id = findExerciseIdByName(ex.name);
             if (!id) return null;
             const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : undefined;
             const repsVal = ex.reps ? (ex.reps.match(/^\d+(?:-\d+)?$/) ? (ex.reps.includes('-') ? ex.reps : parseInt(ex.reps, 10)) : ex.reps) : undefined;
@@ -1406,9 +1406,6 @@ export default function ProgramDetailScreen() {
             } as WorkoutExercise;
           })
           .filter((v): v is WorkoutExercise => v !== null);
-        if (mapped.length > 0) return mapped;
-        // Fallback to parser if predefined list couldn't be matched
-        return parseWorkoutToExercises(workout.title, workout.description);
       }
       return parseWorkoutToExercises(workout.title, workout.description);
     })();

@@ -525,10 +525,9 @@ export default function ProgramsScreen() {
       
       // Validate strength training integration
       if (strengthTraining.enabled && aiPlan?.phases) {
-        const strengthWorkouts = aiPlan.phases.flatMap((phase: any) => {
-          const ws = phase?.weeklyStructure;
-          return Array.isArray(ws) ? ws.filter((w: any) => w?.type === 'strength') : [];
-        });
+        const strengthWorkouts = aiPlan.phases.flatMap((phase: any) => 
+          phase.weeklyStructure?.filter((w: any) => w.type === 'strength') || []
+        );
         console.log(`Strength training requested: ${strengthTraining.daysPerWeek} days/week`);
         console.log(`Strength workouts found in AI plan: ${strengthWorkouts.length}`);
         
@@ -539,10 +538,9 @@ export default function ProgramsScreen() {
       
       // Validate cardio training integration
       if (cardioTraining.enabled && aiPlan?.phases) {
-        const cardioWorkouts = aiPlan.phases.flatMap((phase: any) => {
-          const ws = phase?.weeklyStructure;
-          return Array.isArray(ws) ? ws.filter((w: any) => w?.type === 'cardio') : [];
-        });
+        const cardioWorkouts = aiPlan.phases.flatMap((phase: any) => 
+          phase.weeklyStructure?.filter((w: any) => w.type === 'cardio') || []
+        );
         console.log(`Cardio training requested: ${cardioTraining.daysPerWeek} days/week`);
         console.log(`Cardio workouts found in AI plan: ${cardioWorkouts.length}`);
         
