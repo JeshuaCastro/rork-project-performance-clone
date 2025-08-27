@@ -59,11 +59,6 @@ import { useWhoopStore } from '@/store/whoopStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
-import ActiveWorkoutInterface from '@/components/ActiveWorkoutInterface';
-import { exerciseDatabase } from '@/constants/exerciseDatabase';
-import { parseWorkoutToExercises } from '@/utils/exerciseParser';
-import { useWorkoutSession } from '@/store/workoutSessionStore';
-import { WorkoutExercise, TrackedWorkoutExercise, WorkoutSet, ExerciseDefinition } from '@/types/exercises';
 
 // Define workout type
 interface Workout {
@@ -131,7 +126,7 @@ export default function ProgramDetailScreen() {
     isRunning: boolean;
   } | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [timerInterval, setTimerInterval] = useState<number | null>(null);
   
   // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
@@ -317,14 +312,14 @@ export default function ProgramDetailScreen() {
         });
       }, 1000);
       
-      timerIntervalRef.current = interval;
+      setTimerInterval(interval);
       
       return () => {
         if (interval) clearInterval(interval);
       };
-    } else if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
+    } else if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
     }
   }, [activeWorkout?.isRunning]);
   
@@ -1366,145 +1361,7 @@ export default function ProgramDetailScreen() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const { startWorkoutSession, cancelWorkoutSession } = useWorkoutSession();
-
-  // Build exercise definitions map once
-  const exerciseDefinitions: Record<string, ExerciseDefinition> = useMemo(() => {
-    const map: Record<string, ExerciseDefinition> = {};
-    exerciseDatabase.forEach((ex) => { map[ex.id] = ex; });
-    return map;
-  }, []);
-
-  const buildTrackedExercises = (workout: Workout): { exercises: TrackedWorkoutExercise[], nameMap: Record<string, string> } => {
-    const normalize = (s: string) => s.toLowerCase().trim();
-    const nameMap: Record<string, string> = {};
-
-    const findExerciseIdByName = (name: string): string | null => {
-      const n = normalize(name);
-      // Exact match first
-      const exact = exerciseDatabase.find((ex) => normalize(ex.name) === n);
-      if (exact) return exact.id;
-      // Contains match
-      const partial = exerciseDatabase.find((ex) => normalize(ex.name).includes(n) || n.includes(normalize(ex.name)));
-      if (partial) return partial.id;
-      return null;
-    };
-
-    // Use planned exercises directly from the workout instead of parsing
-    const sourceExercises: WorkoutExercise[] = (() => {
-      if (workout.exercises && workout.exercises.length > 0) {
-        console.log('Using planned exercises from workout:', workout.exercises.map(ex => ex.name));
-        // Map planned exercises directly to WorkoutExercise format
-        return workout.exercises
-          .filter((ex) => ex.name && ex.name.trim())
-          .map((ex) => {
-            const id = findExerciseIdByName(ex.name!);
-            if (!id) {
-              console.warn(`Could not find exercise ID for: ${ex.name}`);
-              // Create a fallback ID based on the exercise name
-              const fallbackId = ex.name!.toLowerCase().replace(/[^a-z0-9]/g, '_');
-              nameMap[fallbackId] = ex.name!;
-              return {
-                exerciseId: fallbackId,
-                sets: ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3,
-                reps: ex.reps || '8-12',
-                duration: ex.duration,
-                notes: ex.notes,
-              } as WorkoutExercise;
-            }
-            // Store the mapping for display
-            nameMap[id] = ex.name!;
-            const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3;
-            const repsVal = ex.reps || '8-12';
-            return {
-              exerciseId: id,
-              sets: setsNum,
-              reps: repsVal,
-              duration: ex.duration,
-              notes: ex.notes,
-            } as WorkoutExercise;
-          });
-      }
-      // Only fallback to parsing if no planned exercises exist
-      console.log('No planned exercises found, falling back to parsing');
-      return parseWorkoutToExercises(workout.title, workout.description);
-    })();
-
-    const exercises = sourceExercises.map((we) => {
-      const totalSets = typeof we.sets === 'number' && we.sets > 0 ? we.sets : 3;
-      const reps = we.reps ?? '8-12';
-      const restSec = (() => {
-        const m = (we.restTime ?? '').match(/(\d+)/);
-        return m ? parseInt(m[1], 10) : 90;
-      })();
-      const sets: WorkoutSet[] = Array.from({ length: totalSets }).map((_, i) => ({
-        setNumber: i + 1,
-        targetReps: reps as number | string,
-        targetWeight: undefined,
-        targetRPE: undefined,
-        restTime: restSec,
-        completed: false,
-      }));
-      return {
-        exerciseId: we.exerciseId,
-        reps: we.reps,
-        duration: we.duration,
-        weight: we.weight,
-        restTime: we.restTime,
-        notes: we.notes,
-        targetRPE: we.targetRPE,
-        sets,
-        totalSets,
-        completedSets: 0,
-        isCompleted: false,
-      };
-    });
-    
-    return { exercises, nameMap };
-  };
-
-  // Detect workout type based on content and exercises
-  const detectWorkoutType = (workout: Workout): 'strength' | 'cardio' | 'hybrid' => {
-    const title = workout.title.toLowerCase();
-    const description = workout.description.toLowerCase();
-    
-    // Check for explicit cardio keywords
-    const cardioKeywords = ['run', 'cardio', 'hiit', 'bike', 'cycling', 'swim', 'rowing', 'elliptical', 'treadmill', 'zone 2', 'tempo', 'interval', 'steady state'];
-    const strengthKeywords = ['squat', 'deadlift', 'bench', 'press', 'curl', 'row', 'pull', 'push', 'lift', 'strength', 'weight', 'dumbbell', 'barbell'];
-    
-    const hasCardioKeywords = cardioKeywords.some(keyword => title.includes(keyword) || description.includes(keyword));
-    const hasStrengthKeywords = strengthKeywords.some(keyword => title.includes(keyword) || description.includes(keyword));
-    
-    // Check exercises if available
-    let hasCardioExercises = false;
-    let hasStrengthExercises = false;
-    
-    if (workout.exercises && workout.exercises.length > 0) {
-      workout.exercises.forEach(exercise => {
-        const exerciseName = exercise.name?.toLowerCase() || '';
-        if (cardioKeywords.some(keyword => exerciseName.includes(keyword))) {
-          hasCardioExercises = true;
-        }
-        if (strengthKeywords.some(keyword => exerciseName.includes(keyword)) || exercise.sets || exercise.reps) {
-          hasStrengthExercises = true;
-        }
-      });
-    }
-    
-    // Determine workout type
-    const isCardio = hasCardioKeywords || hasCardioExercises;
-    const isStrength = hasStrengthKeywords || hasStrengthExercises;
-    
-    if (isCardio && isStrength) {
-      return 'hybrid';
-    } else if (isCardio) {
-      return 'cardio';
-    } else {
-      return 'strength'; // Default to strength for structured workouts
-    }
-  };
-
-  // Handle starting a workout with type detection
+  // Handle starting a workout
   const handleStartWorkout = async (workout: Workout) => {
     // Check if this workout is already completed
     const workoutKey = `${workout.day}-${workout.title}`;
@@ -1519,7 +1376,7 @@ export default function ProgramDetailScreen() {
             onPress: () => {
               // Remove from completed workouts and start again
               setCompletedWorkouts(prev => prev.filter(key => key !== workoutKey));
-              startWorkoutWithTypeDetection(workout);
+              startManualWorkout(workout);
             }
           }
         ]
@@ -1537,10 +1394,12 @@ export default function ProgramDetailScreen() {
             text: "End Current & Start New", 
             style: "destructive",
             onPress: () => {
-              // End current workout and start new one
+              // End current workout
+              handleEndWorkout();
+              // Start new workout after a short delay
               setTimeout(() => {
-                startWorkoutWithTypeDetection(workout);
-              }, 300);
+                startManualWorkout(workout);
+              }, 500);
             }
           }
         ]
@@ -1548,61 +1407,8 @@ export default function ProgramDetailScreen() {
       return;
     }
     
-    startWorkoutWithTypeDetection(workout);
-  };
-
-  // Start workout with appropriate interface based on type
-  const startWorkoutWithTypeDetection = (workout: Workout) => {
-    const workoutType = detectWorkoutType(workout);
-    
-    console.log('=== WORKOUT TYPE DETECTION ===');
-    console.log('Workout:', workout.title);
-    console.log('Detected type:', workoutType);
-    console.log('Original type:', workout.type);
-    console.log('=== END DETECTION ===');
-    
-    if (workoutType === 'cardio') {
-      // For cardio workouts, start a simple timer-based interface
-      startCardioWorkout(workout);
-    } else if (workoutType === 'strength' || workoutType === 'hybrid') {
-      // For strength and hybrid workouts, use the progressive overload interface
-      startStrengthWorkout(workout);
-    } else {
-      // Fallback to strength interface
-      startStrengthWorkout(workout);
-    }
-  };
-
-  // Start cardio workout with timer-based interface
-  const startCardioWorkout = (workout: Workout) => {
-    // For cardio workouts, use the legacy timer interface
-    setActiveWorkout({
-      workout,
-      startTime: new Date(),
-      elapsedTime: 0,
-      isRunning: true
-    });
-    setShowWorkoutModal(true);
-  };
-
-  // Start strength workout with progressive overload interface
-  const startStrengthWorkout = (workout: Workout) => {
-    // For strength workouts, use the set-tracking interface
-    const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
-    console.log('=== STARTING STRENGTH WORKOUT SESSION ===');
-    console.log('Original workout exercises:', workout.exercises?.map(ex => ({ name: ex.name, sets: ex.sets, reps: ex.reps })));
-    console.log('Tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, totalSets: ex.totalSets, sets: ex.sets.length })));
-    console.log('Exercise name mapping:', nameMap);
-    console.log('=== END STRENGTH WORKOUT SESSION DEBUG ===');
-    
-    startWorkoutSession(
-      `${programId || 'program'}-${Date.now()}`,
-      tracked,
-      programId,
-      workout.title,
-      nameMap
-    );
-    setShowWorkoutModal(true);
+    // Start manual tracking
+    startManualWorkout(workout);
   };
   
   // Handle workout card click to show details
@@ -1611,8 +1417,17 @@ export default function ProgramDetailScreen() {
     setShowWorkoutDetailModal(true);
   };
   
-  // Replaced manual workout tracking with set-tracking session (handled in handleStartWorkout)
-  const startManualWorkout = (_workout: Workout) => {};
+  // Start manual workout tracking
+  const startManualWorkout = (workout: Workout) => {
+    const now = new Date();
+    setActiveWorkout({
+      workout,
+      startTime: now,
+      elapsedTime: 0,
+      isRunning: true
+    });
+    setShowWorkoutModal(true);
+  };
   
   // Pause/resume the workout timer
   const toggleWorkoutTimer = () => {
@@ -2501,91 +2316,111 @@ export default function ProgramDetailScreen() {
           </View>
         </Modal>
         
-        {/* Active Workout Modal - Conditional Interface */}
+        {/* Active Workout Modal */}
         <Modal
           visible={showWorkoutModal}
           transparent={true}
           animationType="slide"
-          onRequestClose={() => setShowWorkoutModal(false)}
+          onRequestClose={() => {
+            Alert.alert(
+              "Close Workout?",
+              "Do you want to end your current workout?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { 
+                  text: "End Workout", 
+                  style: "destructive",
+                  onPress: handleEndWorkout
+                }
+              ]
+            );
+          }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { padding: activeWorkout ? 20 : 0 }]}> 
-              {activeWorkout ? (
-                // Cardio/Timer-based workout interface
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">Active Workout</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Close Workout?",
+                      "Do you want to end your current workout?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { 
+                          text: "End Workout", 
+                          style: "destructive",
+                          onPress: handleEndWorkout
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <StopCircle size={24} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+              
+              {activeWorkout && (
                 <>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">
+                  <View style={styles.workoutInfo}>
+                    <Text style={styles.workoutInfoTitle} numberOfLines={1} ellipsizeMode="tail">
                       {activeWorkout.workout.title}
                     </Text>
+                    <Text style={styles.workoutInfoDescription} numberOfLines={3} ellipsizeMode="tail">
+                      {activeWorkout.workout.description}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.timerContainer}>
+                    <Timer size={32} color={colors.primary} />
+                    <Text style={styles.timerText}>{formatTime(activeWorkout.elapsedTime)}</Text>
+                  </View>
+                  
+                  <View style={styles.workoutControls}>
                     <TouchableOpacity 
-                      style={styles.closeButton}
-                      onPress={() => setShowWorkoutModal(false)}
+                      style={[styles.workoutControlButton, styles.pauseButton]}
+                      onPress={toggleWorkoutTimer}
                     >
-                      <X size={24} color={colors.text} />
+                      {activeWorkout.isRunning ? (
+                        <>
+                          <Pause size={24} color={colors.text} />
+                          <Text style={styles.controlButtonText}>Pause</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Play size={24} color={colors.text} />
+                          <Text style={styles.controlButtonText}>Resume</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[styles.workoutControlButton, styles.endButton]}
+                      onPress={handleEndWorkout}
+                    >
+                      <CheckCircle2 size={24} color={colors.text} />
+                      <Text style={styles.controlButtonText}>Finish</Text>
                     </TouchableOpacity>
                   </View>
                   
-                  <ScrollView style={styles.modalScroll}>
-                    <View style={styles.workoutInfo}>
-                      <Text style={styles.workoutInfoTitle}>{activeWorkout.workout.title}</Text>
-                      <Text style={styles.workoutInfoDescription}>{activeWorkout.workout.description}</Text>
+                  <View style={styles.workoutStats}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Started</Text>
+                      <Text style={styles.statValue}>{activeWorkout.startTime.toLocaleTimeString()}</Text>
                     </View>
                     
-                    <View style={styles.timerContainer}>
-                      <Text style={styles.timerText}>{formatTime(activeWorkout.elapsedTime)}</Text>
-                    </View>
-                    
-                    <View style={styles.workoutControls}>
-                      <TouchableOpacity 
-                        style={[styles.workoutControlButton, styles.pauseButton]}
-                        onPress={toggleWorkoutTimer}
-                      >
-                        {activeWorkout.isRunning ? (
-                          <Pause size={20} color={colors.text} />
-                        ) : (
-                          <Play size={20} color={colors.text} />
-                        )}
-                        <Text style={styles.controlButtonText}>
-                          {activeWorkout.isRunning ? 'Pause' : 'Resume'}
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={[styles.workoutControlButton, styles.endButton]}
-                        onPress={handleEndWorkout}
-                      >
-                        <StopCircle size={20} color={colors.text} />
-                        <Text style={styles.controlButtonText}>End Workout</Text>
-                      </TouchableOpacity>
-                    </View>
-                    
-                    <View style={styles.workoutStats}>
-                      <View style={styles.statItem}>
-                        <Clock size={16} color={colors.primary} />
-                        <Text style={styles.statLabel}>Duration</Text>
-                        <Text style={styles.statValue}>{formatTime(activeWorkout.elapsedTime)}</Text>
-                      </View>
-                      
-                      <View style={styles.statItem}>
-                        <Activity size={16} color={colors.primary} />
-                        <Text style={styles.statLabel}>Type</Text>
-                        <Text style={styles.statValue}>Cardio</Text>
-                      </View>
-                      
-                      <View style={styles.statItem}>
-                        <Dumbbell size={16} color={colors.primary} />
-                        <Text style={styles.statLabel}>Intensity</Text>
-                        <Text style={styles.statValue}>{activeWorkout.workout.intensity}</Text>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Intensity</Text>
+                      <View style={[
+                        styles.intensityBadge,
+                        { backgroundColor: getIntensityColor(activeWorkout.workout.intensity) }
+                      ]}>
+                        <Text style={styles.intensityText}>{activeWorkout.workout.intensity}</Text>
                       </View>
                     </View>
-                  </ScrollView>
+                  </View>
                 </>
-              ) : (
-                // Strength/Progressive overload workout interface
-                <ActiveWorkoutInterface
-                  exerciseDefinitions={exerciseDefinitions}
-                  onClose={() => setShowWorkoutModal(false)}
-                />
               )}
             </View>
           </View>

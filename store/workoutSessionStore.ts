@@ -66,15 +66,9 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     }
   };
 
-  const startWorkoutSession = useCallback((
-    workoutId: string, 
-    exercises: TrackedWorkoutExercise[], 
-    programId?: string,
-    workoutTitle?: string,
-    exerciseNameMap?: Record<string, string>
-  ) => {
+  const startWorkoutSession = useCallback((workoutId: string, exercises: TrackedWorkoutExercise[], programId?: string) => {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const userId = 'current_user';
+    const userId = 'current_user'; // TODO: Get from auth context
     
     const newSession: WorkoutSession = {
       id: sessionId,
@@ -92,9 +86,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
         }))
       })),
       currentExerciseIndex: 0,
-      currentSetIndex: 0,
-      workoutTitle,
-      exerciseNameMap
+      currentSetIndex: 0
     };
 
     setCurrentSession(newSession);
@@ -201,22 +193,16 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     const updatedSession = { ...currentSession };
     const currentExercise = updatedSession.exercises[updatedSession.currentExerciseIndex];
     
-    console.log('Moving to next set. Current exercise index:', updatedSession.currentExerciseIndex, 'Current set index:', updatedSession.currentSetIndex);
-    console.log('Current exercise:', currentExercise.exerciseId, 'Total sets:', currentExercise.sets.length);
-    
     // Check if there are more sets in current exercise
     if (updatedSession.currentSetIndex < currentExercise.sets.length - 1) {
       updatedSession.currentSetIndex += 1;
-      console.log('Moving to next set:', updatedSession.currentSetIndex);
     } else {
       // Move to next exercise
       if (updatedSession.currentExerciseIndex < updatedSession.exercises.length - 1) {
         updatedSession.currentExerciseIndex += 1;
         updatedSession.currentSetIndex = 0;
-        console.log('Moving to next exercise:', updatedSession.currentExerciseIndex);
       } else {
         // Workout completed
-        console.log('Workout completed!');
         completeWorkoutSession();
         return;
       }
@@ -329,8 +315,8 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     // Computed values
     isWorkoutActive: currentSession?.status === 'in_progress',
     isWorkoutPaused: currentSession?.status === 'paused',
-    currentExercise: currentSession && currentSession.currentExerciseIndex < currentSession.exercises.length ? currentSession.exercises[currentSession.currentExerciseIndex] : null,
-    currentSet: currentSession && currentSession.currentExerciseIndex < currentSession.exercises.length && currentSession.currentSetIndex < currentSession.exercises[currentSession.currentExerciseIndex].sets.length ? currentSession.exercises[currentSession.currentExerciseIndex].sets[currentSession.currentSetIndex] : null,
+    currentExercise: currentSession ? currentSession.exercises[currentSession.currentExerciseIndex] : null,
+    currentSet: currentSession ? currentSession.exercises[currentSession.currentExerciseIndex]?.sets[currentSession.currentSetIndex] : null,
     workoutProgress: currentSession ? {
       completedExercises: currentSession.exercises.filter(ex => ex.isCompleted).length,
       totalExercises: currentSession.exercises.length,
