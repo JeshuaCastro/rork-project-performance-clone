@@ -191,7 +191,10 @@ export default function ActiveWorkoutInterface({
             {currentSession.exerciseNameMap?.[currentExercise.exerciseId] || currentExerciseDefinition?.name || currentExercise.exerciseId}
           </Text>
           <Text style={styles.exerciseProgress}>
-            Exercise {(currentSession.currentExerciseIndex || 0) + 1} of {currentSession.exercises.length}
+            Exercise {currentSession.currentExerciseIndex + 1} of {currentSession.exercises.length} • Set {currentSession.currentSetIndex + 1} of {currentExercise.totalSets}
+          </Text>
+          <Text style={styles.exerciseId}>
+            ID: {currentExercise.exerciseId}
           </Text>
         </View>
 
@@ -344,6 +347,12 @@ const styles = StyleSheet.create({
   exerciseProgress: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  exerciseId: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
+    marginTop: 4,
   },
   instructionsContainer: {
     backgroundColor: colors.card,

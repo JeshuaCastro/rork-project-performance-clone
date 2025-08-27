@@ -1526,8 +1526,11 @@ export default function ProgramDetailScreen() {
     
     // Start set-tracking session with planned exercises
     const { exercises: tracked, nameMap } = buildTrackedExercises(workout);
-    console.log('Starting workout with tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, name: nameMap[ex.exerciseId], sets: ex.totalSets })));
+    console.log('=== STARTING WORKOUT SESSION ===');
+    console.log('Original workout exercises:', workout.exercises?.map(ex => ({ name: ex.name, sets: ex.sets, reps: ex.reps })));
+    console.log('Tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, totalSets: ex.totalSets, sets: ex.sets.length })));
     console.log('Exercise name mapping:', nameMap);
+    console.log('=== END WORKOUT SESSION DEBUG ===');
     
     startWorkoutSession(
       `${programId || 'program'}-${Date.now()}`,
