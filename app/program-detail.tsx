@@ -1389,24 +1389,38 @@ export default function ProgramDetailScreen() {
       return null;
     };
 
+    // Use planned exercises directly from the workout instead of parsing
     const sourceExercises: WorkoutExercise[] = (() => {
       if (workout.exercises && workout.exercises.length > 0) {
+        // Map planned exercises directly to WorkoutExercise format
         return workout.exercises
           .map((ex) => {
             const id = findExerciseIdByName(ex.name);
-            if (!id) return null;
-            const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : undefined;
-            const repsVal = ex.reps ? (ex.reps.match(/^\d+(?:-\d+)?$/) ? (ex.reps.includes('-') ? ex.reps : parseInt(ex.reps, 10)) : ex.reps) : undefined;
+            if (!id) {
+              console.warn(`Could not find exercise ID for: ${ex.name}`);
+              // Create a fallback ID based on the exercise name
+              const fallbackId = ex.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+              return {
+                exerciseId: fallbackId,
+                sets: ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3,
+                reps: ex.reps || '8-12',
+                duration: ex.duration,
+                notes: ex.notes,
+              } as WorkoutExercise;
+            }
+            const setsNum = ex.sets ? parseInt(ex.sets.replace(/[^0-9]/g, ''), 10) : 3;
+            const repsVal = ex.reps || '8-12';
             return {
               exerciseId: id,
-              sets: Number.isFinite(setsNum) ? (setsNum as number) : undefined,
-              reps: repsVal as number | string | undefined,
+              sets: setsNum,
+              reps: repsVal,
               duration: ex.duration,
               notes: ex.notes,
             } as WorkoutExercise;
-          })
-          .filter((v): v is WorkoutExercise => v !== null);
+          });
       }
+      // Only fallback to parsing if no planned exercises exist
+      console.log('No planned exercises found, falling back to parsing');
       return parseWorkoutToExercises(workout.title, workout.description);
     })();
 
@@ -1532,29 +1546,36 @@ export default function ProgramDetailScreen() {
       return;
     }
     
-    // Start set-tracking session
+    // Start set-tracking session with planned exercises
     const tracked = buildTrackedExercises(workout);
+    console.log('Starting workout with tracked exercises:', tracked.map(ex => ({ id: ex.exerciseId, sets: ex.totalSets })));
+    
+    // Create exercise name mapping for display
+    const exerciseNameMap: Record<string, string> = {};
+    (workout.exercises || []).forEach((ex) => {
+      if (ex.name) {
+        const normalize = (s: string) => s.toLowerCase().trim();
+        const n = normalize(ex.name);
+        // Try to find matching exercise ID
+        const exact = exerciseDatabase.find((d) => normalize(d.name) === n);
+        if (exact) {
+          exerciseNameMap[exact.id] = ex.name;
+        } else {
+          // Use fallback ID for exercises not in database
+          const fallbackId = ex.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          exerciseNameMap[fallbackId] = ex.name;
+        }
+      }
+    });
+    
+    console.log('Exercise name mapping:', exerciseNameMap);
+    
     startWorkoutSession(
       `${programId || 'program'}-${Date.now()}`,
       tracked,
       programId,
       workout.title,
-      (() => {
-        const map: Record<string, string> = {};
-        (workout.exercises || []).forEach((ex) => {
-          if (ex.name) {
-            const id = (() => {
-              const n = ex.name.toLowerCase().trim();
-              const exact = exerciseDatabase.find((d) => d.name.toLowerCase().trim() === n);
-              if (exact) return exact.id;
-              const partial = exerciseDatabase.find((d) => d.name.toLowerCase().includes(n) || n.includes(d.name.toLowerCase()));
-              return partial ? partial.id : undefined;
-            })();
-            if (id) map[id] = ex.name;
-          }
-        });
-        return map;
-      })()
+      exerciseNameMap
     );
     setShowWorkoutModal(true);
   };
