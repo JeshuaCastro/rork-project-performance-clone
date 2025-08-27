@@ -131,7 +131,7 @@ export default function ProgramDetailScreen() {
     isRunning: boolean;
   } | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
@@ -317,14 +317,14 @@ export default function ProgramDetailScreen() {
         });
       }, 1000);
       
-      setTimerInterval(interval);
+      timerIntervalRef.current = interval;
       
       return () => {
         if (interval) clearInterval(interval);
       };
-    } else if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
+    } else if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
   }, [activeWorkout?.isRunning]);
   
