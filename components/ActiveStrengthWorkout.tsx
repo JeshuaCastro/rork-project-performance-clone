@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { colors } from '@/constants/colors';
-import { Dumbbell, CheckCircle2, Clock, TrendingUp, RotateCcw, Plus, Minus } from 'lucide-react-native';
+import { Dumbbell, CheckCircle2, Clock, TrendingUp, RotateCcw, Plus, Minus, Star, Target, Zap } from 'lucide-react-native';
 import { useWorkoutSession } from '@/store/workoutSessionStore';
 import ActiveWorkoutBase from './ActiveWorkoutBase';
 import { WorkoutSet, TrackedWorkoutExercise } from '@/types/exercises';
@@ -36,6 +36,7 @@ export default function ActiveStrengthWorkout({
   const [currentReps, setCurrentReps] = useState<string>('');
   const [currentRPE, setCurrentRPE] = useState<string>('');
   const [setNotes, setSetNotes] = useState<string>('');
+  const [showProgressiveOverload, setShowProgressiveOverload] = useState<boolean>(true);
 
   // Timer for workout duration
   useEffect(() => {
@@ -217,21 +218,69 @@ export default function ActiveStrengthWorkout({
             </View>
           </View>
 
-          {/* Target vs Previous */}
+          {/* Progressive Overload Display */}
+          {showProgressiveOverload && exerciseHistory.length > 0 && (
+            <View style={styles.progressiveOverloadCard}>
+              <View style={styles.progressiveOverloadHeader}>
+                <TrendingUp size={16} color={colors.success} />
+                <Text style={styles.progressiveOverloadTitle}>Progressive Overload</Text>
+                <TouchableOpacity 
+                  style={styles.toggleButton}
+                  onPress={() => setShowProgressiveOverload(false)}
+                >
+                  <Text style={styles.toggleButtonText}>Hide</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.comparisonRow}>
+                <View style={styles.comparisonItem}>
+                  <Text style={styles.comparisonLabel}>Last Session</Text>
+                  <Text style={styles.comparisonValue}>
+                    {exerciseHistory[exerciseHistory.length - 1].sets[0]?.actualReps || '-'} × {exerciseHistory[exerciseHistory.length - 1].sets[0]?.actualWeight || '-'} lbs
+                  </Text>
+                  <Text style={styles.comparisonRPE}>
+                    RPE: {exerciseHistory[exerciseHistory.length - 1].sets[0]?.actualRPE || '-'}
+                  </Text>
+                </View>
+                
+                <View style={styles.comparisonArrow}>
+                  <TrendingUp size={20} color={colors.primary} />
+                </View>
+                
+                <View style={styles.comparisonItem}>
+                  <Text style={styles.comparisonLabel}>Target Today</Text>
+                  <Text style={styles.comparisonValue}>
+                    {currentSet.targetReps} × {currentSet.targetWeight || 'BW'}
+                  </Text>
+                  <Text style={styles.comparisonImprovement}>
+                    {currentSet.targetWeight && exerciseHistory[exerciseHistory.length - 1]?.sets[0]?.actualWeight ? 
+                      `+${(currentSet.targetWeight - (exerciseHistory[exerciseHistory.length - 1]?.sets[0]?.actualWeight || 0)).toFixed(1)} lbs` : 
+                      'Progressive'
+                    }
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Target vs Previous - Simplified */}
           <View style={styles.targetContainer}>
             <View style={styles.targetItem}>
+              <Target size={16} color={colors.primary} />
               <Text style={styles.targetLabel}>Target</Text>
               <Text style={styles.targetValue}>
                 {currentSet.targetReps} reps @ {currentSet.targetWeight || 'BW'}
               </Text>
             </View>
-            {exerciseHistory.length > 0 && (
-              <View style={styles.targetItem}>
-                <Text style={styles.targetLabel}>Last Time</Text>
-                <Text style={styles.targetValue}>
-                  {exerciseHistory[exerciseHistory.length - 1].sets[0]?.actualReps || '-'} reps @ {exerciseHistory[exerciseHistory.length - 1].sets[0]?.actualWeight || '-'}
-                </Text>
-              </View>
+            {!showProgressiveOverload && exerciseHistory.length > 0 && (
+              <TouchableOpacity 
+                style={styles.targetItem}
+                onPress={() => setShowProgressiveOverload(true)}
+              >
+                <TrendingUp size={16} color={colors.textSecondary} />
+                <Text style={styles.targetLabel}>Show Progress</Text>
+                <Text style={styles.targetValue}>Tap to view</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -291,15 +340,36 @@ export default function ActiveStrengthWorkout({
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>RPE (1-10)</Text>
-              <TextInput
-                style={styles.input}
-                value={currentRPE}
-                onChangeText={setCurrentRPE}
-                keyboardType="numeric"
-                placeholder="Optional"
-                placeholderTextColor={colors.textSecondary}
-                maxLength={2}
-              />
+              <View style={styles.rpeContainer}>
+                <TextInput
+                  style={styles.rpeInput}
+                  value={currentRPE}
+                  onChangeText={setCurrentRPE}
+                  keyboardType="numeric"
+                  placeholder="?"
+                  placeholderTextColor={colors.textSecondary}
+                  maxLength={2}
+                />
+                <View style={styles.rpeQuickSelect}>
+                  {[6, 7, 8, 9].map(rpe => (
+                    <TouchableOpacity
+                      key={rpe}
+                      style={[
+                        styles.rpeButton,
+                        currentRPE === rpe.toString() && styles.rpeButtonSelected
+                      ]}
+                      onPress={() => setCurrentRPE(rpe.toString())}
+                    >
+                      <Text style={[
+                        styles.rpeButtonText,
+                        currentRPE === rpe.toString() && styles.rpeButtonTextSelected
+                      ]}>
+                        {rpe}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
 
@@ -317,14 +387,43 @@ export default function ActiveStrengthWorkout({
             />
           </View>
 
-          {/* Complete Set Button */}
-          <TouchableOpacity 
-            style={styles.completeSetButton}
-            onPress={handleCompleteSet}
-          >
-            <CheckCircle2 size={20} color="#FFFFFF" />
-            <Text style={styles.completeSetText}>Complete Set</Text>
-          </TouchableOpacity>
+          {/* Set Completion Interface */}
+          <View style={styles.setCompletionContainer}>
+            <TouchableOpacity 
+              style={styles.completeSetButton}
+              onPress={handleCompleteSet}
+            >
+              <CheckCircle2 size={20} color="#FFFFFF" />
+              <Text style={styles.completeSetText}>Complete Set</Text>
+            </TouchableOpacity>
+            
+            {/* Visual Feedback */}
+            <View style={styles.setCompletionFeedback}>
+              <View style={styles.feedbackRow}>
+                <Text style={styles.feedbackLabel}>Set Quality:</Text>
+                <View style={styles.qualityIndicators}>
+                  {currentRPE && parseInt(currentRPE) <= 7 && (
+                    <View style={styles.qualityBadge}>
+                      <Star size={12} color={colors.success} />
+                      <Text style={styles.qualityText}>Great</Text>
+                    </View>
+                  )}
+                  {currentRPE && parseInt(currentRPE) >= 8 && parseInt(currentRPE) <= 9 && (
+                    <View style={[styles.qualityBadge, { backgroundColor: 'rgba(255, 149, 0, 0.2)' }]}>
+                      <Zap size={12} color={colors.warning} />
+                      <Text style={styles.qualityText}>Intense</Text>
+                    </View>
+                  )}
+                  {currentRPE && parseInt(currentRPE) >= 10 && (
+                    <View style={[styles.qualityBadge, { backgroundColor: 'rgba(255, 59, 48, 0.2)' }]}>
+                      <Target size={12} color={colors.danger} />
+                      <Text style={styles.qualityText}>Max Effort</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Exercise History */}
@@ -657,5 +756,150 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     marginRight: 8,
+  },
+  // Progressive Overload Styles
+  progressiveOverloadCard: {
+    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.3)',
+  },
+  progressiveOverloadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  progressiveOverloadTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.success,
+    flex: 1,
+    marginLeft: 8,
+  },
+  toggleButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  toggleButtonText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  comparisonItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  comparisonArrow: {
+    marginHorizontal: 16,
+  },
+  comparisonLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  comparisonValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  comparisonRPE: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  comparisonImprovement: {
+    fontSize: 10,
+    color: colors.success,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+  // RPE Styles
+  rpeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rpeInput: {
+    width: 50,
+    height: 44,
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  rpeQuickSelect: {
+    flexDirection: 'row',
+    gap: 4,
+    flex: 1,
+  },
+  rpeButton: {
+    flex: 1,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: colors.ios.tertiaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rpeButtonSelected: {
+    backgroundColor: colors.primary,
+  },
+  rpeButtonText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: colors.textSecondary,
+  },
+  rpeButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  // Set Completion Styles
+  setCompletionContainer: {
+    gap: 12,
+  },
+  setCompletionFeedback: {
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 8,
+    padding: 12,
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  feedbackLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500' as const,
+  },
+  qualityIndicators: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  qualityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(48, 209, 88, 0.2)',
+    gap: 4,
+  },
+  qualityText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: colors.text,
   },
 });

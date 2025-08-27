@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { colors } from '@/constants/colors';
-import { Activity, Play, Pause, Square, Heart, MapPin, Clock, TrendingUp } from 'lucide-react-native';
+import { Activity, Play, Pause, Square, Heart, MapPin, Clock, TrendingUp, Zap, Timer, Target, BarChart3 } from 'lucide-react-native';
 import { useWorkoutSession } from '@/store/workoutSessionStore';
 import ActiveWorkoutBase from './ActiveWorkoutBase';
 
@@ -62,6 +62,12 @@ export default function ActiveCardioWorkout({
   const [currentHeartRate, setCurrentHeartRate] = useState<string>('');
 
   const [workoutNotes, setWorkoutNotes] = useState<string>('');
+  const [effortLevel, setEffortLevel] = useState<number>(5); // 1-10 scale for cardio effort
+  const [intervalTimer, setIntervalTimer] = useState<number>(0);
+  const [isIntervalActive, setIsIntervalActive] = useState<boolean>(false);
+  const [currentInterval, setCurrentInterval] = useState<number>(1);
+  const [totalIntervals, setTotalIntervals] = useState<number>(1);
+  const [heartRateZone, setHeartRateZone] = useState<number>(1); // 1-5 zones
 
   // Timer for workout duration
   useEffect(() => {
@@ -125,6 +131,40 @@ export default function ActiveCardioWorkout({
     return Math.round((duration / 60) * baseRate * hrMultiplier);
   };
 
+  const getHeartRateZone = (heartRate: number): number => {
+    // Simplified HR zones (assuming max HR of 190)
+    const maxHR = 190;
+    const percentage = (heartRate / maxHR) * 100;
+    
+    if (percentage < 60) return 1; // Recovery
+    if (percentage < 70) return 2; // Aerobic Base
+    if (percentage < 80) return 3; // Aerobic
+    if (percentage < 90) return 4; // Lactate Threshold
+    return 5; // VO2 Max
+  };
+
+  const getZoneColor = (zone: number): string => {
+    const zoneColors = {
+      1: '#34C759', // Green - Recovery
+      2: '#32D74B', // Light Green - Aerobic Base
+      3: '#FFD60A', // Yellow - Aerobic
+      4: '#FF9F0A', // Orange - Lactate Threshold
+      5: '#FF453A'  // Red - VO2 Max
+    };
+    return zoneColors[zone as keyof typeof zoneColors] || '#34C759';
+  };
+
+  const getZoneName = (zone: number): string => {
+    const zoneNames = {
+      1: 'Recovery',
+      2: 'Base',
+      3: 'Aerobic',
+      4: 'Threshold',
+      5: 'VO2 Max'
+    };
+    return zoneNames[zone as keyof typeof zoneNames] || 'Recovery';
+  };
+
   const handleStartPause = () => {
     if (!isActive) {
       setIsActive(true);
@@ -178,8 +218,12 @@ export default function ActiveCardioWorkout({
     setCurrentHeartRate(hr);
     const heartRate = parseInt(hr) || 0;
     const calories = calculateCalories(workoutDuration, heartRate);
+    const zone = getHeartRateZone(heartRate);
+    setHeartRateZone(zone);
+    
     const newMetrics = {
       avgHeartRate: heartRate,
+      maxHeartRate: Math.max(metrics.maxHeartRate || 0, heartRate),
       calories
     };
     setMetrics(prev => ({
@@ -188,6 +232,37 @@ export default function ActiveCardioWorkout({
     }));
     updateCardioMetrics(newMetrics);
   };
+
+  const startInterval = (duration: number) => {
+    setIntervalTimer(duration);
+    setIsIntervalActive(true);
+  };
+
+  const stopInterval = () => {
+    setIsIntervalActive(false);
+    setIntervalTimer(0);
+  };
+
+  // Interval timer
+  useEffect(() => {
+    if (!isIntervalActive || intervalTimer <= 0) return;
+
+    const interval = setInterval(() => {
+      setIntervalTimer(prev => {
+        if (prev <= 1) {
+          setIsIntervalActive(false);
+          // Auto-advance to next interval
+          if (currentInterval < totalIntervals) {
+            setCurrentInterval(prev => prev + 1);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isIntervalActive, intervalTimer, currentInterval, totalIntervals]);
 
   if (!currentSession) {
     return (
@@ -276,6 +351,51 @@ export default function ActiveCardioWorkout({
           </View>
         </View>
 
+        {/* Heart Rate Zone Display */}
+        {metrics.avgHeartRate && metrics.avgHeartRate > 0 && (
+          <View style={styles.heartRateZoneCard}>
+            <View style={styles.zoneHeader}>
+              <Heart size={20} color={getZoneColor(heartRateZone)} />
+              <Text style={styles.zoneTitle}>Heart Rate Zone</Text>
+            </View>
+            <View style={styles.zoneDisplay}>
+              <Text style={[styles.zoneNumber, { color: getZoneColor(heartRateZone) }]}>
+                Zone {heartRateZone}
+              </Text>
+              <Text style={styles.zoneName}>{getZoneName(heartRateZone)}</Text>
+              <Text style={styles.zoneHeartRate}>{metrics.avgHeartRate} bpm</Text>
+            </View>
+            <View style={styles.zoneBar}>
+              {[1, 2, 3, 4, 5].map(zone => (
+                <View 
+                  key={zone}
+                  style={[
+                    styles.zoneSegment,
+                    { 
+                      backgroundColor: zone <= heartRateZone ? getZoneColor(zone) : colors.ios.quaternaryBackground,
+                      opacity: zone <= heartRateZone ? 1 : 0.3
+                    }
+                  ]} 
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Interval Timer */}
+        {isIntervalActive && (
+          <View style={styles.intervalCard}>
+            <View style={styles.intervalHeader}>
+              <Timer size={20} color={colors.primary} />
+              <Text style={styles.intervalTitle}>Interval {currentInterval}/{totalIntervals}</Text>
+            </View>
+            <Text style={styles.intervalTimer}>{formatTime(intervalTimer)}</Text>
+            <TouchableOpacity style={styles.stopIntervalButton} onPress={stopInterval}>
+              <Text style={styles.stopIntervalText}>Stop Interval</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Live Metrics */}
         <View style={styles.metricsCard}>
           <Text style={styles.metricsTitle}>Live Metrics</Text>
@@ -288,9 +408,9 @@ export default function ActiveCardioWorkout({
             </View>
             
             <View style={styles.metricItem}>
-              <Heart size={18} color={colors.danger} />
+              <Heart size={18} color={getZoneColor(heartRateZone)} />
               <Text style={styles.metricValue}>{metrics.avgHeartRate || '--'}</Text>
-              <Text style={styles.metricLabel}>Avg HR</Text>
+              <Text style={styles.metricLabel}>Current HR</Text>
             </View>
             
             <View style={styles.metricItem}>
@@ -307,7 +427,54 @@ export default function ActiveCardioWorkout({
               <Text style={styles.metricLabel}>Calories</Text>
             </View>
           </View>
+
+          {/* Additional Metrics Row */}
+          <View style={styles.additionalMetrics}>
+            <View style={styles.additionalMetricItem}>
+              <BarChart3 size={16} color={colors.textSecondary} />
+              <Text style={styles.additionalMetricLabel}>Max HR</Text>
+              <Text style={styles.additionalMetricValue}>{metrics.maxHeartRate || '--'}</Text>
+            </View>
+            <View style={styles.additionalMetricItem}>
+              <Zap size={16} color={colors.textSecondary} />
+              <Text style={styles.additionalMetricLabel}>Effort</Text>
+              <Text style={styles.additionalMetricValue}>{effortLevel}/10</Text>
+            </View>
+          </View>
         </View>
+
+        {/* Interval Controls */}
+        {!isIntervalActive && (
+          <View style={styles.intervalControlsCard}>
+            <Text style={styles.intervalControlsTitle}>Interval Training</Text>
+            <View style={styles.intervalControlsRow}>
+              <TouchableOpacity 
+                style={styles.intervalButton}
+                onPress={() => startInterval(30)}
+              >
+                <Text style={styles.intervalButtonText}>30s</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.intervalButton}
+                onPress={() => startInterval(60)}
+              >
+                <Text style={styles.intervalButtonText}>1min</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.intervalButton}
+                onPress={() => startInterval(120)}
+              >
+                <Text style={styles.intervalButtonText}>2min</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.intervalButton}
+                onPress={() => startInterval(300)}
+              >
+                <Text style={styles.intervalButtonText}>5min</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Manual Input */}
         <View style={styles.inputCard}>
@@ -336,6 +503,36 @@ export default function ActiveCardioWorkout({
                 placeholder="--"
                 placeholderTextColor={colors.textSecondary}
               />
+            </View>
+          </View>
+
+          {/* Effort Level Tracking */}
+          <View style={styles.effortContainer}>
+            <Text style={styles.inputLabel}>Effort Level (1-10)</Text>
+            <View style={styles.effortScale}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
+                <TouchableOpacity
+                  key={level}
+                  style={[
+                    styles.effortButton,
+                    effortLevel === level && styles.effortButtonSelected
+                  ]}
+                  onPress={() => setEffortLevel(level)}
+                >
+                  <Text style={[
+                    styles.effortButtonText,
+                    effortLevel === level && styles.effortButtonTextSelected
+                  ]}>
+                    {level}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.effortLabels}>
+              <Text style={styles.effortLabelText}>Easy</Text>
+              <Text style={styles.effortLabelText}>Moderate</Text>
+              <Text style={styles.effortLabelText}>Hard</Text>
+              <Text style={styles.effortLabelText}>Max</Text>
             </View>
           </View>
 
@@ -596,5 +793,178 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: colors.primary,
     borderRadius: 3,
+  },
+  // Heart Rate Zone Styles
+  heartRateZoneCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  zoneHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  zoneTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.text,
+  },
+  zoneDisplay: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  zoneNumber: {
+    fontSize: 32,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  zoneName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  zoneHeartRate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  zoneBar: {
+    flexDirection: 'row',
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    gap: 2,
+  },
+  zoneSegment: {
+    flex: 1,
+    borderRadius: 2,
+  },
+  // Interval Styles
+  intervalCard: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  intervalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  intervalTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  intervalTimer: {
+    fontSize: 36,
+    fontWeight: '300' as const,
+    color: '#FFFFFF',
+    marginBottom: 16,
+    fontFamily: 'monospace',
+  },
+  stopIntervalButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  stopIntervalText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  // Additional Metrics Styles
+  additionalMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.ios.separator,
+  },
+  additionalMetricItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  additionalMetricLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  additionalMetricValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
+  },
+  // Interval Controls Styles
+  intervalControlsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  intervalControlsTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.text,
+    marginBottom: 12,
+  },
+  intervalControlsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  intervalButton: {
+    flex: 1,
+    backgroundColor: colors.ios.secondaryBackground,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  intervalButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
+  },
+  // Effort Level Styles
+  effortContainer: {
+    marginBottom: 16,
+  },
+  effortScale: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  effortButton: {
+    flex: 1,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: colors.ios.tertiaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  effortButtonSelected: {
+    backgroundColor: colors.primary,
+  },
+  effortButtonText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: colors.textSecondary,
+  },
+  effortButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  effortLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  effortLabelText: {
+    fontSize: 10,
+    color: colors.textSecondary,
   },
 });
