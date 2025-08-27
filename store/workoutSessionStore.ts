@@ -6,7 +6,8 @@ import {
   TrackedWorkoutExercise, 
   WorkoutSet, 
   ProgressiveOverloadData,
-  WorkoutPerformance 
+  WorkoutPerformance,
+  CardioMetrics
 } from '@/types/exercises';
 
 const WORKOUT_SESSION_KEY = 'workout_session';
@@ -66,7 +67,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     }
   };
 
-  const startWorkoutSession = useCallback((workoutId: string, exercises: TrackedWorkoutExercise[], programId?: string) => {
+  const startWorkoutSession = useCallback((workoutId: string, exercises: TrackedWorkoutExercise[], workoutType: 'strength' | 'cardio' = 'strength', programId?: string) => {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const userId = 'current_user'; // TODO: Get from auth context
     
@@ -75,6 +76,7 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
       workoutId,
       programId,
       userId,
+      workoutType,
       startTime: new Date().toISOString(),
       status: 'in_progress',
       exercises: exercises.map(exercise => ({
@@ -290,6 +292,52 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     return lastSet.actualWeight;
   }, [progressiveOverloadData]);
 
+  // Cardio-specific functions
+  const updateCardioMetrics = useCallback((metrics: Partial<CardioMetrics>) => {
+    if (!currentSession || currentSession.workoutType !== 'cardio') return;
+
+    const updatedSession = {
+      ...currentSession,
+      cardioData: {
+        ...currentSession.cardioData,
+        ...metrics
+      } as CardioMetrics
+    };
+
+    setCurrentSession(updatedSession);
+    persistSession(updatedSession);
+  }, [currentSession]);
+
+  const startCardioWorkout = useCallback((workoutId: string, workoutType: 'running' | 'cycling' | 'rowing' | 'elliptical' | 'other' = 'running', programId?: string) => {
+    const sessionId = `cardio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const userId = 'current_user'; // TODO: Get from auth context
+    
+    const newSession: WorkoutSession = {
+      id: sessionId,
+      workoutId,
+      programId,
+      userId,
+      workoutType: 'cardio',
+      startTime: new Date().toISOString(),
+      status: 'in_progress',
+      exercises: [], // Cardio workouts don't use exercise structure
+      currentExerciseIndex: 0,
+      currentSetIndex: 0,
+      cardioData: {
+        duration: 0,
+        distance: 0,
+        avgHeartRate: 0,
+        maxHeartRate: 0,
+        calories: 0,
+        pace: 0
+      }
+    };
+
+    setCurrentSession(newSession);
+    persistSession(newSession);
+    return newSession;
+  }, []);
+
   return useMemo(() => ({
     // State
     currentSession,
@@ -311,6 +359,10 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     // Progressive overload
     getExerciseHistory,
     getRecommendedWeight,
+    
+    // Cardio-specific
+    updateCardioMetrics,
+    startCardioWorkout,
     
     // Computed values
     isWorkoutActive: currentSession?.status === 'in_progress',
@@ -335,6 +387,8 @@ export const [WorkoutSessionProvider, useWorkoutSession] = createContextHook(() 
     completeCurrentSet,
     moveToNextSet,
     getExerciseHistory,
-    getRecommendedWeight
+    getRecommendedWeight,
+    updateCardioMetrics,
+    startCardioWorkout
   ]);
 });

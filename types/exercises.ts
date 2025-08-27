@@ -103,12 +103,30 @@ export interface TrackedWorkoutExercise extends Omit<WorkoutExercise, 'sets'> {
   exerciseNotes?: string;
 }
 
+// Cardio-specific metrics
+export interface CardioMetrics {
+  duration: number; // in seconds
+  distance: number; // in miles/km
+  avgHeartRate?: number;
+  maxHeartRate?: number;
+  calories?: number;
+  pace?: number; // minutes per mile/km
+  zones?: {
+    zone1: number; // seconds in each zone
+    zone2: number;
+    zone3: number;
+    zone4: number;
+    zone5: number;
+  };
+}
+
 // Workout session state for active workouts
 export interface WorkoutSession {
   id: string;
   workoutId: string;
   programId?: string;
   userId: string;
+  workoutType: 'strength' | 'cardio';
   startTime: string; // ISO timestamp
   endTime?: string; // ISO timestamp
   status: 'not_started' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
@@ -117,6 +135,13 @@ export interface WorkoutSession {
   currentSetIndex: number;
   totalDuration?: number; // in seconds
   notes?: string;
+  // Strength-specific data
+  strengthData?: {
+    totalVolume?: number;
+    averageRPE?: number;
+  };
+  // Cardio-specific data
+  cardioData?: CardioMetrics;
   whoopData?: {
     preWorkoutRecovery?: number;
     postWorkoutStrain?: number;
