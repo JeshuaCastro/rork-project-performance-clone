@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from '@/constants/colors';
 import { StrainData } from '@/types/whoop';
 import { Dumbbell, Flame } from 'lucide-react-native';
@@ -16,9 +16,64 @@ export interface MinimalCardData {
 interface StrainCardProps {
   data?: MinimalCardData;
   strain?: StrainData;
+  isLoading?: boolean;
+  loadingPromise?: Promise<unknown>;
+  onRetry?: () => void;
+  hasCachedData?: boolean;
+  onContinueWithCache?: () => void;
 }
 
-export default function StrainCard({ data, strain }: StrainCardProps) {
+export default function StrainCard({ data, strain, isLoading: isLoadingProp, loadingPromise, onRetry, hasCachedData, onContinueWithCache }: StrainCardProps) {
+  const [internalLoading, setInternalLoading] = useState<boolean>(Boolean(isLoadingProp));
+  const [timedOut, setTimedOut] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (loadingPromise) {
+      setInternalLoading(true);
+      setTimedOut(false);
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled && isMounted) {
+          console.log('[StrainCard] Loading timed out after 5s');
+          setTimedOut(true);
+          setInternalLoading(false);
+        }
+      }, 5000);
+      loadingPromise.finally(() => {
+        settled = true;
+        clearTimeout(timer);
+        if (isMounted) {
+          setInternalLoading(false);
+          setTimedOut(false);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+    if (isLoadingProp) {
+      setInternalLoading(true);
+      setTimedOut(false);
+      const t = setTimeout(() => {
+        if (isMounted) {
+          console.log('[StrainCard] isLoading timed out after 5s');
+          setTimedOut(true);
+          setInternalLoading(false);
+        }
+      }, 5000);
+      return () => {
+        isMounted = false;
+        clearTimeout(t);
+      };
+    }
+    setInternalLoading(false);
+    setTimedOut(false);
+    return () => {
+      isMounted = false;
+    };
+  }, [loadingPromise, isLoadingProp]);
+
   const score = strain?.score ?? data?.score;
   const calories = strain?.calories;
   const avgHr = strain?.averageHeartRate;
@@ -43,6 +98,41 @@ export default function StrainCard({ data, strain }: StrainCardProps) {
   const badgeText = score != null ? getStrainDescription(score) : 'NO DATA';
   const barPct = score != null ? (score / 21) * 100 : 0;
   const badgeColor = getStrainColor(score ?? 0);
+
+  if (internalLoading || timedOut) {
+    const showCache = Boolean(hasCachedData || onContinueWithCache);
+    return (
+      <View style={[styles.container]} testID="StrainCard.Skeleton">
+        <View style={styles.skeletonBlock} />
+        <View style={styles.skeletonControls}>
+          <TouchableOpacity
+            testID="StrainCard.Retry"
+            accessibilityRole="button"
+            onPress={() => {
+              console.log('[StrainCard] Retry pressed');
+              onRetry?.();
+            }}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+          {showCache && (
+            <TouchableOpacity
+              testID="StrainCard.ContinueWithCache"
+              accessibilityRole="button"
+              onPress={() => {
+                console.log('[StrainCard] Continue with cached data pressed');
+                onContinueWithCache?.();
+              }}
+              style={styles.cacheButton}
+            >
+              <Text style={styles.cacheText}>Continue with cached data</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} testID="StrainCard">
@@ -170,6 +260,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
+  },
+  skeletonBlock: {
+    height: 120,
+    backgroundColor: colors.ios.tertiaryBackground,
+    borderRadius: 12,
+    marginBottom: iosSpacing.md,
+  },
+  skeletonControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8 as unknown as number,
+  },
+  retryButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    marginRight: 8,
+  },
+  retryText: {
+    color: colors.background,
+    fontWeight: '600',
+  },
+  cacheButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.ios.tertiaryBackground,
+  },
+  cacheText: {
+    color: colors.text,
+    fontWeight: '500',
   },
   totalMetrics: {
     flexDirection: 'row',

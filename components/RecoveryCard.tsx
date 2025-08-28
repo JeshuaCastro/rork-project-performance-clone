@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from '@/constants/colors';
 import { RecoveryData } from '@/types/whoop';
 import { Activity, Heart } from 'lucide-react-native';
@@ -16,9 +16,14 @@ export interface MinimalCardData {
 interface RecoveryCardProps {
   data?: MinimalCardData;
   recovery?: RecoveryData;
+  isLoading?: boolean;
+  loadingPromise?: Promise<unknown>;
+  onRetry?: () => void;
+  hasCachedData?: boolean;
+  onContinueWithCache?: () => void;
 }
 
-export default function RecoveryCard({ data, recovery }: RecoveryCardProps) {
+export default function RecoveryCard({ data, recovery, isLoading: isLoadingProp, loadingPromise, onRetry, hasCachedData, onContinueWithCache }: RecoveryCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'high':
@@ -32,10 +37,95 @@ export default function RecoveryCard({ data, recovery }: RecoveryCardProps) {
     }
   };
 
+  const [internalLoading, setInternalLoading] = useState<boolean>(Boolean(isLoadingProp));
+  const [timedOut, setTimedOut] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (loadingPromise) {
+      setInternalLoading(true);
+      setTimedOut(false);
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled && isMounted) {
+          console.log('[RecoveryCard] Loading timed out after 5s');
+          setTimedOut(true);
+          setInternalLoading(false);
+        }
+      }, 5000);
+      loadingPromise.finally(() => {
+        settled = true;
+        clearTimeout(timer);
+        if (isMounted) {
+          setInternalLoading(false);
+          setTimedOut(false);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+    if (isLoadingProp) {
+      setInternalLoading(true);
+      setTimedOut(false);
+      const t = setTimeout(() => {
+        if (isMounted) {
+          console.log('[RecoveryCard] isLoading timed out after 5s');
+          setTimedOut(true);
+          setInternalLoading(false);
+        }
+      }, 5000);
+      return () => {
+        isMounted = false;
+        clearTimeout(t);
+      };
+    }
+    setInternalLoading(false);
+    setTimedOut(false);
+    return () => {
+      isMounted = false;
+    };
+  }, [loadingPromise, isLoadingProp]);
+
   const score = recovery?.score ?? data?.score;
   const statusDerived = recovery?.status ?? (score != null ? (score >= 67 ? 'high' : score >= 34 ? 'medium' : 'low') : 'unknown');
   const rhr = recovery?.restingHeartRate ?? data?.rhr;
   const hrv = recovery?.hrvMs ?? data?.hrv;
+
+  if (internalLoading || timedOut) {
+    const showCache = Boolean(hasCachedData || onContinueWithCache);
+    return (
+      <View style={[styles.container]} testID="RecoveryCard.Skeleton">
+        <View style={styles.skeletonBlock} />
+        <View style={styles.skeletonControls}>
+          <TouchableOpacity
+            testID="RecoveryCard.Retry"
+            accessibilityRole="button"
+            onPress={() => {
+              console.log('[RecoveryCard] Retry pressed');
+              onRetry?.();
+            }}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+          {showCache && (
+            <TouchableOpacity
+              testID="RecoveryCard.ContinueWithCache"
+              accessibilityRole="button"
+              onPress={() => {
+                console.log('[RecoveryCard] Continue with cached data pressed');
+                onContinueWithCache?.();
+              }}
+              style={styles.cacheButton}
+            >
+              <Text style={styles.cacheText}>Continue with cached data</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} testID="RecoveryCard">
@@ -121,6 +211,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
+  },
+  skeletonBlock: {
+    height: 120,
+    backgroundColor: colors.ios.tertiaryBackground,
+    borderRadius: 12,
+    marginBottom: iosSpacing.md,
+  },
+  skeletonControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8 as unknown as number,
+  },
+  retryButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    marginRight: 8,
+  },
+  retryText: {
+    color: colors.background,
+    fontWeight: '600',
+  },
+  cacheButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.ios.tertiaryBackground,
+  },
+  cacheText: {
+    color: colors.text,
+    fontWeight: '500',
   },
   metricsContainer: {
     flexDirection: 'row',
