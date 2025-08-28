@@ -155,6 +155,17 @@ export default function RootLayout() {
             })
           }} 
         />
+        <Stack.Screen 
+          name="dev/debug" 
+          options={{ 
+            headerShown: true,
+            title: 'Debug Dashboard',
+            ...(Platform.OS === 'ios' && {
+              presentation: 'card',
+              gestureEnabled: true,
+            })
+          }} 
+        />
         </Stack>
       </View>
     </WorkoutSessionProvider>
