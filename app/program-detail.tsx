@@ -56,6 +56,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useWhoopStore } from '@/store/whoopStore';
+import { useWorkoutSession } from '@/store/workoutSessionStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
@@ -1417,16 +1418,97 @@ export default function ProgramDetailScreen() {
     setShowWorkoutDetailModal(true);
   };
   
+  // Get workout session functions
+  const { startWorkoutSession, startCardioWorkout, currentSession, isWorkoutActive } = useWorkoutSession();
+
   // Start manual workout tracking
   const startManualWorkout = (workout: Workout) => {
-    const now = new Date();
-    setActiveWorkout({
-      workout,
-      startTime: now,
-      elapsedTime: 0,
-      isRunning: true
-    });
-    setShowWorkoutModal(true);
+    console.log('Starting workout:', workout.title, 'Type:', workout.type);
+    
+    try {
+      // Create a unique workout ID
+      const workoutId = `${workout.day}-${workout.title}-${Date.now()}`;
+      
+      if (workout.type === 'cardio') {
+        // Start cardio workout session
+        const session = startCardioWorkout(
+          workoutId,
+          'running', // Default to running, could be made dynamic
+          programId
+        );
+        console.log('Started cardio workout session:', session.id);
+      } else if (workout.type === 'strength') {
+        // For strength workouts, we need to create exercise structure
+        // For now, create a basic structure - this will be enhanced later
+        const exercises = workout.exercises?.map((exercise, index) => ({
+          exerciseId: `${workoutId}-exercise-${index}`,
+          name: exercise.name,
+          targetSets: parseInt(exercise.sets || '3'),
+          targetReps: parseInt(exercise.reps?.split('-')[0] || '8'),
+          targetWeight: 0, // Will be set by user
+          restTime: 90, // Default 90 seconds
+          sets: Array.from({ length: parseInt(exercise.sets || '3') }, (_, setIndex) => ({
+            setNumber: setIndex + 1,
+            targetReps: parseInt(exercise.reps?.split('-')[0] || '8'),
+            targetWeight: 0,
+            actualReps: 0,
+            actualWeight: 0,
+            actualRPE: 0,
+            restTime: 90,
+            completed: false,
+            startTime: '',
+            endTime: '',
+            notes: ''
+          })),
+          totalSets: parseInt(exercise.sets || '3'),
+          completedSets: 0,
+          isCompleted: false,
+          exerciseNotes: exercise.notes || ''
+        })) || [];
+        
+        const session = startWorkoutSession(
+          workoutId,
+          exercises,
+          'strength',
+          programId
+        );
+        console.log('Started strength workout session:', session.id);
+      } else {
+        // For other workout types, fall back to the old manual tracking
+        const now = new Date();
+        setActiveWorkout({
+          workout,
+          startTime: now,
+          elapsedTime: 0,
+          isRunning: true
+        });
+        setShowWorkoutModal(true);
+        return;
+      }
+      
+      // For strength and cardio workouts, show the workout modal
+      // The modal will now use the workout session store
+      const now = new Date();
+      setActiveWorkout({
+        workout,
+        startTime: now,
+        elapsedTime: 0,
+        isRunning: true
+      });
+      setShowWorkoutModal(true);
+      
+    } catch (error) {
+      console.error('Error starting workout session:', error);
+      // Fall back to old manual tracking on error
+      const now = new Date();
+      setActiveWorkout({
+        workout,
+        startTime: now,
+        elapsedTime: 0,
+        isRunning: true
+      });
+      setShowWorkoutModal(true);
+    }
   };
   
   // Pause/resume the workout timer
