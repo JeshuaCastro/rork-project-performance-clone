@@ -41,8 +41,20 @@ const SleepCard = memo(function SleepCard({ sleep }: { sleep: SleepData }) {
   );
 });
 
+const FORCE_DEBUG_RENDER = __DEV__ as boolean;
 function DebugDashboard() {
   console.log('[DebugDashboard] render');
+
+  if (!FORCE_DEBUG_RENDER) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} testID="debug-dashboard-prod-guard">
+        <Text style={styles.header}>Debug Dashboard</Text>
+        <View style={styles.debugBlock}>
+          <Text style={styles.blockLabel}>This screen is available in development mode only.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
 
   const mockRecovery: RecoveryData = {
     id: 'rec-1',
