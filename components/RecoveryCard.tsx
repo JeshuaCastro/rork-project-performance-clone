@@ -3,13 +3,22 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
 import { RecoveryData } from '@/types/whoop';
 import { Activity, Heart } from 'lucide-react-native';
-import { iosSpacing, iosMargins, iosTypography, iosCardShadow } from '@/utils/ios-helpers';
+import { iosSpacing, iosTypography } from '@/utils/ios-helpers';
 
-interface RecoveryCardProps {
-  recovery: RecoveryData;
+export interface MinimalCardData {
+  score?: number;
+  hrv?: number;
+  rhr?: number;
+  sleepHours?: number;
+  text?: string;
 }
 
-export default function RecoveryCard({ recovery }: RecoveryCardProps) {
+interface RecoveryCardProps {
+  data?: MinimalCardData;
+  recovery?: RecoveryData;
+}
+
+export default function RecoveryCard({ data, recovery }: RecoveryCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'high':
@@ -23,19 +32,24 @@ export default function RecoveryCard({ recovery }: RecoveryCardProps) {
     }
   };
 
+  const score = recovery?.score ?? data?.score;
+  const statusDerived = recovery?.status ?? (score != null ? (score >= 67 ? 'high' : score >= 34 ? 'medium' : 'low') : 'unknown');
+  const rhr = recovery?.restingHeartRate ?? data?.rhr;
+  const hrv = recovery?.hrvMs ?? data?.hrv;
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="RecoveryCard">
       <View style={styles.header}>
         <Text style={styles.title}>Recovery</Text>
-        <View style={[styles.badge, { backgroundColor: getStatusColor(recovery.status) }]}>
-          <Text style={styles.badgeText}>{recovery.status.toUpperCase()}</Text>
+        <View style={[styles.badge, { backgroundColor: getStatusColor(statusDerived) }]}>
+          <Text style={styles.badgeText}>{recovery?.status?.toUpperCase() ?? (score != null ? statusDerived.toUpperCase() : 'NO DATA')}</Text>
         </View>
       </View>
       
       <View style={styles.scoreContainer}>
-        <Text style={styles.scoreText}>{recovery.score}%</Text>
+        <Text style={styles.scoreText}>{score != null ? `${Math.round(score)}%` : '—'}</Text>
         <View style={styles.scoreBarContainer}>
-          <View style={[styles.scoreIndicator, { width: `${recovery.score}%`, backgroundColor: getStatusColor(recovery.status) }]} />
+          <View style={[styles.scoreIndicator, { width: `${score != null ? score : 0}%`, backgroundColor: getStatusColor(statusDerived) }]} />
         </View>
       </View>
       
@@ -43,13 +57,13 @@ export default function RecoveryCard({ recovery }: RecoveryCardProps) {
         <View style={styles.metricItem}>
           <Heart size={20} color={colors.textSecondary} />
           <Text style={styles.metricLabel}>Resting HR</Text>
-          <Text style={styles.metricValue}>{recovery.restingHeartRate} bpm</Text>
+          <Text style={styles.metricValue}>{rhr != null ? `${rhr} bpm` : '—'}</Text>
         </View>
         
         <View style={styles.metricItem}>
           <Activity size={20} color={colors.textSecondary} />
           <Text style={styles.metricLabel}>HRV</Text>
-          <Text style={styles.metricValue}>{recovery.hrvMs} ms</Text>
+          <Text style={styles.metricValue}>{hrv != null ? `${hrv} ms` : '—'}</Text>
         </View>
       </View>
     </View>

@@ -4,13 +4,26 @@ import { colors } from '@/constants/colors';
 import { AIAnalysis } from '@/types/whoop';
 import { Brain } from 'lucide-react-native';
 
-interface AIInsightCardProps {
-  analysis: AIAnalysis;
+export interface MinimalCardData {
+  score?: number;
+  hrv?: number;
+  rhr?: number;
+  sleepHours?: number;
+  text?: string;
 }
 
-export default function AIInsightCard({ analysis }: AIInsightCardProps) {
+interface AIInsightCardProps {
+  data?: MinimalCardData;
+  analysis?: AIAnalysis;
+}
+
+export default function AIInsightCard({ data, analysis }: AIInsightCardProps) {
+  const recoveryText = analysis?.recoveryInsight ?? data?.text ?? 'No data';
+  const trainingText = analysis?.trainingRecommendation ?? data?.text ?? 'No data';
+  const trendText = analysis?.longTermTrend ?? data?.text ?? 'No data';
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="AIInsightCard">
       <View style={styles.header}>
         <Text style={styles.title}>AI Coach Insights</Text>
         <Brain size={20} color={colors.primary} />
@@ -18,17 +31,17 @@ export default function AIInsightCard({ analysis }: AIInsightCardProps) {
       
       <View style={styles.insightSection}>
         <Text style={styles.sectionTitle}>Recovery Analysis</Text>
-        <Text style={styles.insightText}>{analysis.recoveryInsight}</Text>
+        <Text style={styles.insightText}>{recoveryText}</Text>
       </View>
       
       <View style={styles.insightSection}>
         <Text style={styles.sectionTitle}>Training Recommendation</Text>
-        <Text style={styles.insightText}>{analysis.trainingRecommendation}</Text>
+        <Text style={styles.insightText}>{trainingText}</Text>
       </View>
       
       <View style={styles.insightSection}>
         <Text style={styles.sectionTitle}>Long-term Trend</Text>
-        <Text style={styles.insightText}>{analysis.longTermTrend}</Text>
+        <Text style={styles.insightText}>{trendText}</Text>
       </View>
     </View>
   );
