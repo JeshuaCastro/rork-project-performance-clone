@@ -36,10 +36,10 @@ export default function AIInsightCard({ analysis }: AIInsightCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
+    margin: 12,
     padding: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    alignSelf: 'stretch',
   },
   header: {
     flexDirection: 'row',

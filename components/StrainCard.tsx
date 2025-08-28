@@ -112,11 +112,10 @@ export default function StrainCard({ strain }: StrainCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.ios.secondaryGroupedBackground,
-    borderRadius: 16,
-    padding: iosMargins.cardPadding,
-    marginBottom: iosMargins.sectionSpacing,
-    ...iosCardShadow,
+    margin: 12,
+    padding: 16,
+    borderRadius: 12,
+    alignSelf: 'stretch',
   },
   header: {
     flexDirection: 'row',
