@@ -3,14 +3,31 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, Scro
 import { Video, ResizeMode } from 'expo-av';
 import { ChevronLeft, ChevronRight, Play, Pause, X, Maximize2, Info, AlertTriangle } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
-import type { Workout, Exercise } from '@/src/schemas/program';
+import type { Exercise } from '@/src/schemas/program';
 import { resolveExercise } from '@/src/services/workoutNormalizer';
+import { useProgramStore } from '@/store/programStore';
+import type { WorkoutTemplate } from '@/types/programs';
+
+// Define the expected data shape for exercises
+interface WorkoutExercise {
+  name: string;
+  sets: number;
+  reps: string; // e.g., "8-12", "AMRAP", "3-5"
+  rest: string; // e.g., "60-90 sec", "3-5 min"
+  type: 'strength' | 'cardio' | 'mobility' | 'mixed';
+  targetRPE?: number;
+  notes?: string;
+  equipment?: string[];
+  primaryMuscles?: string[];
+}
 
 interface WorkoutPlayerProps {
-  workout: Workout;
+  goalId?: string; // If provided, fetch from program store
+  workoutTemplate?: WorkoutTemplate; // Direct template from program store
+  exercises?: WorkoutExercise[]; // Direct exercise data
+  workoutTitle?: string;
   onComplete?: () => void;
   onCancel?: () => void;
-  workoutTitle?: string;
 }
 
 function getExt(url?: string | null): string | null {
@@ -32,6 +49,28 @@ function decideMediaType(ex: Exercise): 'gif' | 'mp4' | 'none' {
   if (ext === 'gif') return 'gif';
   if (ext === 'mp4' || ext === 'mov' || ext === 'webm') return 'mp4';
   return 'none';
+}
+
+// Helper function to parse rest time strings into seconds
+function parseRestTime(restStr: string): number {
+  if (!restStr) return 90; // Default 90 seconds
+  
+  // Handle common formats: "60-90 sec", "3-5 min", "90 seconds", "2 minutes"
+  const lowerStr = restStr.toLowerCase();
+  
+  // Extract first number
+  const match = lowerStr.match(/(\d+)/);
+  if (!match) return 90;
+  
+  const value = parseInt(match[1]);
+  
+  // Check if it's in minutes
+  if (lowerStr.includes('min')) {
+    return value * 60;
+  }
+  
+  // Default to seconds
+  return value;
 }
 
 function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
@@ -63,7 +102,7 @@ function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
   return normalizedEx;
 }
 
-export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTitle }: WorkoutPlayerProps) {
+export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: directExercises, workoutTitle, onComplete, onCancel }: WorkoutPlayerProps) {
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -72,23 +111,105 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
   const videoRef = useRef<Video>(null);
   const modalVideoRef = useRef<Video>(null);
 
-  // Normalize the workout exercises to ensure they have proper dictionary data
+  // Get program store data if goalId is provided
+  const { goals, workoutTemplates, getCurrentMesocyclePhase } = useProgramStore();
+  
+  // Determine the source of exercises and workout data
+  const workoutData = useMemo(() => {
+    // Priority 1: Direct workout template
+    if (workoutTemplate) {
+      return {
+        title: workoutTemplate.name,
+        exercises: workoutTemplate.exercises.map(ex => ({
+          name: ex.exerciseId, // Will be resolved by exercise dictionary
+          sets: ex.sets,
+          reps: ex.reps,
+          rest: ex.restTime,
+          type: 'strength' as const, // Default, will be resolved
+          targetRPE: ex.targetRPE,
+          notes: ex.autoregulationGuidelines.join('. '),
+          equipment: [],
+          primaryMuscles: []
+        }))
+      };
+    }
+    
+    // Priority 2: Direct exercises array
+    if (directExercises && directExercises.length > 0) {
+      return {
+        title: workoutTitle || 'Workout',
+        exercises: directExercises
+      };
+    }
+    
+    // Priority 3: Fetch from program store using goalId
+    if (goalId) {
+      const goal = goals.find(g => g.id === goalId);
+      if (goal) {
+        const currentPhase = getCurrentMesocyclePhase(goalId);
+        const relevantTemplates = workoutTemplates.filter(wt => 
+          wt.goalType === goal.type && 
+          wt.mesocyclePhase === currentPhase
+        );
+        
+        if (relevantTemplates.length > 0) {
+          const template = relevantTemplates[0]; // Use first matching template
+          return {
+            title: template.name,
+            exercises: template.exercises.map(ex => ({
+              name: ex.exerciseId,
+              sets: ex.sets,
+              reps: ex.reps,
+              rest: ex.restTime,
+              type: 'strength' as const,
+              targetRPE: ex.targetRPE,
+              notes: ex.autoregulationGuidelines.join('. '),
+              equipment: [],
+              primaryMuscles: []
+            }))
+          };
+        }
+      }
+    }
+    
+    // Fallback: empty workout
+    return {
+      title: workoutTitle || 'Workout',
+      exercises: []
+    };
+  }, [workoutTemplate, directExercises, goalId, workoutTitle, goals, workoutTemplates, getCurrentMesocyclePhase]);
+
+  // Convert workout exercises to Exercise schema format and resolve them
   const exercises: Exercise[] = useMemo(() => {
     try {
-      const rawExercises = workout?.exercises ?? [];
-      return rawExercises.map(ex => {
+      return workoutData.exercises.map((ex, idx) => {
+        // Create a basic Exercise object that matches the schema
+        const baseExercise: Exercise = {
+          id: `exercise-${idx}`,
+          name: ex.name,
+          type: ex.type,
+          description: ex.notes,
+          sets: ex.sets,
+          reps: ex.reps,
+          restSec: parseRestTime(ex.rest),
+          targetIntensity: ex.targetRPE ? `RPE ${ex.targetRPE}` : undefined,
+          equipment: ex.equipment || [],
+          primaryMuscles: ex.primaryMuscles || []
+        };
+        
         try {
-          return resolveExercise(ex);
+          // Try to resolve with exercise dictionary
+          return resolveExercise(baseExercise);
         } catch (error) {
-          console.warn('[WorkoutPlayer] Failed to resolve exercise, using original:', error);
-          return ex;
+          console.warn('[WorkoutPlayer] Failed to resolve exercise, using base:', error);
+          return baseExercise;
         }
       });
     } catch (error) {
-      console.warn('[WorkoutPlayer] Failed to normalize exercises, using original:', error);
-      return workout?.exercises ?? [];
+      console.warn('[WorkoutPlayer] Failed to process exercises:', error);
+      return [];
     }
-  }, [workout]);
+  }, [workoutData]);
   const total = exercises.length;
   const rawCurrent: Exercise | undefined = exercises[index];
   const current: Exercise | undefined = useMemo(() => (rawCurrent ? getDisplayExercise(rawCurrent, showBeginner) : undefined), [rawCurrent, showBeginner]);
@@ -363,7 +484,7 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
         
         <View style={styles.headerCenter}>
           <Text style={styles.workoutTitle} numberOfLines={1}>
-            {workoutTitle || workout.focus || 'Workout'}
+            {workoutData.title}
           </Text>
         </View>
         
