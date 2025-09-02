@@ -61,6 +61,7 @@ import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, 
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 import WorkoutPlayer from '@/app/workout/WorkoutPlayer';
+import DateSelector from '@/components/DateSelector';
 
 // Define workout type
 interface Workout {
@@ -110,6 +111,7 @@ export default function ProgramDetailScreen() {
   const [currentWeek, setCurrentWeek] = useState(1);
   const [today] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [aiPlan, setAiPlan] = useState<any>(null);
   const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
   
@@ -1283,17 +1285,17 @@ export default function ProgramDetailScreen() {
     return generateWorkoutPlan();
   }, [aiPlan, currentWeek, recoveryStatus, program?.type, program?.trainingDaysPerWeek, programUpdateKey]);
   
-  // Find today's workout
-  const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  // Find workouts for selected date
+  const selectedDay = useMemo(() => new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }), [selectedDate]);
   
-  // Find today's workouts - separate cardio and strength
-  const todayWorkouts = workoutPlan.filter((workout: Workout) => workout.day === todayDay);
+  // Filter workouts for the selected day only
+  const selectedDayWorkouts = workoutPlan.filter((workout: Workout) => workout.day === selectedDay);
   
   // Categorize workouts by type
-  const cardioWorkouts = todayWorkouts.filter((workout: Workout) => workout.type === 'cardio');
-  const strengthWorkouts = todayWorkouts.filter((workout: Workout) => workout.type === 'strength');
-  const recoveryWorkouts = todayWorkouts.filter((workout: Workout) => workout.type === 'recovery');
-  const otherWorkouts = todayWorkouts.filter((workout: Workout) => workout.type === 'other');
+  const cardioWorkouts = selectedDayWorkouts.filter((workout: Workout) => workout.type === 'cardio');
+  const strengthWorkouts = selectedDayWorkouts.filter((workout: Workout) => workout.type === 'strength');
+  const recoveryWorkouts = selectedDayWorkouts.filter((workout: Workout) => workout.type === 'recovery');
+  const otherWorkouts = selectedDayWorkouts.filter((workout: Workout) => workout.type === 'other');
   
   // Get intensity color
   const getIntensityColor = (intensity: string) => {
@@ -2059,19 +2061,51 @@ export default function ProgramDetailScreen() {
                 </View>
               )}
               
-              {/* Today's Focus */}
-              {todayWorkouts.length > 0 && (
-                <View style={styles.todayFocus}>
-                  <View style={styles.todayHeader}>
-                    <Text style={styles.todayTitle}>Today&apos;s Focus</Text>
-                    <Text style={styles.todayDate}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-                  </View>
-                  
-                  <View style={styles.todayWorkouts}>
-                    {todayWorkouts.map((workout, index) => renderWorkoutCard(workout))}
-                  </View>
+              {/* Day selector + Focus */}
+              <View style={styles.todayFocus}>
+                <View style={styles.todayHeader}>
+                  <Text style={styles.todayTitle}>Daily Focus</Text>
+                  <Text style={styles.todayDate} testID="selected-date-label">
+                    {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </Text>
                 </View>
-              )}
+                <DateSelector 
+                  dates={(() => {
+                    const base = new Date();
+                    base.setHours(0,0,0,0);
+                    const start = new Date(base);
+                    const dayIdx = (base.getDay() + 6) % 7;
+                    start.setDate(base.getDate() - dayIdx);
+                    const list: string[] = [];
+                    for (let i = 0; i < 7; i++) {
+                      const d = new Date(start);
+                      d.setDate(start.getDate() + i);
+                      list.push(d.toISOString().split('T')[0]);
+                    }
+                    return list;
+                  })()}
+                  selectedDate={selectedDate}
+                  onSelectDate={(d) => {
+                    console.log('Selected date changed:', d);
+                    setSelectedDate(d);
+                  }}
+                />
+                {selectedDayWorkouts.length > 0 ? (
+                  <View style={styles.todayWorkouts} testID="workouts-list">
+                    {selectedDayWorkouts.map((workout) => renderWorkoutCard(workout))}
+                  </View>
+                ) : (
+                  <View style={styles.restDayContainer} testID="rest-day">
+                    <View style={styles.restDayHeader}>
+                      <Heart size={18} color={colors.success} />
+                      <Text style={styles.restDayTitle}>Recovery Day</Text>
+                    </View>
+                    <Text style={styles.restDayText}>
+                      No scheduled workouts for this day. Focus on sleep, hydration, light mobility, and walking.
+                    </Text>
+                  </View>
+                )}
+              </View>
               
               {/* Renaissance Periodization Info */}
               {program && (
@@ -2162,7 +2196,7 @@ export default function ProgramDetailScreen() {
                                 {workout.title}
                               </Text>
                             </View>
-                            {workout.day === todayDay && (
+                            {workout.day === selectedDay && (
                               <View style={styles.todayBadge}>
                                 <Text style={styles.todayBadgeText}>TODAY</Text>
                               </View>
@@ -3639,6 +3673,29 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+  },
+  restDayContainer: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  restDayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  restDayTitle: {
+    color: colors.success,
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  restDayText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
   },
   todayHeader: {
     flexDirection: 'row',
