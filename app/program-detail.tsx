@@ -128,7 +128,7 @@ export default function ProgramDetailScreen() {
     isRunning: boolean;
   } | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
@@ -313,15 +313,16 @@ export default function ProgramDetailScreen() {
           };
         });
       }, 1000);
-      
-      setTimerInterval(interval);
-      
+      timerRef.current = interval;
       return () => {
-        if (interval) clearInterval(interval);
+        if (timerRef.current) {
+          clearInterval(timerRef.current as unknown as number);
+          timerRef.current = null;
+        }
       };
-    } else if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current as unknown as number);
+      timerRef.current = null;
     }
   }, [activeWorkout?.isRunning]);
   
@@ -2442,6 +2443,7 @@ export default function ProgramDetailScreen() {
         >
           {activeWorkout && (
             <WorkoutPlayer
+              programId={programId}
               workoutTitle={activeWorkout.workout.title}
               exercises={(activeWorkout.workout.exercises || []).map((ex) => ({
                 name: ex.name,

@@ -22,12 +22,13 @@ interface WorkoutExercise {
 }
 
 interface WorkoutPlayerProps {
-  goalId?: string; // If provided, fetch from program store
-  workoutTemplate?: WorkoutTemplate; // Direct template from program store
-  exercises?: WorkoutExercise[]; // Direct exercise data
+  goalId?: string;
+  workoutTemplate?: WorkoutTemplate;
+  exercises?: WorkoutExercise[];
   workoutTitle?: string;
   onComplete?: () => void;
   onCancel?: () => void;
+  programId?: string;
 }
 
 function getExt(url?: string | null): string | null {
@@ -102,7 +103,9 @@ function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
   return normalizedEx;
 }
 
-export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: directExercises, workoutTitle, onComplete, onCancel }: WorkoutPlayerProps) {
+import { useWhoopStore } from '@/store/whoopStore';
+
+export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: directExercises, workoutTitle, onComplete, onCancel, programId }: WorkoutPlayerProps) {
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -113,8 +116,8 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
 
   // Get program store data if goalId is provided
   const { goals, workoutTemplates, getCurrentMesocyclePhase } = useProgramStore();
-  
-  // Determine the source of exercises and workout data
+  const whoop = useWhoopStore();
+
   const workoutData = useMemo(() => {
     // Priority 1: Direct workout template
     if (workoutTemplate) {
@@ -153,7 +156,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         );
         
         if (relevantTemplates.length > 0) {
-          const template = relevantTemplates[0]; // Use first matching template
+          const template = relevantTemplates[0];
           return {
             title: template.name,
             exercises: template.exercises.map(ex => ({
@@ -168,6 +171,47 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
               primaryMuscles: []
             }))
           };
+        }
+      }
+    }
+
+    // Priority 4: Derive from active program schedule in Whoop store if programId provided
+    if (programId && whoop?.activePrograms?.length) {
+      const program = whoop.activePrograms.find(p => p.id === programId);
+      if (program && program.aiPlan?.phases?.length) {
+        try {
+          const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+          let currentPhase = program.aiPlan.phases[0];
+          if (program.startDate) {
+            const start = new Date(program.startDate);
+            const now = new Date();
+            const diffDays = Math.ceil(Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+            let weekCounter = 0;
+            for (const phase of program.aiPlan.phases) {
+              const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+              if (diffDays / 7 + 1 <= weekCounter + phaseDuration) { currentPhase = phase; break; }
+              weekCounter += phaseDuration;
+            }
+          }
+          const weekly = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
+          const todays = weekly.filter((w: any) => String(w?.day) === todayDay);
+          if (todays.length > 0) {
+            const primary = todays[0];
+            const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
+            const mapped: WorkoutExercise[] = exs.map((ex: any) => ({
+              name: String(ex?.name ?? ex?.title ?? 'Exercise'),
+              sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? '3'), 10) || 3,
+              reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.duration ? `${ex.duration} sec` : '8-12')),
+              rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
+              type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
+              notes: String(ex?.notes ?? ''),
+              equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
+              primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
+            }));
+            return { title: String(primary?.title ?? 'Workout'), exercises: mapped };
+          }
+        } catch (e) {
+          console.log('[WorkoutPlayer] Failed to derive from Whoop program', e);
         }
       }
     }
