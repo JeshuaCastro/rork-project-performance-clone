@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, ScrollView, Linking, SafeAreaView, Modal, Dimensions } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { ChevronLeft, ChevronRight, Play, Pause, X, Maximize2, Info } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Play, Pause, X, Maximize2, Info, AlertTriangle } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import type { Workout, Exercise } from '@/src/schemas/program';
+import { resolveExercise } from '@/src/services/workoutNormalizer';
 
 interface WorkoutPlayerProps {
   workout: Workout;
@@ -34,29 +35,32 @@ function decideMediaType(ex: Exercise): 'gif' | 'mp4' | 'none' {
 }
 
 function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
-  if (useBeginner && ex.beginnerAlternative?.name) {
+  // First normalize the exercise to ensure it has proper dictionary data
+  const normalizedEx = resolveExercise(ex);
+  
+  if (useBeginner && normalizedEx.beginnerAlternative?.name) {
     const alt: Exercise = {
-      id: `${ex.id}-beginner`,
-      name: ex.beginnerAlternative.name,
-      type: ex.type,
-      description: ex.beginnerAlternative.notes ?? ex.description ?? '',
-      primaryMuscles: ex.primaryMuscles ?? [],
-      equipment: ex.equipment ?? [],
-      mediaUrl: ex.beginnerAlternative.mediaUrl ?? ex.mediaUrl,
-      mediaType: ex.mediaType,
-      slug: ex.slug,
-      sets: ex.sets,
-      reps: ex.reps,
-      tempo: ex.tempo,
-      restSec: ex.restSec,
-      durationMin: ex.durationMin,
-      distanceKm: ex.distanceKm,
-      targetIntensity: ex.targetIntensity,
-      beginnerAlternative: ex.beginnerAlternative,
+      id: `${normalizedEx.id}-beginner`,
+      name: normalizedEx.beginnerAlternative.name,
+      type: normalizedEx.type,
+      description: normalizedEx.beginnerAlternative.notes ?? normalizedEx.description ?? 'Focus on proper form and controlled movement.',
+      primaryMuscles: normalizedEx.primaryMuscles ?? [],
+      equipment: normalizedEx.equipment ?? [],
+      mediaUrl: normalizedEx.beginnerAlternative.mediaUrl ?? normalizedEx.mediaUrl,
+      mediaType: normalizedEx.mediaType,
+      slug: normalizedEx.slug,
+      sets: normalizedEx.sets,
+      reps: normalizedEx.reps,
+      tempo: normalizedEx.tempo,
+      restSec: normalizedEx.restSec,
+      durationMin: normalizedEx.durationMin,
+      distanceKm: normalizedEx.distanceKm,
+      targetIntensity: normalizedEx.targetIntensity,
+      beginnerAlternative: normalizedEx.beginnerAlternative,
     };
     return alt;
   }
-  return ex;
+  return normalizedEx;
 }
 
 export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTitle }: WorkoutPlayerProps) {
@@ -68,7 +72,23 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
   const videoRef = useRef<Video>(null);
   const modalVideoRef = useRef<Video>(null);
 
-  const exercises: Exercise[] = useMemo(() => workout?.exercises ?? [], [workout]);
+  // Normalize the workout exercises to ensure they have proper dictionary data
+  const exercises: Exercise[] = useMemo(() => {
+    try {
+      const rawExercises = workout?.exercises ?? [];
+      return rawExercises.map(ex => {
+        try {
+          return resolveExercise(ex);
+        } catch (error) {
+          console.warn('[WorkoutPlayer] Failed to resolve exercise, using original:', error);
+          return ex;
+        }
+      });
+    } catch (error) {
+      console.warn('[WorkoutPlayer] Failed to normalize exercises, using original:', error);
+      return workout?.exercises ?? [];
+    }
+  }, [workout]);
   const total = exercises.length;
   const rawCurrent: Exercise | undefined = exercises[index];
   const current: Exercise | undefined = useMemo(() => (rawCurrent ? getDisplayExercise(rawCurrent, showBeginner) : undefined), [rawCurrent, showBeginner]);
@@ -147,16 +167,39 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
 
   // Generate form cues from exercise description
   const getFormCues = useCallback((exercise: Exercise): string[] => {
-    if (!exercise.description) return [];
+    if (!exercise.description) {
+      return ['Focus on proper form', 'Control the movement', 'Breathe steadily'];
+    }
+    
+    // Handle unverified exercises
+    if (exercise.description.includes('Unverified exercise')) {
+      return [
+        'Exercise not found in database',
+        'Research proper form before starting',
+        'Consider substituting with a known exercise',
+        'Focus on controlled movement',
+        'Stop if form breaks down'
+      ];
+    }
     
     // Split description into sentences and clean them up
     const sentences = exercise.description
       .split(/[.!?]+/)
       .map(s => s.trim())
-      .filter(s => s.length > 0)
+      .filter(s => s.length > 0 && s.length > 10) // Filter out very short fragments
       .slice(0, 5); // Limit to 5 cues max
     
-    return sentences.length > 0 ? sentences : ['Focus on proper form', 'Control the movement', 'Breathe steadily'];
+    if (sentences.length === 0) {
+      return [
+        'Maintain proper posture throughout',
+        'Control the movement tempo',
+        'Focus on the target muscles',
+        'Breathe consistently',
+        'Use full range of motion'
+      ];
+    }
+    
+    return sentences;
   }, []);
 
   const renderMedia = useCallback(() => {
@@ -165,28 +208,58 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
         <Text style={styles.placeholderText}>No exercise</Text>
       </View>
     );
+    
     const type = decideMediaType(current);
+    const isUnverified = current.description?.includes('Unverified exercise');
+    
     if (!current.mediaUrl || type === 'none') {
       return (
         <View style={styles.placeholder} testID="media-missing">
-          <Text style={styles.placeholderText}>Visual coming soon</Text>
+          {isUnverified && (
+            <View style={styles.warningBadge}>
+              <AlertTriangle size={16} color={colors.ios.systemOrange} />
+              <Text style={styles.warningText}>Check Form</Text>
+            </View>
+          )}
+          <Text style={styles.placeholderText}>
+            {isUnverified ? 'Exercise not recognized' : 'Visual coming soon'}
+          </Text>
+          <Text style={styles.placeholderSubtext}>
+            {isUnverified ? 'Please verify proper form' : 'Follow the form cues below'}
+          </Text>
         </View>
       );
     }
+    
     if (type === 'gif') {
       return (
-        <Image
-          testID="gif-media"
-          accessibilityRole="image"
-          source={{ uri: current.mediaUrl }}
-          style={styles.media}
-          resizeMode="cover"
-        />
+        <View style={styles.mediaContainer}>
+          {isUnverified && (
+            <View style={styles.warningOverlay}>
+              <AlertTriangle size={16} color={colors.ios.systemOrange} />
+              <Text style={styles.warningOverlayText}>Verify Form</Text>
+            </View>
+          )}
+          <Image
+            testID="gif-media"
+            accessibilityRole="image"
+            source={{ uri: current.mediaUrl }}
+            style={styles.media}
+            resizeMode="cover"
+          />
+        </View>
       );
     }
+    
     if (Platform.OS === 'web') {
       return (
         <View style={styles.placeholder} testID="media-web-fallback">
+          {isUnverified && (
+            <View style={styles.warningBadge}>
+              <AlertTriangle size={16} color={colors.ios.systemOrange} />
+              <Text style={styles.warningText}>Check Form</Text>
+            </View>
+          )}
           <Text style={styles.placeholderText}>Video preview unavailable on web</Text>
           <TouchableOpacity
             accessibilityRole="button"
@@ -198,17 +271,26 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
         </View>
       );
     }
+    
     return (
-      <Video
-        ref={videoRef}
-        testID="video-media"
-        style={styles.media}
-        source={{ uri: current.mediaUrl }}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={!isPaused}
-        isLooping
-        isMuted
-      />
+      <View style={styles.mediaContainer}>
+        {isUnverified && (
+          <View style={styles.warningOverlay}>
+            <AlertTriangle size={16} color={colors.ios.systemOrange} />
+            <Text style={styles.warningOverlayText}>Verify Form</Text>
+          </View>
+        )}
+        <Video
+          ref={videoRef}
+          testID="video-media"
+          style={styles.media}
+          source={{ uri: current.mediaUrl }}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay={!isPaused}
+          isLooping
+          isMuted
+        />
+      </View>
     );
   }, [current, isPaused]);
 
@@ -321,10 +403,17 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Beginner option</Text>
-          <Switch testID="beginner-toggle" value={showBeginner} onValueChange={setShowBeginner} />
-        </View>
+        {current?.beginnerAlternative && (
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLabelContainer}>
+              <Text style={styles.toggleLabel}>Beginner option</Text>
+              {showBeginner && (
+                <Text style={styles.toggleSubLabel}>Showing: {current.beginnerAlternative.name}</Text>
+              )}
+            </View>
+            <Switch testID="beginner-toggle" value={showBeginner} onValueChange={setShowBeginner} />
+          </View>
+        )}
 
         {current && (
           <View style={styles.formCuesSection}>
@@ -552,10 +641,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ios.secondaryBackground,
     borderRadius: 12,
   },
+  toggleLabelContainer: {
+    flex: 1,
+  },
   toggleLabel: {
     color: colors.text,
     fontWeight: '600' as const,
     fontSize: 16,
+  },
+  toggleSubLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
   },
   description: {
     color: colors.text,
@@ -795,5 +892,48 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: colors.text,
     marginBottom: 12,
+  },
+  mediaContainer: {
+    position: 'relative',
+  },
+  warningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+    alignSelf: 'center',
+    gap: 4,
+  },
+  warningText: {
+    color: colors.ios.systemOrange,
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  warningOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 149, 0, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+    gap: 4,
+  },
+  warningOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  placeholderSubtext: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
