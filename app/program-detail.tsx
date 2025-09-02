@@ -128,7 +128,7 @@ export default function ProgramDetailScreen() {
     isRunning: boolean;
   } | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [timerInterval, setTimerInterval] = useState<number | null>(null);
+  const [timerInterval, setTimerInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   
   // Track completed workouts - use a key based on program and date to persist daily completions
   const [completedWorkouts, setCompletedWorkouts] = useState<string[]>([]);
@@ -1447,7 +1447,7 @@ export default function ProgramDetailScreen() {
           targetSets: parseInt(exercise.sets || '3'),
           targetReps: parseInt(exercise.reps?.split('-')[0] || '8'),
           targetWeight: 0, // Will be set by user
-          restTime: 90, // Default 90 seconds
+          restTime: '90 seconds', // Default 90 seconds
           sets: Array.from({ length: parseInt(exercise.sets || '3') }, (_, setIndex) => ({
             setNumber: setIndex + 1,
             targetReps: parseInt(exercise.reps?.split('-')[0] || '8'),
