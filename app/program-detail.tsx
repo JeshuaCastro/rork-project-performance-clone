@@ -1001,13 +1001,35 @@ export default function ProgramDetailScreen() {
     return workouts;
   };
   
-  // Enhance workout with detailed information
+  // Normalize exercises coming from program schedule/AI plan into the modal's shape
+  const normalizeScheduleExercises = (raw: any[] | undefined): NonNullable<Workout['exercises']> => {
+    if (!raw || !Array.isArray(raw)) return [];
+    return raw.map((ex: any) => {
+      const name = String(ex?.name ?? ex?.title ?? 'Exercise');
+      const sets = ex?.sets ?? ex?.targetSets ?? ex?.totalSets;
+      const reps = ex?.reps ?? ex?.repRange ?? ex?.targetReps;
+      const duration = ex?.duration ?? (ex?.durationMin ? `${ex.durationMin} minutes` : ex?.time ?? undefined);
+      const notes = ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join(' • ') : ex?.description ?? undefined);
+      return {
+        name,
+        sets: sets !== undefined && sets !== null ? String(sets) : undefined,
+        reps: reps !== undefined && reps !== null ? String(reps) : undefined,
+        duration: duration !== undefined && duration !== null ? String(duration) : undefined,
+        notes: notes !== undefined && notes !== null ? String(notes) : undefined,
+      };
+    });
+  };
+
+  // Enhance workout with detailed information, preferring schedule-provided exercises
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
+    const providedExercises = normalizeScheduleExercises(workout?.exercises);
     const enhanced: Workout = {
       ...workout,
       duration: generateDuration(workout.type, workout.intensity),
       equipment: generateEquipment(workout.title, workout.type),
-      exercises: generateExercises(workout.title, workout.type, workout.description),
+      exercises: providedExercises.length > 0 
+        ? providedExercises 
+        : generateExercises(workout.title, workout.type, workout.description),
       tips: generateTips(workout.type, workout.intensity),
       modifications: generateModifications(workout.type, workout.intensity),
       targetHeartRate: generateTargetHeartRate(workout.type, workout.intensity),
