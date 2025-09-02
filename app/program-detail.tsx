@@ -1020,22 +1020,21 @@ export default function ProgramDetailScreen() {
     });
   };
 
-  // Enhance workout with detailed information, preferring schedule-provided exercises
+  // Enhance workout strictly from schedule; no generated fallbacks
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
     const providedExercises = normalizeScheduleExercises(workout?.exercises);
+
     const enhanced: Workout = {
       ...workout,
-      duration: generateDuration(workout.type, workout.intensity),
-      equipment: generateEquipment(workout.title, workout.type),
-      exercises: providedExercises.length > 0 
-        ? providedExercises 
-        : generateExercises(workout.title, workout.type, workout.description),
-      tips: generateTips(workout.type, workout.intensity),
-      modifications: generateModifications(workout.type, workout.intensity),
-      targetHeartRate: generateTargetHeartRate(workout.type, workout.intensity),
-      caloriesBurned: generateCaloriesBurned(workout.type, workout.intensity)
-    };
-    
+      duration: typeof workout?.duration === 'string' ? workout.duration : undefined,
+      equipment: Array.isArray(workout?.equipment) ? workout.equipment : undefined,
+      exercises: providedExercises,
+      tips: Array.isArray(workout?.tips) ? workout.tips : undefined,
+      modifications: Array.isArray(workout?.modifications) ? workout.modifications : undefined,
+      targetHeartRate: typeof workout?.targetHeartRate === 'string' ? workout.targetHeartRate : undefined,
+      caloriesBurned: typeof workout?.caloriesBurned === 'string' ? workout.caloriesBurned : undefined,
+    } as Workout;
+
     return enhanced;
   };
   
