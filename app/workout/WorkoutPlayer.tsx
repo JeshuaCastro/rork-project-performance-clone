@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, ScrollView, Linking, SafeAreaView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, ScrollView, Linking, SafeAreaView, Modal, Dimensions } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { ChevronLeft, ChevronRight, Play, Pause, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Play, Pause, X, Maximize2, Info } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import type { Workout, Exercise } from '@/src/schemas/program';
 
@@ -63,8 +63,10 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [showFullScreenForm, setShowFullScreenForm] = useState<boolean>(false);
   const preloaderRef = useRef<Video>(null);
   const videoRef = useRef<Video>(null);
+  const modalVideoRef = useRef<Video>(null);
 
   const exercises: Exercise[] = useMemo(() => workout?.exercises ?? [], [workout]);
   const total = exercises.length;
@@ -135,6 +137,28 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
     onCancel?.();
   }, [onCancel]);
 
+  const handleOpenFullScreenForm = useCallback(() => {
+    setShowFullScreenForm(true);
+  }, []);
+
+  const handleCloseFullScreenForm = useCallback(() => {
+    setShowFullScreenForm(false);
+  }, []);
+
+  // Generate form cues from exercise description
+  const getFormCues = useCallback((exercise: Exercise): string[] => {
+    if (!exercise.description) return [];
+    
+    // Split description into sentences and clean them up
+    const sentences = exercise.description
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .slice(0, 5); // Limit to 5 cues max
+    
+    return sentences.length > 0 ? sentences : ['Focus on proper form', 'Control the movement', 'Breathe steadily'];
+  }, []);
+
   const renderMedia = useCallback(() => {
     if (!current) return (
       <View style={styles.placeholder} testID="media-placeholder">
@@ -188,6 +212,58 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
     );
   }, [current, isPaused]);
 
+  const renderModalMedia = useCallback(() => {
+    if (!current) return null;
+    
+    const type = decideMediaType(current);
+    const { height: screenHeight } = Dimensions.get('window');
+    const mediaHeight = Math.min(screenHeight * 0.4, 400);
+    
+    if (!current.mediaUrl || type === 'none') {
+      return (
+        <View style={[styles.modalMediaPlaceholder, { height: mediaHeight }]}>
+          <Text style={styles.placeholderText}>Visual coming soon</Text>
+        </View>
+      );
+    }
+    
+    if (type === 'gif') {
+      return (
+        <Image
+          source={{ uri: current.mediaUrl }}
+          style={[styles.modalMedia, { height: mediaHeight }]}
+          resizeMode="cover"
+        />
+      );
+    }
+    
+    if (Platform.OS === 'web') {
+      return (
+        <View style={[styles.modalMediaPlaceholder, { height: mediaHeight }]}>
+          <Text style={styles.placeholderText}>Video preview unavailable on web</Text>
+          <TouchableOpacity
+            onPress={() => current.mediaUrl ? Linking.openURL(current.mediaUrl) : undefined}
+            style={[styles.navButton, { marginTop: 8, alignSelf: 'center', width: 160 }]}
+          >
+            <Text style={styles.navText}>Open Video</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    
+    return (
+      <Video
+        ref={modalVideoRef}
+        style={[styles.modalMedia, { height: mediaHeight }]}
+        source={{ uri: current.mediaUrl }}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={showFullScreenForm}
+        isLooping
+        isMuted
+      />
+    );
+  }, [current, showFullScreenForm]);
+
   const muscles = current?.primaryMuscles ?? [];
   const equipment = current?.equipment ?? [];
 
@@ -232,6 +308,16 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
 
       <View style={styles.mediaWrap}>
         {renderMedia()}
+        {current && (
+          <TouchableOpacity
+            style={styles.fullScreenButton}
+            onPress={handleOpenFullScreenForm}
+            testID="full-screen-form-button"
+          >
+            <Maximize2 size={20} color={colors.text} />
+            <Text style={styles.fullScreenButtonText}>Form View</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -240,10 +326,19 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
           <Switch testID="beginner-toggle" value={showBeginner} onValueChange={setShowBeginner} />
         </View>
 
-        {current?.description ? (
-          <Text style={styles.description} testID="form-cues">{current.description}</Text>
-        ) : (
-          <Text style={styles.descriptionMuted} testID="form-cues-missing">No form cues provided.</Text>
+        {current && (
+          <View style={styles.formCuesSection}>
+            <View style={styles.formCuesHeader}>
+              <Info size={18} color={colors.primary} />
+              <Text style={styles.formCuesTitle}>Form Cues</Text>
+            </View>
+            {getFormCues(current).map((cue, idx) => (
+              <View key={idx} style={styles.formCueItem} testID={`form-cue-${idx}`}>
+                <Text style={styles.formCueBullet}>•</Text>
+                <Text style={styles.formCueText}>{cue}</Text>
+              </View>
+            ))}
+          </View>
         )}
 
         {muscles.length > 0 && (
@@ -294,6 +389,59 @@ export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTi
       </View>
 
       <Video ref={preloaderRef} style={styles.hidden} source={{ uri: 'about:blank' }} />
+      
+      {/* Full Screen Form Modal */}
+      <Modal
+        visible={showFullScreenForm}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={handleCloseFullScreenForm}
+              testID="close-modal-button"
+            >
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle} numberOfLines={1}>
+              {current?.name || 'Exercise Form'}
+            </Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+          
+          <View style={styles.modalMediaContainer}>
+            {current && renderModalMedia()}
+          </View>
+          
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalContentInner}>
+            <Text style={styles.modalFormTitle}>Proper Form</Text>
+            {current && getFormCues(current).map((cue, idx) => (
+              <View key={idx} style={styles.modalFormCueItem} testID={`modal-form-cue-${idx}`}>
+                <View style={styles.modalFormCueNumber}>
+                  <Text style={styles.modalFormCueNumberText}>{idx + 1}</Text>
+                </View>
+                <Text style={styles.modalFormCueText}>{cue}</Text>
+              </View>
+            ))}
+            
+            {current?.primaryMuscles && current.primaryMuscles.length > 0 && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Target Muscles</Text>
+                <View style={styles.chipsRow}>
+                  {current.primaryMuscles.map((muscle) => (
+                    <View key={muscle} style={styles.chip}>
+                      <Text style={styles.chipText}>{muscle}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -498,5 +646,154 @@ const styles = StyleSheet.create({
     top: -100,
     left: -100,
     opacity: 0,
+  },
+  fullScreenButton: {
+    position: 'absolute',
+    top: 24,
+    right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  fullScreenButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  formCuesSection: {
+    marginBottom: 20,
+  },
+  formCuesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  formCuesTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  formCueItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    paddingLeft: 4,
+  },
+  formCueBullet: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: 'bold' as const,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  formCueText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.ios.separator,
+  },
+  modalCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.ios.secondaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: colors.text,
+    paddingHorizontal: 16,
+  },
+  modalHeaderSpacer: {
+    width: 44,
+  },
+  modalMediaContainer: {
+    backgroundColor: colors.ios.secondaryBackground,
+  },
+  modalMedia: {
+    width: '100%',
+    backgroundColor: colors.ios.secondaryBackground,
+  },
+  modalMediaPlaceholder: {
+    width: '100%',
+    backgroundColor: colors.ios.secondaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.ios.separator,
+    borderStyle: 'dashed',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalContentInner: {
+    padding: 20,
+  },
+  modalFormTitle: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: colors.text,
+    marginBottom: 20,
+  },
+  modalFormCueItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    backgroundColor: colors.ios.secondaryBackground,
+    padding: 16,
+    borderRadius: 12,
+  },
+  modalFormCueNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  modalFormCueNumberText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  modalFormCueText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  modalSection: {
+    marginTop: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    color: colors.text,
+    marginBottom: 12,
   },
 });
