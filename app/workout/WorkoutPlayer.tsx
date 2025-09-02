@@ -221,7 +221,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       title: workoutTitle || 'Workout',
       exercises: []
     };
-  }, [workoutTemplate, directExercises, goalId, workoutTitle, goals, workoutTemplates, getCurrentMesocyclePhase]);
+  }, [workoutTemplate, directExercises, goalId, workoutTitle, programId, goals, workoutTemplates, getCurrentMesocyclePhase, whoop.activePrograms]);
 
   // Convert workout exercises to Exercise schema format and resolve them
   const exercises: Exercise[] = useMemo(() => {

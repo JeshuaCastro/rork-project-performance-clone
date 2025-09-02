@@ -2445,18 +2445,6 @@ export default function ProgramDetailScreen() {
             <WorkoutPlayer
               programId={programId}
               workoutTitle={activeWorkout.workout.title}
-              exercises={(activeWorkout.workout.exercises || []).map((ex) => ({
-                name: ex.name,
-                sets: ex.sets ? parseInt(ex.sets) : 3,
-                reps: ex.reps ?? (ex.duration ? ex.duration : '8-12'),
-                rest: '90 sec',
-                type: activeWorkout.workout.type === 'cardio' ? 'cardio' :
-                      activeWorkout.workout.type === 'strength' ? 'strength' :
-                      activeWorkout.workout.type === 'recovery' ? 'mobility' : 'mixed',
-                notes: ex.notes || activeWorkout.workout.description,
-                equipment: activeWorkout.workout.equipment || [],
-                primaryMuscles: []
-              }))}
               onComplete={handleEndWorkout}
               onCancel={() => {
                 Alert.alert(
