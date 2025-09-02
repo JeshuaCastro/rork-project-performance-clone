@@ -1,5 +1,6 @@
 import { Program, ProgramSchema, Exercise } from "@/src/schemas/program";
 import { EXERCISE_DICTIONARY, lookupByName } from "@/src/content/exerciseDictionary";
+import { coerceAiExercise } from "@/src/services/workoutAdapter";
 
 const isDev = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 
@@ -136,7 +137,21 @@ export function resolveExercise(ex: Partial<Exercise>): Exercise {
 }
 
 export function normalizeAiProgram(input: unknown): Program {
-  const parsed = ProgramSchema.safeParse(input);
+  const prepped = (() => {
+    const src = input as Record<string, unknown> | null | undefined;
+    if (!src || typeof src !== "object") return input;
+    const clone: Record<string, unknown> = { ...src };
+    const workouts = Array.isArray((src as any).workouts) ? (src as any).workouts : [];
+    clone.workouts = workouts.map((w: any) => {
+      const wClone: any = { ...w };
+      const exs: any[] = Array.isArray(w?.exercises) ? w.exercises : [];
+      wClone.exercises = exs.map((ex: any) => ({ ...ex, ...coerceAiExercise(ex) }));
+      return wClone;
+    });
+    return clone;
+  })();
+
+  const parsed = ProgramSchema.safeParse(prepped);
   if (!parsed.success) {
     throw new Error(`Invalid program shape: ${parsed.error.message}`);
   }
