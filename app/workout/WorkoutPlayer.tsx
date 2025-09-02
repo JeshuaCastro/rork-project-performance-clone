@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, ScrollView, Linking } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Switch, ScrollView, Linking, SafeAreaView } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import { ChevronLeft, ChevronRight, Play, Pause, X } from 'lucide-react-native';
+import { colors } from '@/constants/colors';
 import type { Workout, Exercise } from '@/src/schemas/program';
 
-type Props = { workout: Workout };
+interface WorkoutPlayerProps {
+  workout: Workout;
+  onComplete?: () => void;
+  onCancel?: () => void;
+  workoutTitle?: string;
+}
 
 function getExt(url?: string | null): string | null {
   if (!url) return null;
@@ -52,9 +59,10 @@ function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
   return ex;
 }
 
-export default function WorkoutPlayer({ workout }: Props) {
+export default function WorkoutPlayer({ workout, onComplete, onCancel, workoutTitle }: WorkoutPlayerProps) {
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const preloaderRef = useRef<Video>(null);
   const videoRef = useRef<Video>(null);
 
@@ -75,9 +83,15 @@ export default function WorkoutPlayer({ workout }: Props) {
     setIndex((i) => {
       const v = Math.min(total - 1, i + 1);
       console.log('[WorkoutPlayer] Next pressed', { from: i, to: v });
+      
+      // If we're at the last exercise and moving forward, complete the workout
+      if (i === total - 1) {
+        onComplete?.();
+      }
+      
       return v;
     });
-  }, [total]);
+  }, [total, onComplete]);
 
   useEffect(() => {
     const next = exercises[index + 1];
@@ -106,7 +120,22 @@ export default function WorkoutPlayer({ workout }: Props) {
 
   const progress = total > 0 ? (index + 1) / total : 0;
 
-  const mediaNode = useMemo(() => {
+  const handlePauseResume = useCallback(() => {
+    setIsPaused(!isPaused);
+    if (videoRef.current) {
+      if (isPaused) {
+        videoRef.current.playAsync();
+      } else {
+        videoRef.current.pauseAsync();
+      }
+    }
+  }, [isPaused]);
+
+  const handleCancel = useCallback(() => {
+    onCancel?.();
+  }, [onCancel]);
+
+  const renderMedia = useCallback(() => {
     if (!current) return (
       <View style={styles.placeholder} testID="media-placeholder">
         <Text style={styles.placeholderText}>No exercise</Text>
@@ -152,18 +181,47 @@ export default function WorkoutPlayer({ workout }: Props) {
         style={styles.media}
         source={{ uri: current.mediaUrl }}
         resizeMode={ResizeMode.COVER}
-        shouldPlay
+        shouldPlay={!isPaused}
         isLooping
         isMuted
       />
     );
-  }, [current]);
+  }, [current, isPaused]);
 
   const muscles = current?.primaryMuscles ?? [];
   const equipment = current?.equipment ?? [];
 
   return (
-    <View style={styles.container} testID="workout-player">
+    <SafeAreaView style={styles.container} testID="workout-player">
+      {/* Header with controls */}
+      <View style={styles.headerBar}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={handleCancel}
+          testID="cancel-button"
+        >
+          <X size={24} color={colors.text} />
+        </TouchableOpacity>
+        
+        <View style={styles.headerCenter}>
+          <Text style={styles.workoutTitle} numberOfLines={1}>
+            {workoutTitle || workout.focus || 'Workout'}
+          </Text>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={handlePauseResume}
+          testID="pause-resume-button"
+        >
+          {isPaused ? (
+            <Play size={24} color={colors.text} />
+          ) : (
+            <Pause size={24} color={colors.text} />
+          )}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.header}>
         <Text style={styles.title} numberOfLines={2} testID="exercise-title">{current?.name ?? 'Exercise'}</Text>
         <Text style={styles.subTitle} testID="exercise-progress">Exercise {Math.min(index + 1, total)} of {total}</Text>
@@ -172,7 +230,9 @@ export default function WorkoutPlayer({ workout }: Props) {
         </View>
       </View>
 
-      <View style={styles.mediaWrap}>{mediaNode}</View>
+      <View style={styles.mediaWrap}>
+        {renderMedia()}
+      </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         <View style={styles.toggleRow}>
@@ -197,12 +257,15 @@ export default function WorkoutPlayer({ workout }: Props) {
         )}
 
         {equipment.length > 0 && (
-          <View style={styles.chipsRow}>
-            {equipment.map((e) => (
-              <View key={`equip-${e}`} style={[styles.chip, styles.chipAlt]} testID={`chip-equip-${e}`}>
-                <Text style={styles.chipText}>{e}</Text>
-              </View>
-            ))}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Equipment</Text>
+            <View style={styles.chipsRow}>
+              {equipment.map((e) => (
+                <View key={`equip-${e}`} style={[styles.chip, styles.chipEquipment]} testID={`chip-equip-${e}`}>
+                  <Text style={styles.chipText}>{e}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -211,58 +274,229 @@ export default function WorkoutPlayer({ workout }: Props) {
         <TouchableOpacity
           accessibilityRole="button"
           testID="prev-button"
-          style={[styles.navButton, index === 0 && styles.navButtonDisabled]}
+          style={[styles.navButton, styles.navButtonSecondary, index === 0 && styles.navButtonDisabled]}
           onPress={onPrev}
           disabled={index === 0}
         >
-          <Text style={[styles.navText, index === 0 && styles.navTextDisabled]}>Prev</Text>
+          <ChevronLeft size={20} color={index === 0 ? colors.textSecondary : colors.text} />
+          <Text style={[styles.navText, index === 0 && styles.navTextDisabled]}>Previous Exercise</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           accessibilityRole="button"
           testID="next-button"
-          style={[styles.navButton, index >= total - 1 && styles.navButtonPrimary]}
+          style={[styles.navButton, styles.navButtonPrimary]}
           onPress={onNext}
-          disabled={index >= total - 1}
         >
-          <Text style={styles.navText}>{index >= total - 1 ? 'Done' : 'Next'}</Text>
+          <Text style={styles.navTextPrimary}>{index >= total - 1 ? 'Complete Workout' : 'Next Exercise'}</Text>
+          <ChevronRight size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
       <Video ref={preloaderRef} style={styles.hidden} source={{ uri: 'about:blank' }} />
-    </View>
+    </SafeAreaView>
   );
 }
 
-const fontWeightBold = '700' as const;
-const fontWeightMedium = '600' as const;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0c10' },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  title: { color: '#ffffff', fontSize: 22, fontWeight: fontWeightBold },
-  subTitle: { color: '#a8b0b9', marginTop: 4 },
-  progressTrack: { height: 6, backgroundColor: '#1f232a', borderRadius: 6, marginTop: 10, overflow: 'hidden' },
-  progressFill: { height: 6, backgroundColor: '#5eead4' },
-  mediaWrap: { paddingHorizontal: 16, paddingTop: 8 },
-  media: { width: '100%', height: 260, borderRadius: 16, backgroundColor: '#111317' },
-  placeholder: { width: '100%', height: 260, borderRadius: 16, backgroundColor: '#111317', alignItems: 'center', justifyContent: 'center' },
-  placeholderText: { color: '#a8b0b9' },
-  content: { flex: 1, marginTop: 12 },
-  contentInner: { paddingHorizontal: 20, paddingBottom: 20 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  toggleLabel: { color: '#ffffff', fontWeight: fontWeightMedium, fontSize: 16 },
-  description: { color: '#e5e7eb', lineHeight: 20, marginBottom: 12 },
-  descriptionMuted: { color: '#8b949e', lineHeight: 20, marginBottom: 12 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  chip: { backgroundColor: '#1f232a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  chipAlt: { backgroundColor: '#23262e' },
-  chipText: { color: '#c7d2fe', fontSize: 12 },
-  footer: { flexDirection: 'row', gap: 12, padding: 16 },
-  navButton: { flex: 1, backgroundColor: '#2a2f39', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  navButtonDisabled: { backgroundColor: '#1d2129' },
-  navButtonPrimary: { backgroundColor: '#5eead4' },
-  navText: { color: '#ffffff', fontWeight: fontWeightBold },
-  navTextDisabled: { color: '#6b7280' },
-  hidden: { width: 1, height: 1, position: 'absolute', top: -100, left: -100, opacity: 0 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.ios.separator,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.ios.secondaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  workoutTitle: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    color: colors.text,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: colors.card,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  subTitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500' as const,
+    marginBottom: 12,
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: colors.ios.quaternaryBackground,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4,
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  mediaWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  media: {
+    width: '100%',
+    height: 280,
+    borderRadius: 16,
+    backgroundColor: colors.ios.secondaryBackground,
+  },
+  placeholder: {
+    width: '100%',
+    height: 280,
+    borderRadius: 16,
+    backgroundColor: colors.ios.secondaryBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.ios.separator,
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500' as const,
+  },
+  content: {
+    flex: 1,
+  },
+  contentInner: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.ios.secondaryBackground,
+    borderRadius: 12,
+  },
+  toggleLabel: {
+    color: colors.text,
+    fontWeight: '600' as const,
+    fontSize: 16,
+  },
+  description: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  descriptionMuted: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 20,
+    fontStyle: 'italic',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600' as const,
+    marginBottom: 12,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  chipEquipment: {
+    backgroundColor: colors.ios.systemOrange,
+  },
+  chipText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.ios.separator,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  navButtonSecondary: {
+    flex: 1,
+    backgroundColor: colors.ios.secondaryBackground,
+  },
+  navButtonPrimary: {
+    flex: 2,
+    backgroundColor: colors.primary,
+  },
+  navButtonDisabled: {
+    backgroundColor: colors.ios.quaternaryBackground,
+  },
+  navText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  navTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  navTextDisabled: {
+    color: colors.textSecondary,
+  },
+  hidden: {
+    width: 1,
+    height: 1,
+    position: 'absolute',
+    top: -100,
+    left: -100,
+    opacity: 0,
+  },
 });
