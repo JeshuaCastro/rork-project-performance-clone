@@ -226,7 +226,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
 
           if (primary) {
             const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
-            const mapped: WorkoutExercise[] = exs.map((ex: any) => ({
+            let mapped: WorkoutExercise[] = exs.map((ex: any) => ({
               name: String(ex?.name ?? ex?.title ?? 'Exercise'),
               sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
               reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
@@ -236,6 +236,29 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
               equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
               primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
             }));
+
+            if (mapped.length === 0) {
+              console.warn('[WorkoutPlayer] No exercises found on schedule entry. Building minimal fallback from title/type.');
+              const pType = (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength') as WorkoutExercise['type'];
+              const pTitle = String(primary?.title ?? '').toLowerCase();
+              if (pType === 'strength') {
+                const guessName = pTitle.includes('lower') ? 'Goblet Squat' : pTitle.includes('upper') ? 'Push-up' : pTitle.includes('pull') ? 'Bent-over Row' : pTitle.includes('deadlift') ? 'Deadlift' : pTitle.includes('squat') ? 'Back Squat' : pTitle.includes('bench') ? 'Bench Press' : 'Compound Lift';
+                mapped = [
+                  { name: guessName, sets: 4, reps: '6-10', rest: '90 sec', type: 'strength', notes: 'Focus on form and control' },
+                  { name: 'Accessory 1', sets: 3, reps: '10-12', rest: '60-90 sec', type: 'strength', notes: 'Target supporting muscles' },
+                  { name: 'Core Finisher', sets: 2, reps: '12-15', rest: '45-60 sec', type: 'strength', notes: 'Maintain bracing throughout' },
+                ];
+              } else if (pType === 'cardio') {
+                mapped = [
+                  { name: 'Main Cardio', sets: 1, reps: '20-40 min', rest: '—', type: 'cardio', notes: 'Maintain target heart rate (Zone 2-3)' },
+                ];
+              } else {
+                mapped = [
+                  { name: 'Mobility Flow', sets: 1, reps: '15-20 min', rest: '—', type: 'mobility', notes: 'Move slowly and breathe' },
+                ];
+              }
+            }
+
             console.log('[WorkoutPlayer] Derived from program schedule', { title: primary?.title, count: mapped.length });
             return { title: String(primary?.title ?? workoutTitle ?? 'Workout'), exercises: mapped };
           }
@@ -284,6 +307,14 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
     }
   }, [workoutData]);
   const total = exercises.length;
+  useEffect(() => {
+    if (workoutData?.title) {
+      console.log('[WorkoutPlayer] Workout loaded', { title: workoutData.title, totalExercises: exercises.length });
+    }
+    if (exercises.length === 0) {
+      console.warn('[WorkoutPlayer] No exercises to display. Check schedule data for the selected workout.');
+    }
+  }, [workoutData?.title, exercises.length]);
   const rawCurrent: Exercise | undefined = exercises[index];
   const current: Exercise | undefined = useMemo(() => (rawCurrent ? getDisplayExercise(rawCurrent, showBeginner) : undefined), [rawCurrent, showBeginner]);
 
@@ -575,7 +606,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={2} testID="exercise-title">{current?.name ?? 'Exercise'}</Text>
+        <Text style={styles.title} numberOfLines={2} testID="exercise-title">{current?.name ?? (total === 0 ? 'No exercises found' : 'Exercise')}</Text>
         <Text style={styles.subTitle} testID="exercise-progress">Exercise {Math.min(index + 1, total)} of {total}</Text>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} testID="step-progress" />
