@@ -804,11 +804,11 @@ export default function ProgramsScreen() {
                 const program = activePrograms[0];
                 if (program) {
                   // Navigate directly to the program detail page where they can see and start today's workout
-                  router.push(`/program-detail?id=${program.id}`);
+                  router.push(`/program-detail?id=${program.id}&autoStart=1`);
                 }
               }}
             >
-              <Text style={styles.focusActionText}>View Today's Workout</Text>
+              <Text style={styles.focusActionText}>Start Workout</Text>
               <ChevronRightIcon size={16} color={colors.text} />
             </TouchableOpacity>
           </View>

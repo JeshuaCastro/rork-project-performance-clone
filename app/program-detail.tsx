@@ -90,6 +90,7 @@ export default function ProgramDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const programId = params.id as string;
+  const autoStart = (params.autoStart as string | undefined)?.toString() === '1' || (params.autoStart as string | undefined)?.toLowerCase() === 'true';
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   
   const { 
@@ -1288,6 +1289,25 @@ export default function ProgramDetailScreen() {
   
   // Find today's workouts - separate cardio and strength
   const todayWorkouts = workoutPlan.filter((workout: Workout) => workout.day === todayDay);
+  
+  const autoStartedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!programId) return;
+    if (!autoStart) return;
+    if (autoStartedRef.current) return;
+    if (!todayWorkouts || todayWorkouts.length === 0) {
+      Alert.alert(
+        "Rest / Recovery Day",
+        "No workouts are scheduled for today. Focus on recovery, mobility, or light activity.",
+        [{ text: "OK" }]
+      );
+      autoStartedRef.current = true;
+      return;
+    }
+    const nextWorkout = todayWorkouts.find((w) => !completedWorkouts.includes(`${w.day}-${w.title}`)) ?? todayWorkouts[0];
+    autoStartedRef.current = true;
+    handleStartWorkout(nextWorkout);
+  }, [programId, autoStart, todayWorkouts.length]);
   
   // Categorize workouts by type
   const cardioWorkouts = todayWorkouts.filter((workout: Workout) => workout.type === 'cardio');
