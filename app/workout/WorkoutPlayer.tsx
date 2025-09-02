@@ -181,6 +181,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       if (program && program.aiPlan?.phases?.length) {
         try {
           const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+          const lcToday = todayDay.toLowerCase();
           let currentPhase = program.aiPlan.phases[0];
           if (program.startDate) {
             const start = new Date(program.startDate);
@@ -193,22 +194,50 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
               weekCounter += phaseDuration;
             }
           }
-          const weekly = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
-          const todays = weekly.filter((w: any) => String(w?.day) === todayDay);
-          if (todays.length > 0) {
-            const primary = todays[0];
+          const weekly: any[] = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
+
+          // Helper: normalize day strings (e.g., Mon -> Monday)
+          const normalizeDay = (d: any): string => {
+            const str = String(d ?? '').toLowerCase();
+            const map: Record<string, string> = {
+              mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday', fri: 'friday', sat: 'saturday', sun: 'sunday'
+            };
+            if (str in map) return map[str];
+            return str;
+          };
+
+          // Prefer the workout the user tapped by title if provided
+          let primary: any | null = null;
+          if (workoutTitle) {
+            const lcTitle = workoutTitle.toLowerCase();
+            // First try exact day match + title match
+            primary = weekly.find(w => normalizeDay(w?.day) === lcToday && String(w?.title ?? '').toLowerCase() === lcTitle) || null;
+            // Then try fuzzy title match on any day
+            if (!primary) {
+              primary = weekly.find(w => String(w?.title ?? '').toLowerCase() === lcTitle) || null;
+            }
+          }
+
+          // If not found via title, fallback to today's first strength/cardio item
+          if (!primary) {
+            const todays = weekly.filter(w => normalizeDay(w?.day) === lcToday);
+            primary = todays.find(w => w?.type === 'strength') || todays.find(w => w?.type === 'cardio') || todays[0] || null;
+          }
+
+          if (primary) {
             const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
             const mapped: WorkoutExercise[] = exs.map((ex: any) => ({
               name: String(ex?.name ?? ex?.title ?? 'Exercise'),
-              sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? '3'), 10) || 3,
-              reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.duration ? `${ex.duration} sec` : '8-12')),
+              sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
+              reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
               rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
               type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
-              notes: String(ex?.notes ?? ''),
+              notes: String(ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join('. ') : '')),
               equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
               primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
             }));
-            return { title: String(primary?.title ?? 'Workout'), exercises: mapped };
+            console.log('[WorkoutPlayer] Derived from program schedule', { title: primary?.title, count: mapped.length });
+            return { title: String(primary?.title ?? workoutTitle ?? 'Workout'), exercises: mapped };
           }
         } catch (e) {
           console.log('[WorkoutPlayer] Failed to derive from Whoop program', e);
