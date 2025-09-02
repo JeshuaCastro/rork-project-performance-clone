@@ -60,6 +60,7 @@ import { useWorkoutSession } from '@/store/workoutSessionStore';
 import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, TodaysWorkout } from '@/types/whoop';
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
+import WorkoutPlayer from '@/app/workout/WorkoutPlayer';
 
 // Define workout type
 interface Workout {
@@ -2398,11 +2399,11 @@ export default function ProgramDetailScreen() {
           </View>
         </Modal>
         
-        {/* Active Workout Modal */}
+        {/* Active Workout Modal - Now using WorkoutPlayer */}
         <Modal
           visible={showWorkoutModal}
-          transparent={true}
           animationType="slide"
+          presentationStyle="fullScreen"
           onRequestClose={() => {
             Alert.alert(
               "Close Workout?",
@@ -2418,94 +2419,46 @@ export default function ProgramDetailScreen() {
             );
           }}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">Active Workout</Text>
-                <TouchableOpacity 
-                  style={styles.closeButton}
-                  onPress={() => {
-                    Alert.alert(
-                      "Close Workout?",
-                      "Do you want to end your current workout?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        { 
-                          text: "End Workout", 
-                          style: "destructive",
-                          onPress: handleEndWorkout
-                        }
-                      ]
-                    );
-                  }}
-                >
-                  <StopCircle size={24} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
-              
-              {activeWorkout && (
-                <>
-                  <View style={styles.workoutInfo}>
-                    <Text style={styles.workoutInfoTitle} numberOfLines={1} ellipsizeMode="tail">
-                      {activeWorkout.workout.title}
-                    </Text>
-                    <Text style={styles.workoutInfoDescription} numberOfLines={3} ellipsizeMode="tail">
-                      {activeWorkout.workout.description}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.timerContainer}>
-                    <Timer size={32} color={colors.primary} />
-                    <Text style={styles.timerText}>{formatTime(activeWorkout.elapsedTime)}</Text>
-                  </View>
-                  
-                  <View style={styles.workoutControls}>
-                    <TouchableOpacity 
-                      style={[styles.workoutControlButton, styles.pauseButton]}
-                      onPress={toggleWorkoutTimer}
-                    >
-                      {activeWorkout.isRunning ? (
-                        <>
-                          <Pause size={24} color={colors.text} />
-                          <Text style={styles.controlButtonText}>Pause</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={24} color={colors.text} />
-                          <Text style={styles.controlButtonText}>Resume</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.workoutControlButton, styles.endButton]}
-                      onPress={handleEndWorkout}
-                    >
-                      <CheckCircle2 size={24} color={colors.text} />
-                      <Text style={styles.controlButtonText}>Finish</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <View style={styles.workoutStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Started</Text>
-                      <Text style={styles.statValue}>{activeWorkout.startTime.toLocaleTimeString()}</Text>
-                    </View>
-                    
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Intensity</Text>
-                      <View style={[
-                        styles.intensityBadge,
-                        { backgroundColor: getIntensityColor(activeWorkout.workout.intensity) }
-                      ]}>
-                        <Text style={styles.intensityText}>{activeWorkout.workout.intensity}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
+          {activeWorkout && (
+            <WorkoutPlayer
+              workout={{
+                id: `${activeWorkout.workout.day}-${activeWorkout.workout.title}`,
+                focus: activeWorkout.workout.title,
+                estimatedDurationMin: activeWorkout.workout.duration ? parseInt(activeWorkout.workout.duration.split('-')[0]) : undefined,
+                exercises: (activeWorkout.workout.exercises || []).map((ex, index) => ({
+                  id: `${activeWorkout.workout.day}-${activeWorkout.workout.title}-${index}`,
+                  name: ex.name,
+                  type: activeWorkout.workout.type === 'cardio' ? 'cardio' : 
+                        activeWorkout.workout.type === 'strength' ? 'strength' : 
+                        activeWorkout.workout.type === 'recovery' ? 'mobility' : 'mixed',
+                  description: ex.notes || activeWorkout.workout.description,
+                  sets: ex.sets ? parseInt(ex.sets) : undefined,
+                  reps: ex.reps || undefined,
+                  durationMin: ex.duration ? parseInt(ex.duration.split(' ')[0]) : undefined,
+                  equipment: activeWorkout.workout.equipment || []
+                }))
+              }}
+              workoutTitle={activeWorkout.workout.title}
+              onComplete={handleEndWorkout}
+              onCancel={() => {
+                Alert.alert(
+                  "Cancel Workout?",
+                  "Do you want to cancel your current workout?",
+                  [
+                    { text: "Continue Workout", style: "cancel" },
+                    { 
+                      text: "Cancel Workout", 
+                      style: "destructive",
+                      onPress: () => {
+                        setShowWorkoutModal(false);
+                        setActiveWorkout(null);
+                      }
+                    }
+                  ]
+                );
+              }}
+            />
+          )}
         </Modal>
         
         {/* Workout Summary Modal */}
