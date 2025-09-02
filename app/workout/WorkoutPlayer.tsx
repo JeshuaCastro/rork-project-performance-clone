@@ -5,15 +5,13 @@ import { ChevronLeft, ChevronRight, Play, Pause, X, Maximize2, Info, AlertTriang
 import { colors } from '@/constants/colors';
 import type { Exercise } from '@/src/schemas/program';
 import { resolveExercise } from '@/src/services/workoutNormalizer';
-import { useProgramStore } from '@/store/programStore';
-import type { WorkoutTemplate } from '@/types/programs';
+import { useWhoopStore } from '@/store/whoopStore';
 
-// Define the expected data shape for exercises
 interface WorkoutExercise {
   name: string;
   sets: number;
-  reps: string; // e.g., "8-12", "AMRAP", "3-5"
-  rest: string; // e.g., "60-90 sec", "3-5 min"
+  reps: string;
+  rest: string;
   type: 'strength' | 'cardio' | 'mobility' | 'mixed';
   targetRPE?: number;
   notes?: string;
@@ -22,13 +20,10 @@ interface WorkoutExercise {
 }
 
 interface WorkoutPlayerProps {
-  goalId?: string;
-  workoutTemplate?: WorkoutTemplate;
-  exercises?: WorkoutExercise[];
+  programId?: string;
   workoutTitle?: string;
   onComplete?: () => void;
   onCancel?: () => void;
-  programId?: string;
 }
 
 function getExt(url?: string | null): string | null {
@@ -52,32 +47,20 @@ function decideMediaType(ex: Exercise): 'gif' | 'mp4' | 'none' {
   return 'none';
 }
 
-// Helper function to parse rest time strings into seconds
 function parseRestTime(restStr: string): number {
-  if (!restStr) return 90; // Default 90 seconds
-  
-  // Handle common formats: "60-90 sec", "3-5 min", "90 seconds", "2 minutes"
+  if (!restStr) return 90;
   const lowerStr = restStr.toLowerCase();
-  
-  // Extract first number
   const match = lowerStr.match(/(\d+)/);
   if (!match) return 90;
-  
   const value = parseInt(match[1]);
-  
-  // Check if it's in minutes
   if (lowerStr.includes('min')) {
     return value * 60;
   }
-  
-  // Default to seconds
   return value;
 }
 
 function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
-  // First normalize the exercise to ensure it has proper dictionary data
   const normalizedEx = resolveExercise(ex);
-  
   if (useBeginner && normalizedEx.beginnerAlternative?.name) {
     const alt: Exercise = {
       id: `${normalizedEx.id}-beginner`,
@@ -103,9 +86,7 @@ function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
   return normalizedEx;
 }
 
-import { useWhoopStore } from '@/store/whoopStore';
-
-export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: directExercises, workoutTitle, onComplete, onCancel, programId }: WorkoutPlayerProps) {
+export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onCancel }: WorkoutPlayerProps) {
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -114,172 +95,86 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
   const videoRef = useRef<Video>(null);
   const modalVideoRef = useRef<Video>(null);
 
-  // Get program store data if goalId is provided
-  const { goals, workoutTemplates, getCurrentMesocyclePhase } = useProgramStore();
   const whoop = useWhoopStore();
 
   const workoutData = useMemo(() => {
-    // Priority 1: Direct workout template
-    if (workoutTemplate) {
-      return {
-        title: workoutTemplate.name,
-        exercises: workoutTemplate.exercises.map(ex => ({
-          name: ex.exerciseId, // Will be resolved by exercise dictionary
-          sets: ex.sets,
-          reps: ex.reps,
-          rest: ex.restTime,
-          type: 'strength' as const, // Default, will be resolved
-          targetRPE: ex.targetRPE,
-          notes: ex.autoregulationGuidelines.join('. '),
-          equipment: [],
-          primaryMuscles: []
-        }))
-      };
+    if (!programId || !whoop?.activePrograms?.length) {
+      return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
-    
-    // Priority 2: Direct exercises array
-    if (directExercises && directExercises.length > 0) {
-      return {
-        title: workoutTitle || 'Workout',
-        exercises: directExercises
-      };
+
+    const program = whoop.activePrograms.find(p => p.id === programId);
+    if (!program || !program.aiPlan?.phases?.length) {
+      console.warn('[WorkoutPlayer] Program not found or missing AI plan');
+      return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
-    
-    // Priority 3: Fetch from program store using goalId
-    if (goalId) {
-      const goal = goals.find(g => g.id === goalId);
-      if (goal) {
-        const currentPhase = getCurrentMesocyclePhase(goalId);
-        const relevantTemplates = workoutTemplates.filter(wt => 
-          wt.goalType === goal.type && 
-          wt.mesocyclePhase === currentPhase
-        );
-        
-        if (relevantTemplates.length > 0) {
-          const template = relevantTemplates[0];
-          return {
-            title: template.name,
-            exercises: template.exercises.map(ex => ({
-              name: ex.exerciseId,
-              sets: ex.sets,
-              reps: ex.reps,
-              rest: ex.restTime,
-              type: 'strength' as const,
-              targetRPE: ex.targetRPE,
-              notes: ex.autoregulationGuidelines.join('. '),
-              equipment: [],
-              primaryMuscles: []
-            }))
-          };
+
+    try {
+      const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+      const lcToday = todayDay.toLowerCase();
+      let currentPhase = program.aiPlan.phases[0];
+
+      if (program.startDate) {
+        const start = new Date(program.startDate);
+        const now = new Date();
+        const diffDays = Math.ceil(Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        let weekCounter = 0;
+        for (const phase of program.aiPlan.phases) {
+          const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+          if (diffDays / 7 + 1 <= weekCounter + phaseDuration) { currentPhase = phase; break; }
+          weekCounter += phaseDuration;
         }
       }
-    }
 
-    // Priority 4: Derive from active program schedule in Whoop store if programId provided
-    if (programId && whoop?.activePrograms?.length) {
-      const program = whoop.activePrograms.find(p => p.id === programId);
-      if (program && program.aiPlan?.phases?.length) {
-        try {
-          const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-          const lcToday = todayDay.toLowerCase();
-          let currentPhase = program.aiPlan.phases[0];
-          if (program.startDate) {
-            const start = new Date(program.startDate);
-            const now = new Date();
-            const diffDays = Math.ceil(Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-            let weekCounter = 0;
-            for (const phase of program.aiPlan.phases) {
-              const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
-              if (diffDays / 7 + 1 <= weekCounter + phaseDuration) { currentPhase = phase; break; }
-              weekCounter += phaseDuration;
-            }
-          }
-          const weekly: any[] = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
+      const weekly: any[] = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
+      const normalizeDay = (d: any): string => {
+        const str = String(d ?? '').toLowerCase();
+        const map: Record<string, string> = { mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday', fri: 'friday', sat: 'saturday', sun: 'sunday' };
+        if (str in map) return map[str];
+        return str;
+      };
 
-          // Helper: normalize day strings (e.g., Mon -> Monday)
-          const normalizeDay = (d: any): string => {
-            const str = String(d ?? '').toLowerCase();
-            const map: Record<string, string> = {
-              mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday', fri: 'friday', sat: 'saturday', sun: 'sunday'
-            };
-            if (str in map) return map[str];
-            return str;
-          };
-
-          // Prefer the workout the user tapped by title if provided
-          let primary: any | null = null;
-          if (workoutTitle) {
-            const lcTitle = workoutTitle.toLowerCase();
-            // First try exact day match + title match
-            primary = weekly.find(w => normalizeDay(w?.day) === lcToday && String(w?.title ?? '').toLowerCase() === lcTitle) || null;
-            // Then try fuzzy title match on any day
-            if (!primary) {
-              primary = weekly.find(w => String(w?.title ?? '').toLowerCase() === lcTitle) || null;
-            }
-          }
-
-          // If not found via title, fallback to today's first strength/cardio item
-          if (!primary) {
-            const todays = weekly.filter(w => normalizeDay(w?.day) === lcToday);
-            primary = todays.find(w => w?.type === 'strength') || todays.find(w => w?.type === 'cardio') || todays[0] || null;
-          }
-
-          if (primary) {
-            const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
-            let mapped: WorkoutExercise[] = exs.map((ex: any) => ({
-              name: String(ex?.name ?? ex?.title ?? 'Exercise'),
-              sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
-              reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
-              rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
-              type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
-              notes: String(ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join('. ') : '')),
-              equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
-              primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
-            }));
-
-            if (mapped.length === 0) {
-              console.warn('[WorkoutPlayer] No exercises found on schedule entry. Building minimal fallback from title/type.');
-              const pType = (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength') as WorkoutExercise['type'];
-              const pTitle = String(primary?.title ?? '').toLowerCase();
-              if (pType === 'strength') {
-                const guessName = pTitle.includes('lower') ? 'Goblet Squat' : pTitle.includes('upper') ? 'Push-up' : pTitle.includes('pull') ? 'Bent-over Row' : pTitle.includes('deadlift') ? 'Deadlift' : pTitle.includes('squat') ? 'Back Squat' : pTitle.includes('bench') ? 'Bench Press' : 'Compound Lift';
-                mapped = [
-                  { name: guessName, sets: 4, reps: '6-10', rest: '90 sec', type: 'strength', notes: 'Focus on form and control' },
-                  { name: 'Accessory 1', sets: 3, reps: '10-12', rest: '60-90 sec', type: 'strength', notes: 'Target supporting muscles' },
-                  { name: 'Core Finisher', sets: 2, reps: '12-15', rest: '45-60 sec', type: 'strength', notes: 'Maintain bracing throughout' },
-                ];
-              } else if (pType === 'cardio') {
-                mapped = [
-                  { name: 'Main Cardio', sets: 1, reps: '20-40 min', rest: '—', type: 'cardio', notes: 'Maintain target heart rate (Zone 2-3)' },
-                ];
-              } else {
-                mapped = [
-                  { name: 'Mobility Flow', sets: 1, reps: '15-20 min', rest: '—', type: 'mobility', notes: 'Move slowly and breathe' },
-                ];
-              }
-            }
-
-            console.log('[WorkoutPlayer] Derived from program schedule', { title: primary?.title, count: mapped.length });
-            return { title: String(primary?.title ?? workoutTitle ?? 'Workout'), exercises: mapped };
-          }
-        } catch (e) {
-          console.log('[WorkoutPlayer] Failed to derive from Whoop program', e);
+      let primary: any | null = null;
+      if (workoutTitle) {
+        const lcTitle = workoutTitle.toLowerCase();
+        primary = weekly.find(w => normalizeDay(w?.day) === lcToday && String(w?.title ?? '').toLowerCase() === lcTitle) || null;
+        if (!primary) {
+          primary = weekly.find(w => String(w?.title ?? '').toLowerCase() === lcTitle) || null;
         }
       }
-    }
-    
-    // Fallback: empty workout
-    return {
-      title: workoutTitle || 'Workout',
-      exercises: []
-    };
-  }, [workoutTemplate, directExercises, goalId, workoutTitle, programId, goals, workoutTemplates, getCurrentMesocyclePhase, whoop.activePrograms]);
 
-  // Convert workout exercises to Exercise schema format and resolve them
+      if (!primary) {
+        const todays = weekly.filter(w => normalizeDay(w?.day) === lcToday);
+        primary = todays.find(w => w?.type === 'strength') || todays.find(w => w?.type === 'cardio') || todays[0] || null;
+      }
+
+      if (!primary) {
+        console.warn('[WorkoutPlayer] No matching schedule entry for today');
+        return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
+      }
+
+      const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
+      const mapped: WorkoutExercise[] = exs.map((ex: any) => ({
+        name: String(ex?.name ?? ex?.title ?? 'Exercise'),
+        sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
+        reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
+        rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
+        type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
+        notes: String(ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join('. ') : '')),
+        equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
+        primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
+      }));
+
+      console.log('[WorkoutPlayer] Loaded schedule workout', { title: primary?.title, count: mapped.length });
+      return { title: String(primary?.title ?? workoutTitle ?? 'Workout'), exercises: mapped };
+    } catch (e) {
+      console.log('[WorkoutPlayer] Failed to derive from program schedule', e);
+      return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
+    }
+  }, [programId, workoutTitle, whoop.activePrograms]);
+
   const exercises: Exercise[] = useMemo(() => {
     try {
       return workoutData.exercises.map((ex, idx) => {
-        // Create a basic Exercise object that matches the schema
         const baseExercise: Exercise = {
           id: `exercise-${idx}`,
           name: ex.name,
@@ -292,9 +187,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
           equipment: ex.equipment || [],
           primaryMuscles: ex.primaryMuscles || []
         };
-        
         try {
-          // Try to resolve with exercise dictionary
           return resolveExercise(baseExercise);
         } catch (error) {
           console.warn('[WorkoutPlayer] Failed to resolve exercise, using base:', error);
@@ -306,7 +199,9 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       return [];
     }
   }, [workoutData]);
+
   const total = exercises.length;
+
   useEffect(() => {
     if (workoutData?.title) {
       console.log('[WorkoutPlayer] Workout loaded', { title: workoutData.title, totalExercises: exercises.length });
@@ -315,6 +210,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       console.warn('[WorkoutPlayer] No exercises to display. Check schedule data for the selected workout.');
     }
   }, [workoutData?.title, exercises.length]);
+
   const rawCurrent: Exercise | undefined = exercises[index];
   const current: Exercise | undefined = useMemo(() => (rawCurrent ? getDisplayExercise(rawCurrent, showBeginner) : undefined), [rawCurrent, showBeginner]);
 
@@ -330,12 +226,9 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
     setIndex((i) => {
       const v = Math.min(total - 1, i + 1);
       console.log('[WorkoutPlayer] Next pressed', { from: i, to: v });
-      
-      // If we're at the last exercise and moving forward, complete the workout
       if (i === total - 1) {
         onComplete?.();
       }
-      
       return v;
     });
   }, [total, onComplete]);
@@ -390,13 +283,10 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
     setShowFullScreenForm(false);
   }, []);
 
-  // Generate form cues from exercise description
   const getFormCues = useCallback((exercise: Exercise): string[] => {
     if (!exercise.description) {
       return ['Focus on proper form', 'Control the movement', 'Breathe steadily'];
     }
-    
-    // Handle unverified exercises
     if (exercise.description.includes('Unverified exercise')) {
       return [
         'Exercise not found in database',
@@ -406,14 +296,11 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         'Stop if form breaks down'
       ];
     }
-    
-    // Split description into sentences and clean them up
     const sentences = exercise.description
       .split(/[.!?]+/)
       .map(s => s.trim())
-      .filter(s => s.length > 0 && s.length > 10) // Filter out very short fragments
-      .slice(0, 5); // Limit to 5 cues max
-    
+      .filter(s => s.length > 0 && s.length > 10)
+      .slice(0, 5);
     if (sentences.length === 0) {
       return [
         'Maintain proper posture throughout',
@@ -423,7 +310,6 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         'Use full range of motion'
       ];
     }
-    
     return sentences;
   }, []);
 
@@ -433,10 +319,10 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         <Text style={styles.placeholderText}>No exercise</Text>
       </View>
     );
-    
+
     const type = decideMediaType(current);
     const isUnverified = current.description?.includes('Unverified exercise');
-    
+
     if (!current.mediaUrl || type === 'none') {
       return (
         <View style={styles.placeholder} testID="media-missing">
@@ -455,7 +341,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         </View>
       );
     }
-    
+
     if (type === 'gif') {
       return (
         <View style={styles.mediaContainer}>
@@ -475,7 +361,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         </View>
       );
     }
-    
+
     if (Platform.OS === 'web') {
       return (
         <View style={styles.placeholder} testID="media-web-fallback">
@@ -496,7 +382,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         </View>
       );
     }
-    
+
     return (
       <View style={styles.mediaContainer}>
         {isUnverified && (
@@ -521,11 +407,11 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
 
   const renderModalMedia = useCallback(() => {
     if (!current) return null;
-    
+
     const type = decideMediaType(current);
     const { height: screenHeight } = Dimensions.get('window');
     const mediaHeight = Math.min(screenHeight * 0.4, 400);
-    
+
     if (!current.mediaUrl || type === 'none') {
       return (
         <View style={[styles.modalMediaPlaceholder, { height: mediaHeight }]}>
@@ -533,7 +419,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         </View>
       );
     }
-    
+
     if (type === 'gif') {
       return (
         <Image
@@ -543,7 +429,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         />
       );
     }
-    
+
     if (Platform.OS === 'web') {
       return (
         <View style={[styles.modalMediaPlaceholder, { height: mediaHeight }]}>
@@ -557,7 +443,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         </View>
       );
     }
-    
+
     return (
       <Video
         ref={modalVideoRef}
@@ -576,7 +462,6 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
 
   return (
     <SafeAreaView style={styles.container} testID="workout-player">
-      {/* Header with controls */}
       <View style={styles.headerBar}>
         <TouchableOpacity
           style={styles.headerButton}
@@ -585,13 +470,13 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
         >
           <X size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={styles.workoutTitle} numberOfLines={1}>
             {workoutData.title}
           </Text>
         </View>
-        
+
         <TouchableOpacity
           style={styles.headerButton}
           onPress={handlePauseResume}
@@ -703,8 +588,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
       </View>
 
       <Video ref={preloaderRef} style={styles.hidden} source={{ uri: 'about:blank' }} />
-      
-      {/* Full Screen Form Modal */}
+
       <Modal
         visible={showFullScreenForm}
         animationType="slide"
@@ -725,11 +609,11 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
             </Text>
             <View style={styles.modalHeaderSpacer} />
           </View>
-          
+
           <View style={styles.modalMediaContainer}>
             {current && renderModalMedia()}
           </View>
-          
+
           <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalContentInner}>
             <Text style={styles.modalFormTitle}>Proper Form</Text>
             {current && getFormCues(current).map((cue, idx) => (
@@ -740,7 +624,7 @@ export default function WorkoutPlayer({ goalId, workoutTemplate, exercises: dire
                 <Text style={styles.modalFormCueText}>{cue}</Text>
               </View>
             ))}
-            
+
             {current?.primaryMuscles && current.primaryMuscles.length > 0 && (
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Target Muscles</Text>
