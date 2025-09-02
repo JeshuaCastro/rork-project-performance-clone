@@ -99,33 +99,26 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
 
   const workoutData = useMemo(() => {
     if (!programId || !whoop?.activePrograms?.length) {
+      console.warn('[WorkoutPlayer] Missing programId or no active programs');
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
 
     const program = whoop.activePrograms.find(p => p.id === programId);
-    if (!program || !program.aiPlan?.phases?.length) {
-      console.warn('[WorkoutPlayer] Program not found or missing AI plan');
+    if (!program) {
+      console.warn('[WorkoutPlayer] Program not found for id', programId);
+      return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
+    }
+
+    const phases: any[] = Array.isArray(program.aiPlan?.phases) ? program.aiPlan.phases : [];
+    if (!phases.length) {
+      console.warn('[WorkoutPlayer] Program missing aiPlan.phases');
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
 
     try {
       const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
       const lcToday = todayDay.toLowerCase();
-      let currentPhase = program.aiPlan.phases[0];
 
-      if (program.startDate) {
-        const start = new Date(program.startDate);
-        const now = new Date();
-        const diffDays = Math.ceil(Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        let weekCounter = 0;
-        for (const phase of program.aiPlan.phases) {
-          const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
-          if (diffDays / 7 + 1 <= weekCounter + phaseDuration) { currentPhase = phase; break; }
-          weekCounter += phaseDuration;
-        }
-      }
-
-      const weekly: any[] = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
       const normalizeDay = (d: any): string => {
         const str = String(d ?? '').toLowerCase();
         const map: Record<string, string> = { mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday', fri: 'friday', sat: 'saturday', sun: 'sunday' };
@@ -133,12 +126,40 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
         return str;
       };
 
+      let currentPhase = phases[0];
+      if (program.startDate) {
+        const start = new Date(program.startDate);
+        const now = new Date();
+        const diffDays = Math.ceil(Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        let weekCounter = 0;
+        for (const phase of phases) {
+          const phaseDuration = parseInt(phase.duration?.split(' ')[0] || '4', 10) || 4;
+          if (diffDays / 7 + 1 <= weekCounter + phaseDuration) { currentPhase = phase; break; }
+          weekCounter += phaseDuration;
+        }
+      }
+
+      const weekly: any[] = Array.isArray(currentPhase.weeklyStructure) ? currentPhase.weeklyStructure : [];
+
+      const matchByTitle = (entries: any[], title: string) => {
+        const lcTitle = title.toLowerCase();
+        let found = entries.find(w => normalizeDay(w?.day) === lcToday && String(w?.title ?? w?.name ?? '').toLowerCase() === lcTitle);
+        if (!found) found = entries.find(w => String(w?.title ?? w?.name ?? '').toLowerCase() === lcTitle);
+        if (!found) found = entries.find(w => String(w?.title ?? w?.name ?? '').toLowerCase().includes(lcTitle));
+        return found || null;
+      };
+
       let primary: any | null = null;
+
       if (workoutTitle) {
-        const lcTitle = workoutTitle.toLowerCase();
-        primary = weekly.find(w => normalizeDay(w?.day) === lcToday && String(w?.title ?? '').toLowerCase() === lcTitle) || null;
+        primary = matchByTitle(weekly, workoutTitle);
         if (!primary) {
-          primary = weekly.find(w => String(w?.title ?? '').toLowerCase() === lcTitle) || null;
+          console.warn('[WorkoutPlayer] Not found in current phase by title, searching all phases');
+          for (const phase of phases) {
+            const ws: any[] = Array.isArray(phase.weeklyStructure) ? phase.weeklyStructure : [];
+            const maybe = matchByTitle(ws, workoutTitle);
+            if (maybe) { primary = maybe; break; }
+          }
         }
       }
 
@@ -148,7 +169,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
       }
 
       if (!primary) {
-        console.warn('[WorkoutPlayer] No matching schedule entry for today');
+        console.warn('[WorkoutPlayer] No matching schedule entry for today or title', { today: todayDay, workoutTitle });
         return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
       }
 
@@ -164,8 +185,8 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
         primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
       }));
 
-      console.log('[WorkoutPlayer] Loaded schedule workout', { title: primary?.title, count: mapped.length });
-      return { title: String(primary?.title ?? workoutTitle ?? 'Workout'), exercises: mapped };
+      console.log('[WorkoutPlayer] Loaded schedule workout', { title: primary?.title ?? primary?.name, count: mapped.length, day: primary?.day });
+      return { title: String(primary?.title ?? primary?.name ?? workoutTitle ?? 'Workout'), exercises: mapped };
     } catch (e) {
       console.log('[WorkoutPlayer] Failed to derive from program schedule', e);
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
@@ -509,6 +530,11 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
             <Maximize2 size={20} color={colors.text} />
             <Text style={styles.fullScreenButtonText}>Form View</Text>
           </TouchableOpacity>
+        )}
+        {!current && (
+          <View style={{ paddingTop: 8 }}>
+            <Text style={styles.placeholderSubtext}>No workout found for today or the selected title. Please verify your program schedule.</Text>
+          </View>
         )}
       </View>
 
