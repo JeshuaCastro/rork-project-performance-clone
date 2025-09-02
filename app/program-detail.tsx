@@ -2443,24 +2443,19 @@ export default function ProgramDetailScreen() {
         >
           {activeWorkout && (
             <WorkoutPlayer
-              workout={{
-                id: `${activeWorkout.workout.day}-${activeWorkout.workout.title}`,
-                focus: activeWorkout.workout.title,
-                estimatedDurationMin: activeWorkout.workout.duration ? parseInt(activeWorkout.workout.duration.split('-')[0]) : undefined,
-                exercises: (activeWorkout.workout.exercises || []).map((ex, index) => ({
-                  id: `${activeWorkout.workout.day}-${activeWorkout.workout.title}-${index}`,
-                  name: ex.name,
-                  type: activeWorkout.workout.type === 'cardio' ? 'cardio' : 
-                        activeWorkout.workout.type === 'strength' ? 'strength' : 
-                        activeWorkout.workout.type === 'recovery' ? 'mobility' : 'mixed',
-                  description: ex.notes || activeWorkout.workout.description,
-                  sets: ex.sets ? parseInt(ex.sets) : undefined,
-                  reps: ex.reps || undefined,
-                  durationMin: ex.duration ? parseInt(ex.duration.split(' ')[0]) : undefined,
-                  equipment: activeWorkout.workout.equipment || []
-                }))
-              }}
               workoutTitle={activeWorkout.workout.title}
+              exercises={(activeWorkout.workout.exercises || []).map((ex) => ({
+                name: ex.name,
+                sets: ex.sets ? parseInt(ex.sets) : 3,
+                reps: ex.reps ?? (ex.duration ? ex.duration : '8-12'),
+                rest: '90 sec',
+                type: activeWorkout.workout.type === 'cardio' ? 'cardio' :
+                      activeWorkout.workout.type === 'strength' ? 'strength' :
+                      activeWorkout.workout.type === 'recovery' ? 'mobility' : 'mixed',
+                notes: ex.notes || activeWorkout.workout.description,
+                equipment: activeWorkout.workout.equipment || [],
+                primaryMuscles: []
+              }))}
               onComplete={handleEndWorkout}
               onCancel={() => {
                 Alert.alert(
@@ -2468,8 +2463,8 @@ export default function ProgramDetailScreen() {
                   "Do you want to cancel your current workout?",
                   [
                     { text: "Continue Workout", style: "cancel" },
-                    { 
-                      text: "Cancel Workout", 
+                    {
+                      text: "Cancel Workout",
                       style: "destructive",
                       onPress: () => {
                         setShowWorkoutModal(false);
