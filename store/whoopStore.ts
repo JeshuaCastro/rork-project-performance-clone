@@ -528,12 +528,10 @@ interface WhoopStore {
   generateMealSuggestion: (preferences: string) => Promise<string>;
   updateProgramNutrition: (programId: string) => void;
   syncMacroTargetsWithActiveProgram: () => void;
+  analyzeProgramExercises: (programId?: string) => Promise<ProgramExerciseInventory | null>;
   
-  // Text meal processing method
   processTextMeal: (mealDescription: string) => Promise<any>;
   analyzeNutrientDeficiencies: (date: string) => Promise<NutrientAnalysis>;
-  
-  // Program personalization methods
   requestProgramUpdate: (request: ProgramUpdateRequest) => Promise<ProgramFeedback>;
   getProgramFeedback: (programId: string) => ProgramFeedback | null;
   markProgramIntroductionShown: (programId: string) => void;
