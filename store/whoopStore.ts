@@ -1377,16 +1377,7 @@ PHASE STRUCTURE REQUIREMENTS:
 - Phase 3: Intensification (weeks 9-12) - goal-specific training
 - Phase 4: Peak/Taper (final weeks) - optimize for goal performance
 
-FINAL CRITICAL REMINDERS:
-1) Each workout object must have ONLY ONE type. If a day requires both cardio and strength training, you MUST create TWO separate workout objects with the same day but different types and descriptions.
-2) EVERY workout MUST include an "exercises" array normalized for the app UI.
-   - Strength workouts: include 4-8 exercises with fields: { "name": string, "sets": number|string, "reps": string, "rest": number, "notes"?: string, "mediaUrl"?: string }
-     • reps can be a range like "8-12"; rest is seconds (e.g., 90)
-   - Cardio workouts: include 3-5 steps as exercises (e.g., Warm-up, Main Session, Cool-down) with fields: { "name": string, "duration": string, "notes"?: string, "mediaUrl"?: string }.
-     • duration examples: "10 minutes", "30 seconds on, 30 seconds off"
-   - Recovery sessions: include 3-5 gentle activities with fields: { "name": string, "duration": string, "notes"?: string }
-   - Do not leave exercises empty. Always provide a complete, executable list.
-3) Day must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday.
+FINAL CRITICAL REMINDER: Each workout object must have ONLY ONE type. If a day requires both cardio and strength training, you MUST create TWO separate workout objects with the same day but different types and descriptions.
 
 Return comprehensive JSON with goal-focused structure and STRICT workout separation:
 {
