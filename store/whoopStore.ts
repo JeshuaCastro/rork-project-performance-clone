@@ -528,7 +528,7 @@ interface WhoopStore {
   generateMealSuggestion: (preferences: string) => Promise<string>;
   updateProgramNutrition: (programId: string) => void;
   syncMacroTargetsWithActiveProgram: () => void;
-  analyzeProgramExercises: (programId?: string) => Promise<ProgramExerciseInventory | null>;
+  analyzeProgramExercises: (programId?: string) => Promise<import('@/types/whoop').ProgramExerciseInventory | null>;
   
   processTextMeal: (mealDescription: string) => Promise<any>;
   analyzeNutrientDeficiencies: (date: string) => Promise<NutrientAnalysis>;
@@ -578,6 +578,59 @@ export const useWhoopStore = create<WhoopStore>()(
       setIsLoadingWhoopData: (isLoading) => set({ isLoadingWhoopData: isLoading }),
       
       setSelectedDate: (date) => set({ selectedDate: date }),
+
+      analyzeProgramExercises: async (programId?: string) => {
+        try {
+          const { activePrograms } = get();
+          const program = programId ? activePrograms.find(p => p.id === programId) : activePrograms.find(p => p.active);
+          if (!program) {
+            console.warn('analyzeProgramExercises: no program found');
+            return null;
+          }
+          const inventory: import('@/types/whoop').ProgramExerciseInventory = {
+            programId: program.id,
+            programName: program.name,
+            totalWorkouts: 0,
+            counts: { cardio: 0, strength: 0, recovery: 0, other: 0 },
+            daysCovered: [],
+            workoutTitles: [],
+            inferredExercises: [],
+            notes: undefined,
+          };
+          const titles = new Set<string>();
+          const days = new Set<string>();
+          const inferred = new Set<string>();
+          const phases: any[] = program.aiPlan?.phases || [];
+          phases.forEach((phase: any) => {
+            const weekly: any[] = Array.isArray(phase.weeklyStructure) ? phase.weeklyStructure : [];
+            weekly.forEach((w) => {
+              const type = (w?.type ?? 'other') as string;
+              if (type === 'cardio' || type === 'strength' || type === 'recovery') {
+                inventory.counts[type] += 1;
+              } else {
+                inventory.counts.other += 1;
+              }
+              inventory.totalWorkouts += 1;
+              if (w?.day) days.add(String(w.day));
+              if (w?.title) titles.add(String(w.title));
+              const text = `${w?.title ?? ''} ${w?.description ?? ''}`.toLowerCase();
+              ['squat','deadlift','bench','press','row','push-up','pull-up','lunge','plank','easy run','tempo','interval','long run','cycling','bike','swim','burpee'].forEach(k => {
+                if (text.includes(k)) inferred.add(k);
+              });
+            });
+          });
+          inventory.daysCovered = Array.from(days);
+          inventory.workoutTitles = Array.from(titles);
+          inventory.inferredExercises = Array.from(inferred);
+          if (inventory.totalWorkouts === 0) {
+            inventory.notes = 'No workouts found in aiPlan.phases.weeklyStructure';
+          }
+          return inventory;
+        } catch (e) {
+          console.error('analyzeProgramExercises error', e);
+          return null;
+        }
+      },
       
       addChatMessage: (message) => {
         const newMessage: ChatMessage = {

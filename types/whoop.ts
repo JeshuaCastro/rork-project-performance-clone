@@ -257,6 +257,23 @@ export interface ProgramProgress {
   totalWorkouts: number;
 }
 
+// Inventory of exercises inferred from a program's AI plan
+export interface ProgramExerciseInventory {
+  programId: string;
+  programName: string;
+  totalWorkouts: number;
+  counts: {
+    cardio: number;
+    strength: number;
+    recovery: number;
+    other: number;
+  };
+  daysCovered: string[];
+  workoutTitles: string[];
+  inferredExercises: string[];
+  notes?: string;
+}
+
 // AI Recommendation types
 export interface AIRecommendation {
   id: string;
