@@ -215,16 +215,28 @@ export async function mapProgramWorkoutToCanonical(
   // Get the canonical exercise definition
   const canonicalExercise = mappingResult.exercise;
   
+  // Determine exercise type based on canonical exercise properties
+  const exerciseType = (() => {
+    const muscles = canonicalExercise.primaryMuscles || [];
+    if (muscles.includes('cardio')) return 'cardio';
+    if (muscles.includes('core')) return 'mobility';
+    return 'strength';
+  })();
+
   // Create the final exercise object by merging canonical data with AI data
   const finalExercise: Exercise = {
     // Start with canonical exercise data
     id: canonicalExercise.id,
     name: canonicalExercise.name,
-    category: canonicalExercise.category,
-    primaryMuscles: canonicalExercise.primaryMuscles || coercedExercise.primaryMuscles || [],
-    equipment: canonicalExercise.equipment || coercedExercise.equipment || [],
-    instructions: canonicalExercise.instructions || [],
-    mediaUrl: canonicalExercise.mediaUrl || coercedExercise.mediaUrl,
+    type: exerciseType,
+    
+    // Map ExerciseDefinition properties to Exercise schema properties
+    primaryMuscles: canonicalExercise.primaryMuscles?.map(muscle => muscle.toString()) || 
+                   coercedExercise.primaryMuscles || [],
+    equipment: canonicalExercise.equipment?.map(eq => eq.toString()) || 
+              coercedExercise.equipment || [],
+    mediaUrl: canonicalExercise.videoUrl || canonicalExercise.imageUrl || coercedExercise.mediaUrl,
+    description: canonicalExercise.description,
     
     // Override with AI-provided workout parameters
     sets: coercedExercise.sets,
@@ -234,10 +246,10 @@ export async function mapProgramWorkoutToCanonical(
     durationMin: coercedExercise.durationMin,
     distanceKm: coercedExercise.distanceKm,
     
-    // Preserve original AI name as notes if different from canonical
-    notes: aiExerciseName !== canonicalExercise.name 
-      ? `Original: ${aiExerciseName}` 
-      : undefined
+    // Preserve original AI name as slug if different from canonical
+    ...(aiExerciseName !== canonicalExercise.name && {
+      slug: aiExerciseName.toLowerCase().replace(/\s+/g, '-')
+    })
   };
   
   // Log the final result
