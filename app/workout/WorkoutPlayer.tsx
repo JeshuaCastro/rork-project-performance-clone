@@ -23,7 +23,7 @@ interface WorkoutExercise {
 interface WorkoutPlayerProps {
   programId?: string;
   workoutTitle?: string;
-  canonicalWorkout?: CanonicalWorkout;
+  canonicalWorkout: CanonicalWorkout;
   onComplete?: () => void;
   onCancel?: () => void;
 }
@@ -498,6 +498,19 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
 
   const muscles = current?.primaryMuscles ?? [];
   const equipment = current?.equipment ?? [];
+
+  if (!canonicalWorkout?.exercises || canonicalWorkout.exercises.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} testID="workout-player-empty">
+        <View style={[styles.mediaWrap, { paddingTop: 40 }]}>
+          <View style={styles.placeholder} testID="empty-workout">
+            <Text style={styles.placeholderText}>No exercises available for this workout</Text>
+            <Text style={styles.placeholderSubtext}>Please check the program setup or try another day.</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} testID="workout-player">
