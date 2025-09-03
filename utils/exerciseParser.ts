@@ -1,58 +1,121 @@
 import { WorkoutExercise } from '@/types/exercises';
 import { exerciseDatabase } from '@/constants/exerciseDatabase';
 
-// Enhanced exercise keyword mapping for better AI workout parsing
-const exerciseKeywordMap: Record<string, string[]> = {
-  // Strength exercises with multiple keyword variations
-  'bench-press': [
-    'bench press', 'bench-press', 'bench pressing', 'chest press', 
-    'barbell bench', 'dumbbell bench', 'pressing movement', 'horizontal press'
-  ],
-  'squat': [
-    'squat', 'squats', 'squatting', 'bodyweight squat', 'air squat',
-    'back squat', 'front squat', 'goblet squat', 'leg exercise'
-  ],
-  'deadlift': [
-    'deadlift', 'deadlifts', 'deadlifting', 'romanian deadlift', 'rdl',
-    'conventional deadlift', 'sumo deadlift', 'hip hinge'
-  ],
-  'overhead-press': [
-    'overhead press', 'shoulder press', 'military press', 'standing press',
-    'dumbbell press', 'barbell press', 'vertical press', 'pressing overhead'
-  ],
-  'dumbbell-row': [
-    'row', 'rows', 'rowing', 'dumbbell row', 'bent-over row', 'single-arm row',
-    'barbell row', 'cable row', 'pulling movement', 'back exercise'
-  ],
-  'push-up': [
-    'push-up', 'push up', 'pushup', 'push ups', 'bodyweight push',
-    'chest exercise', 'upper body push'
-  ],
-  'lunge': [
-    'lunge', 'lunges', 'lunging', 'forward lunge', 'reverse lunge',
-    'walking lunge', 'stationary lunge', 'leg exercise'
-  ],
-  'plank': [
-    'plank', 'planks', 'planking', 'forearm plank', 'core exercise',
-    'isometric hold', 'core stability'
-  ],
-  
-  // Cardio exercises
-  'jumping-jacks': [
-    'jumping jacks', 'jumping jack', 'star jumps', 'cardio exercise',
-    'full body cardio', 'plyometric'
-  ],
-  'mountain-climbers': [
-    'mountain climbers', 'mountain climber', 'mountain climbing',
-    'cardio core', 'dynamic plank'
-  ],
-  'burpee': [
-    'burpee', 'burpees', 'full body exercise', 'compound cardio',
-    'high intensity exercise'
-  ]
+type MatchResult = { id: string; alias: string; score: number; matchedBy: 'alias' | 'substring' | 'tokens' | 'fuzzy' };
+
+const normalize = (s: string): string =>
+  s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const tokenize = (s: string): string[] => normalize(s).split(' ').filter(Boolean);
+
+const levenshtein = (a: string, b: string): number => {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dp[m][n];
 };
 
-// Workout type to exercise mapping for broader categorization
+const similarity = (a: string, b: string): number => {
+  const an = normalize(a);
+  const bn = normalize(b);
+  if (!an || !bn) return 0;
+  if (an === bn) return 1;
+  const maxLen = Math.max(an.length, bn.length);
+  const lev = levenshtein(an, bn);
+  const base = 1 - lev / maxLen;
+  const aTokens = new Set(tokenize(an));
+  const bTokens = new Set(tokenize(bn));
+  const inter = [...aTokens].filter(t => bTokens.has(t)).length;
+  const union = new Set<string>([...aTokens, ...bTokens]).size;
+  const jaccard = union === 0 ? 0 : inter / union;
+  const startsWithBoost = an.startsWith(bn) || bn.startsWith(an) ? 0.1 : 0;
+  return Math.max(0, Math.min(1, 0.6 * base + 0.35 * jaccard + startsWithBoost));
+};
+
+const exerciseKeywordMap: Record<string, string[]> = {
+  'bench-press': [
+    'bench press', 'bench-press', 'chest press', 'barbell bench', 'dumbbell bench', 'flat bench', 'horizontal press'
+  ],
+  'squat': [
+    'squat', 'squats', 'back squat', 'front squat', 'goblet squat', 'high bar squat', 'low bar squat', 'barbell squat', 'bodyweight squat', 'air squat'
+  ],
+  'deadlift': [
+    'deadlift', 'deadlifts', 'romanian deadlift', 'rdl', 'conventional deadlift', 'sumo deadlift', 'hip hinge'
+  ],
+  'overhead-press': [
+    'overhead press', 'shoulder press', 'military press', 'standing press', 'strict press', 'barbell press', 'dumbbell shoulder press', 'vertical press'
+  ],
+  'dumbbell-row': [
+    'dumbbell row', 'one arm row', 'single-arm row', 'bent-over row', 'barbell row', 'cable row', 'rowing'
+  ],
+  'push-up': [
+    'push-up', 'push up', 'pushup', 'push ups', 'bodyweight push'
+  ],
+  'lunge': [
+    'lunge', 'lunges', 'forward lunge', 'reverse lunge', 'walking lunge', 'stationary lunge'
+  ],
+  'plank': [
+    'plank', 'forearm plank'
+  ],
+  'jumping-jacks': [
+    'jumping jacks', 'jumping jack', 'star jumps'
+  ],
+  'mountain-climbers': [
+    'mountain climbers', 'mountain climber', 'cross-body mountain climbers'
+  ],
+  'burpee': [
+    'burpee', 'burpees'
+  ],
+};
+
+const aliasToId: Array<{ alias: string; id: string }> = (() => {
+  const pairs: Array<{ alias: string; id: string }> = [];
+  Object.entries(exerciseKeywordMap).forEach(([id, aliases]) => {
+    aliases.forEach(a => pairs.push({ alias: normalize(a), id }));
+  });
+  exerciseDatabase.forEach(ex => {
+    pairs.push({ alias: normalize(ex.name), id: ex.id });
+  });
+  const manual: Record<string, string> = {
+    'barbell back squat': 'squat',
+    'back squat': 'squat',
+    'front squat': 'squat',
+    'goblet squat': 'squat',
+    'chest press': 'bench-press',
+    'flat bench press': 'bench-press',
+    'incline bench press': 'bench-press',
+    'shoulder press': 'overhead-press',
+    'military press': 'overhead-press',
+    'strict press': 'overhead-press',
+    'barbell row': 'dumbbell-row',
+    'bent over row': 'dumbbell-row',
+    'romanian deadlift': 'deadlift',
+    'sumo deadlift': 'deadlift',
+    'conventional deadlift': 'deadlift',
+  };
+  Object.entries(manual).forEach(([a, id]) => pairs.push({ alias: normalize(a), id }));
+  return pairs;
+})();
+
 const workoutTypeMapping: Record<string, string[]> = {
   'upper body': ['bench-press', 'dumbbell-row', 'overhead-press', 'push-up'],
   'lower body': ['squat', 'deadlift', 'lunge'],
@@ -79,87 +142,117 @@ const workoutTypeMapping: Record<string, string[]> = {
   'compound': ['squat', 'deadlift', 'bench-press', 'dumbbell-row'],
 };
 
-// Helper function to convert existing workout descriptions to structured exercises
-export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription: string): WorkoutExercise[] => {
-  const exercises: WorkoutExercise[] = [];
-  const combined = `${workoutTitle} ${workoutDescription}`.toLowerCase();
-  
-  console.log('Parsing workout:', { title: workoutTitle, description: workoutDescription });
+export const matchExerciseName = (raw: string): MatchResult | undefined => {
+  const q = normalize(raw);
+  if (!q) return undefined;
+  let best: MatchResult | undefined;
 
-  // Step 1: Try to find specific exercises mentioned in the text using keyword matching
-  let matchedExercises: string[] = [];
-  
-  // Enhanced keyword-based exercise detection
-  for (const [exerciseId, keywords] of Object.entries(exerciseKeywordMap)) {
-    for (const keyword of keywords) {
-      if (combined.includes(keyword)) {
-        if (!matchedExercises.includes(exerciseId)) {
-          matchedExercises.push(exerciseId);
-          console.log(`Found exercise '${exerciseId}' via keyword '${keyword}'`);
-        }
+  for (const { alias, id } of aliasToId) {
+    if (q === alias) {
+      const res = { id, alias, score: 1, matchedBy: 'alias' as const };
+      best = res;
+      break;
+    }
+  }
+  if (!best) {
+    for (const { alias, id } of aliasToId) {
+      if (q.includes(alias) || alias.includes(q)) {
+        const sc = Math.min(0.95, similarity(q, alias) + 0.05);
+        if (!best || sc > best.score) best = { id, alias, score: sc, matchedBy: 'substring' };
       }
     }
   }
-  
-  // Step 2: If no specific exercises found, try workout type matching
+  if (!best) {
+    for (const { alias, id } of aliasToId) {
+      const sc = similarity(q, alias);
+      if (sc > 0.68) {
+        if (!best || sc > best.score) best = { id, alias, score: sc, matchedBy: 'fuzzy' };
+      }
+    }
+  }
+  if (best) {
+    console.log('matchExerciseName result', { input: raw, ...best });
+  } else {
+    console.log('matchExerciseName no match', { input: raw });
+  }
+  return best;
+};
+
+const extractItems = (text: string): string[] => {
+  const parts = normalize(text)
+    .split(/\n|\r|\t|;|\||\u2022|\-|\•|\·/g)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const also = normalize(text).match(/\d+\s*x\s*\d+\s*([a-z\s-]+)/gi)?.map(s => s.replace(/\d+\s*x\s*\d+\s*/i, '').trim()) ?? [];
+  return Array.from(new Set([...parts, ...also]));
+};
+
+export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription: string): WorkoutExercise[] => {
+  const exercises: WorkoutExercise[] = [];
+  const combinedRaw = `${workoutTitle} ${workoutDescription}`;
+  const combined = normalize(combinedRaw);
+
+  console.log('Parsing workout:', { title: workoutTitle, description: workoutDescription });
+
+  const candidates = extractItems(combinedRaw);
+  const matchedSet = new Set<string>();
+
+  for (const c of candidates) {
+    const m = matchExerciseName(c);
+    if (m && !matchedSet.has(m.id)) {
+      matchedSet.add(m.id);
+    }
+  }
+
+  let matchedExercises: string[] = [...matchedSet];
+
   if (matchedExercises.length === 0) {
     for (const [workoutType, exerciseIds] of Object.entries(workoutTypeMapping)) {
-      if (combined.includes(workoutType)) {
+      if (combined.includes(normalize(workoutType))) {
         matchedExercises = [...exerciseIds];
         console.log(`Found exercises via workout type '${workoutType}':`, exerciseIds);
         break;
       }
     }
   }
-  
-  // Step 3: Special handling for compound workout descriptions
+
   if (matchedExercises.length === 0) {
-    // Handle AI-generated descriptions that mention multiple exercises
-    if (combined.includes('compound movements') || combined.includes('compound exercise')) {
+    if (combined.includes('compound movement') || combined.includes('compound exercise') || combined.includes('compound')) {
       matchedExercises = ['squat', 'deadlift', 'bench-press', 'dumbbell-row'];
-    } else if (combined.includes('bodyweight') && combined.includes('strength')) {
+    } else if (combined.includes('bodyweight') && (combined.includes('strength') || combined.includes('circuit'))) {
       matchedExercises = ['push-up', 'squat', 'lunge', 'plank'];
     } else if (combined.includes('running') || combined.includes('run') || combined.includes('jog')) {
-      // For cardio workouts, we'll use a generic cardio exercise
-      matchedExercises = ['jumping-jacks']; // Placeholder for running
+      matchedExercises = ['jumping-jacks'];
     } else if (combined.includes('cycling') || combined.includes('bike')) {
-      matchedExercises = ['jumping-jacks']; // Placeholder for cycling
-    } else if (combined.includes('swimming') || combined.includes('swim')) {
-      matchedExercises = ['jumping-jacks']; // Placeholder for swimming
+      matchedExercises = ['jumping-jacks'];
     }
   }
 
-  // Step 4: If still no matches, create a smart fallback based on workout characteristics
   if (matchedExercises.length === 0) {
-    console.log('No specific exercises found, using intelligent fallback');
-    
     if (combined.includes('upper') || combined.includes('chest') || combined.includes('arm') || combined.includes('shoulder')) {
       matchedExercises = ['bench-press', 'dumbbell-row', 'overhead-press'];
     } else if (combined.includes('lower') || combined.includes('leg') || combined.includes('glute') || combined.includes('quad') || combined.includes('hamstring')) {
       matchedExercises = ['squat', 'deadlift', 'lunge'];
-    } else if (combined.includes('cardio') || combined.includes('run') || combined.includes('endurance') || combined.includes('aerobic')) {
+    } else if (combined.includes('cardio') || combined.includes('endurance') || combined.includes('aerobic')) {
       matchedExercises = ['jumping-jacks', 'mountain-climbers'];
     } else if (combined.includes('core') || combined.includes('ab') || combined.includes('stability')) {
       matchedExercises = ['plank'];
     } else if (combined.includes('strength') || combined.includes('resistance') || combined.includes('weight')) {
       matchedExercises = ['squat', 'bench-press', 'dumbbell-row'];
     } else {
-      // Ultimate fallback - provide a balanced workout
       matchedExercises = ['squat', 'push-up'];
     }
   }
-  
+
   console.log('Final matched exercises:', matchedExercises);
-  
-  // Convert to WorkoutExercise format with enhanced parameter extraction
+
   matchedExercises.forEach(exerciseId => {
-    // Verify the exercise exists in our database
     const exerciseExists = exerciseDatabase.find(ex => ex.id === exerciseId);
     if (!exerciseExists) {
       console.warn(`Exercise '${exerciseId}' not found in database, skipping`);
       return;
     }
-    
+
     const workoutExercise: WorkoutExercise = {
       exerciseId,
       sets: extractSets(workoutDescription),
@@ -173,11 +266,10 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
     exercises.push(workoutExercise);
   });
 
-  // Ensure we always return at least one exercise
   if (exercises.length === 0) {
     console.log('Creating final fallback exercise');
     exercises.push({
-      exerciseId: 'squat', // Safe fallback that exists in database
+      exerciseId: 'squat',
       notes: `${workoutTitle}: ${workoutDescription}`,
     });
   }
@@ -186,7 +278,6 @@ export const parseWorkoutToExercises = (workoutTitle: string, workoutDescription
   return exercises;
 };
 
-// Helper functions to extract workout parameters from description
 const extractSets = (description: string): number | undefined => {
   const setsMatch = description.match(/(\d+)\s*(?:x|sets?)/i);
   return setsMatch ? parseInt(setsMatch[1]) : undefined;
@@ -197,13 +288,10 @@ const extractReps = (description: string): number | string | undefined => {
   if (repsMatch) {
     return repsMatch[1].includes('-') ? repsMatch[1] : parseInt(repsMatch[1]);
   }
-  
-  // Look for sets x reps format (e.g., "3x8", "5x5")
-  const setsRepsMatch = description.match(/\d+\s*x\s*(\d+(?:-\d+)?)/i);
+  const setsRepsMatch = description.match(/\b\d+\s*x\s*(\d+(?:-\d+)?)\b/i);
   if (setsRepsMatch) {
     return setsRepsMatch[1].includes('-') ? setsRepsMatch[1] : parseInt(setsRepsMatch[1]);
   }
-  
   return undefined;
 };
 
@@ -216,7 +304,6 @@ const extractWeight = (description: string): string | undefined => {
   if (description.toLowerCase().includes('bodyweight')) {
     return 'bodyweight';
   }
-  
   const weightMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:lbs?|pounds?|kg|kilograms?)/i);
   return weightMatch ? weightMatch[0] : undefined;
 };
@@ -226,7 +313,6 @@ const extractRestTime = (description: string): string | undefined => {
   return restMatch ? restMatch[1] + (restMatch[0].includes('min') ? ' minutes' : ' seconds') : undefined;
 };
 
-// Helper to determine target RPE based on intensity
 export const getTargetRPE = (intensity: string): number | undefined => {
   switch (intensity.toLowerCase()) {
     case 'low':
