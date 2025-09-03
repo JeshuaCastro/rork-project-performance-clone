@@ -25,12 +25,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["barbell", "rack"],
     mediaUrl: "assets/exercises/barbell-squat.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "back squat", "squat", "barbell back squat", "high bar squat", "low bar squat", 
-      "bb squat", "squats", "air squat", "bodyweight squat", "box squat", 
-      "overhead squat", "zercher squat", "hack squat", "bulgarian split squat", 
-      "pistol squat", "jump squat", "sqt", "quad", "leg"
-    ],
+    synonyms: ["back squat", "squat"],
     beginnerAlternative: {
       name: "Goblet Squat",
       notes: "Use a light dumbbell or kettlebell; focus on depth and posture.",
@@ -44,11 +39,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["barbell", "bench"],
     mediaUrl: "assets/exercises/bench-press.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "barbell bench", "chest press", "flat bench press", "incline bench press", 
-      "decline bench press", "dumbbell bench press", "barbell bench press", 
-      "db bench", "bb bench", "horizontal press", "press", "chest", "pec", "pectoral"
-    ],
+    synonyms: ["barbell bench"],
     beginnerAlternative: {
       name: "Push-Up",
       notes: "Elevate hands on a box if needed.",
@@ -62,12 +53,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["barbell"],
     mediaUrl: "assets/exercises/deadlift.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "conventional deadlift", "deadlifts", "sumo deadlift", "stiff leg deadlift", 
-      "trap bar deadlift", "hex bar deadlift", "single leg deadlift", 
-      "deficit deadlift", "rack pull", "rdl", "dl", "dead lift", 
-      "posterior chain", "hamstring", "glute", "hip hinge"
-    ],
+    synonyms: ["conventional deadlift"],
     beginnerAlternative: {
       name: "Kettlebell Deadlift",
       notes: "Start from blocks to reduce range.",
@@ -81,12 +67,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["barbell"],
     mediaUrl: "assets/exercises/overhead-press.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "ohp", "shoulder press", "press", "military press", "standing press", 
-      "strict press", "barbell press", "dumbbell shoulder press", "vertical press", 
-      "seated press", "arnold press", "push press", "jerk", "clean and press", 
-      "shoulder", "delt", "deltoid"
-    ],
+    synonyms: ["ohp", "shoulder press", "press"],
     beginnerAlternative: {
       name: "Seated Dumbbell Press",
       mediaUrl: "assets/exercises/db-shoulder-press.mp4",
@@ -99,12 +80,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["barbell"],
     mediaUrl: "assets/exercises/bent-over-row.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "barbell row", "dumbbell row", "one arm row", "single-arm row", 
-      "cable row", "rowing", "bent row", "pendlay row", "chest supported row", 
-      "seated row", "inverted row", "db row", "bb row", "row", "pull", 
-      "lat", "latissimus", "rhomboid", "rear delt"
-    ],
+    synonyms: ["barbell row"],
     beginnerAlternative: {
       name: "Chest-Supported Row",
       mediaUrl: "assets/exercises/chest-supported-row.mp4",
@@ -152,11 +128,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["bodyweight", "dumbbells"],
     mediaUrl: "assets/exercises/lunge.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "forward lunge", "walking lunge", "lunges", "reverse lunge", "stationary lunge", 
-      "lateral lunge", "side lunge", "curtsy lunge", "jumping lunge", "alternating lunge", 
-      "split lunge", "step up", "step-up", "single leg", "unilateral"
-    ],
+    synonyms: ["forward lunge", "walking lunge"],
     beginnerAlternative: {
       name: "Static Split Squat",
       mediaUrl: "assets/exercises/split-squat.mp4",
@@ -227,11 +199,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["bodyweight"],
     mediaUrl: "assets/exercises/push-up.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "press-up", "push up", "pushup", "push ups", "bodyweight push", 
-      "diamond pushup", "wide pushup", "decline pushup", "incline pushup", 
-      "knee pushup", "hindu pushup", "archer pushup", "plyometric pushup", "clap pushup"
-    ],
+    synonyms: ["press-up"],
     beginnerAlternative: {
       name: "Incline Push-Up",
       mediaUrl: "assets/exercises/incline-push-up.mp4",
@@ -244,10 +212,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["bodyweight"],
     mediaUrl: "assets/exercises/plank.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "front plank", "forearm plank", "high plank", "low plank", "side plank", 
-      "plank hold", "isometric hold", "core hold", "ab hold", "stability"
-    ],
+    synonyms: ["front plank"],
   },
   "side-plank": {
     slug: "side-plank",
@@ -282,10 +247,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["treadmill"],
     mediaUrl: "assets/exercises/treadmill-easy.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "easy run", "z2 treadmill", "jog", "jogging", "light run", "recovery run", 
-      "base run", "aerobic run", "conversational pace", "zone 2", "easy pace", "steady run"
-    ],
+    synonyms: ["easy run", "z2 treadmill"],
   },
   "treadmill-tempo": {
     slug: "treadmill-tempo",
@@ -294,10 +256,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     equipment: ["treadmill"],
     mediaUrl: "assets/exercises/treadmill-tempo.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "tempo run", "threshold treadmill", "tempo", "threshold run", "lactate threshold", 
-      "comfortably hard", "sustained effort", "race pace", "tempo pace"
-    ],
+    synonyms: ["tempo run", "threshold treadmill"],
   },
   "outdoor-base-run": {
     slug: "outdoor-base-run",
@@ -305,83 +264,7 @@ export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
     primaryMuscles: ["cardio", "legs"],
     mediaUrl: "assets/exercises/outdoor-base-run.mp4",
     mediaType: "mp4",
-    synonyms: [
-      "base run", "easy outdoor run", "running", "run", "outdoor run", "road run", "trail run"
-    ],
-  },
-  // Additional cardio and HIIT exercises
-  "jumping-jacks": {
-    slug: "jumping-jacks",
-    name: "Jumping Jacks",
-    primaryMuscles: ["cardio", "full-body"],
-    equipment: ["bodyweight"],
-    mediaUrl: "assets/exercises/jumping-jacks.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "jumping jack", "star jumps", "side straddle hop", "jacks", 
-      "cardio", "warm up", "warmup", "conditioning"
-    ],
-  },
-  "mountain-climbers": {
-    slug: "mountain-climbers",
-    name: "Mountain Climbers",
-    primaryMuscles: ["cardio", "core"],
-    equipment: ["bodyweight"],
-    mediaUrl: "assets/exercises/mountain-climbers.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "mountain climber", "cross-body mountain climbers", "mt climbers", 
-      "climbers", "running plank", "plank runs", "cardio core"
-    ],
-  },
-  "burpee": {
-    slug: "burpee",
-    name: "Burpee",
-    primaryMuscles: ["full-body", "cardio"],
-    equipment: ["bodyweight"],
-    mediaUrl: "assets/exercises/burpee.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "burpees", "squat thrust", "full body", "compound movement", "hiit", "metabolic"
-    ],
-  },
-  // Cycling exercises
-  "stationary-bike": {
-    slug: "stationary-bike",
-    name: "Stationary Bike",
-    primaryMuscles: ["cardio", "legs"],
-    equipment: ["bike", "stationary bike"],
-    mediaUrl: "assets/exercises/stationary-bike.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "cycling", "bike", "bicycle", "steady state", "endurance cycling", "road cycling", 
-      "indoor cycling", "spin", "cardio bike", "cycle", "bike intervals", "cycling hiit", "power intervals"
-    ],
-  },
-  // Interval training
-  "interval-training": {
-    slug: "interval-training",
-    name: "Interval Training",
-    primaryMuscles: ["cardio", "legs"],
-    equipment: ["bodyweight"],
-    mediaUrl: "assets/exercises/interval-training.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "intervals", "interval training", "speed work", "track work", "fartlek", "repeats", 
-      "high intensity", "vo2 max", "anaerobic", "sprint"
-    ],
-  },
-  // Long run
-  "long-run": {
-    slug: "long-run",
-    name: "Long Run",
-    primaryMuscles: ["cardio", "legs"],
-    equipment: ["bodyweight"],
-    mediaUrl: "assets/exercises/long-run.mp4",
-    mediaType: "mp4",
-    synonyms: [
-      "long run", "long slow distance", "lsd", "endurance run", "distance run", "marathon pace"
-    ],
+    synonyms: ["base run", "easy outdoor run"],
   },
 };
 
