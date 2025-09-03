@@ -1025,15 +1025,18 @@ export default function ProgramDetailScreen() {
 
   // Map a scheduled workout to CanonicalWorkout used by WorkoutPlayer
   const mapProgramWorkoutToCanonical = (workout: Workout, dayIndex: number): CanonicalWorkout => {
-    const exs = Array.isArray(workout.exercises) ? workout.exercises : [];
-    const mapped = exs.map((ex, idx) => ({
+    const provided = Array.isArray(workout.exercises) ? workout.exercises : [];
+    const baseList = provided.length > 0 ? provided : generateExercises(String(workout.title || ''), String(workout.type || 'other'), String(workout.description || ''));
+
+    const mapped = baseList.map((ex: any, idx: number) => ({
       id: `${workout.title || 'workout'}-ex-${idx}`,
       name: String(ex?.name ?? 'Exercise'),
-      sets: Number.parseInt(String(ex?.sets ?? '3'), 10) || 3,
-      reps: String(ex?.reps ?? ex?.duration ?? '8-12'),
+      sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
+      reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? ex?.duration ?? '8-12'),
       rest: 90,
-      mediaUrl: undefined,
+      mediaUrl: typeof ex?.mediaUrl === 'string' ? ex.mediaUrl : undefined,
     }));
+
     return {
       id: `${workout.day || 'day'}-${workout.title || 'Workout'}`,
       title: String(workout.title || 'Workout'),
@@ -1474,7 +1477,8 @@ export default function ProgramDetailScreen() {
       const workoutId = `${workout.day}-${workout.title}-${Date.now()}`;
 
       const dayToIndex: Record<string, number> = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
-      const dIdx = dayToIndex[(workout.day || '').toLowerCase()] ?? new Date().getDay() - 1 >= 0 ? new Date().getDay() - 1 : 0;
+      const todayIdx = (() => { const i = new Date().getDay(); return i === 0 ? 6 : i - 1; })();
+      const dIdx = (dayToIndex[(workout.day || '').toLowerCase()] ?? todayIdx);
       try {
         const canonical = mapProgramWorkoutToCanonical(workout, dIdx);
         setActiveCanonicalWorkout(canonical);
