@@ -528,7 +528,7 @@ interface WhoopStore {
   generateMealSuggestion: (preferences: string) => Promise<string>;
   updateProgramNutrition: (programId: string) => void;
   syncMacroTargetsWithActiveProgram: () => void;
-  analyzeProgramExercises: (programId?: string) => Promise<import('@/types/whoop').ProgramExerciseInventory | null>;
+  analyzeProgramExercises: (programId?: string) => Promise<any | null>;
   
   processTextMeal: (mealDescription: string) => Promise<any>;
   analyzeNutrientDeficiencies: (date: string) => Promise<NutrientAnalysis>;

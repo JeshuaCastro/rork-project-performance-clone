@@ -1,10 +1,12 @@
-import React, { memo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { memo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import RecoveryCard from '@/components/RecoveryCard';
 import StrainCard from '@/components/StrainCard';
 import AIInsightCard from '@/components/AIInsightCard';
 import { colors } from '@/constants/colors';
 import type { RecoveryData, StrainData, AIAnalysis } from '@/types/whoop';
+import { useWhoopStore } from '@/store/whoopStore';
+import { exerciseDatabase, searchExercisesByKeywords } from '@/constants/exerciseDatabase';
 
 const borderColor = '#4A90E2' as const;
 
@@ -44,6 +46,22 @@ const SleepCard = memo(function SleepCard({ sleep }: { sleep: SleepData }) {
 const FORCE_DEBUG_RENDER = __DEV__ as boolean;
 function DebugDashboard() {
   console.log('[DebugDashboard] render');
+  const [exerciseAnalysis, setExerciseAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { analyzeProgramExercises, activePrograms } = useWhoopStore();
+
+  const handleAnalyzeProgram = async () => {
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeProgramExercises();
+      setExerciseAnalysis(result);
+      console.log('Exercise analysis result:', result);
+    } catch (error) {
+      console.error('Error analyzing program:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   if (!FORCE_DEBUG_RENDER) {
     return (
@@ -108,6 +126,62 @@ function DebugDashboard() {
       <View style={styles.debugBlock} testID="ai-block">
         <Text style={styles.blockLabel}>AIAdviceCard</Text>
         <AIInsightCard analysis={mockAI} />
+      </View>
+
+      <View style={styles.debugBlock} testID="exercise-database-block">
+        <Text style={styles.blockLabel}>Exercise Database</Text>
+        <Text style={styles.infoText}>Total exercises in database: {exerciseDatabase.length}</Text>
+        
+        <View style={styles.exercisePreview}>
+          <Text style={styles.subLabel}>Sample Exercises:</Text>
+          {exerciseDatabase.slice(0, 3).map((exercise) => (
+            <View key={exercise.id} style={styles.exerciseItem}>
+              <Text style={styles.exerciseName}>{exercise.name}</Text>
+              <Text style={styles.exerciseDesc}>{exercise.description.substring(0, 80)}...</Text>
+              <Text style={styles.exerciseMeta}>
+                {exercise.difficulty} • {exercise.primaryMuscles.join(', ')}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.searchDemo}>
+          <Text style={styles.subLabel}>Search Demo (&quot;squat&quot;):</Text>
+          {searchExercisesByKeywords(['squat']).map((exercise) => (
+            <Text key={exercise.id} style={styles.searchResult}>• {exercise.name}</Text>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.debugBlock} testID="program-analysis-block">
+        <Text style={styles.blockLabel}>Program Exercise Analysis</Text>
+        <Text style={styles.infoText}>Active programs: {activePrograms.length}</Text>
+        
+        <TouchableOpacity 
+          style={[styles.analyzeButton, (isAnalyzing || activePrograms.length === 0) && { opacity: 0.5 }]} 
+          onPress={handleAnalyzeProgram}
+          disabled={isAnalyzing || activePrograms.length === 0}
+        >
+          <Text style={styles.analyzeButtonText}>
+            {isAnalyzing ? 'Analyzing...' : 'Analyze Current Program'}
+          </Text>
+        </TouchableOpacity>
+
+        {exerciseAnalysis && (
+          <View style={styles.analysisResult}>
+            <Text style={styles.subLabel}>Analysis Result:</Text>
+            <Text style={styles.analysisText}>Program: {exerciseAnalysis.programName}</Text>
+            <Text style={styles.analysisText}>Total Workouts: {exerciseAnalysis.totalWorkouts}</Text>
+            <Text style={styles.analysisText}>Cardio: {exerciseAnalysis.counts.cardio}</Text>
+            <Text style={styles.analysisText}>Strength: {exerciseAnalysis.counts.strength}</Text>
+            <Text style={styles.analysisText}>Recovery: {exerciseAnalysis.counts.recovery}</Text>
+            <Text style={styles.analysisText}>Days Covered: {exerciseAnalysis.daysCovered.join(', ')}</Text>
+            <Text style={styles.analysisText}>Inferred Exercises: {exerciseAnalysis.inferredExercises.join(', ')}</Text>
+            {exerciseAnalysis.notes && (
+              <Text style={styles.analysisNotes}>Notes: {exerciseAnalysis.notes}</Text>
+            )}
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -181,5 +255,78 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginRight: 8,
     marginBottom: 8,
+  },
+  infoText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  exercisePreview: {
+    marginTop: 8,
+  },
+  subLabel: {
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  exerciseItem: {
+    backgroundColor: colors.ios.tertiaryBackground,
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  exerciseName: {
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  exerciseDesc: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  exerciseMeta: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  searchDemo: {
+    marginTop: 12,
+  },
+  searchResult: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginLeft: 8,
+  },
+  analyzeButton: {
+    backgroundColor: colors.ios.systemBlue,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  analyzeButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  analysisResult: {
+    marginTop: 12,
+    backgroundColor: colors.ios.tertiaryBackground,
+    padding: 12,
+    borderRadius: 8,
+  },
+  analysisText: {
+    color: colors.text,
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  analysisNotes: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
