@@ -61,6 +61,7 @@ import { TrainingProgram, NutritionPlan, ProgramUpdateRequest, ProgramFeedback, 
 
 import EnhancedWorkoutCard from '@/components/EnhancedWorkoutCard';
 import WorkoutPlayer from '@/app/workout/WorkoutPlayer';
+import type { CanonicalWorkout } from '@/types/workout';
 
 // Define workout type
 interface Workout {
@@ -127,6 +128,7 @@ export default function ProgramDetailScreen() {
     elapsedTime: number;
     isRunning: boolean;
   } | null>(null);
+  const [activeCanonicalWorkout, setActiveCanonicalWorkout] = useState<CanonicalWorkout | null>(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
@@ -1021,6 +1023,25 @@ export default function ProgramDetailScreen() {
     });
   };
 
+  // Map a scheduled workout to CanonicalWorkout used by WorkoutPlayer
+  const mapProgramWorkoutToCanonical = (workout: Workout, dayIndex: number): CanonicalWorkout => {
+    const exs = Array.isArray(workout.exercises) ? workout.exercises : [];
+    const mapped = exs.map((ex, idx) => ({
+      id: `${workout.title || 'workout'}-ex-${idx}`,
+      name: String(ex?.name ?? 'Exercise'),
+      sets: Number.parseInt(String(ex?.sets ?? '3'), 10) || 3,
+      reps: String(ex?.reps ?? ex?.duration ?? '8-12'),
+      rest: 90,
+      mediaUrl: undefined,
+    }));
+    return {
+      id: `${workout.day || 'day'}-${workout.title || 'Workout'}`,
+      title: String(workout.title || 'Workout'),
+      dayIndex,
+      exercises: mapped,
+    };
+  };
+
   // Enhance workout strictly from schedule; no generated fallbacks
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
     const providedExercises = normalizeScheduleExercises(workout?.exercises);
@@ -1451,6 +1472,16 @@ export default function ProgramDetailScreen() {
     try {
       // Create a unique workout ID
       const workoutId = `${workout.day}-${workout.title}-${Date.now()}`;
+
+      const dayToIndex: Record<string, number> = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
+      const dIdx = dayToIndex[(workout.day || '').toLowerCase()] ?? new Date().getDay() - 1 >= 0 ? new Date().getDay() - 1 : 0;
+      try {
+        const canonical = mapProgramWorkoutToCanonical(workout, dIdx);
+        setActiveCanonicalWorkout(canonical);
+      } catch (e) {
+        console.warn('Failed to build CanonicalWorkout', e);
+        setActiveCanonicalWorkout(null);
+      }
       
       if (workout.type === 'cardio') {
         // Start cardio workout session
@@ -2445,6 +2476,7 @@ export default function ProgramDetailScreen() {
             <WorkoutPlayer
               programId={programId}
               workoutTitle={activeWorkout.workout.title}
+              canonicalWorkout={activeCanonicalWorkout ?? mapProgramWorkoutToCanonical(activeWorkout.workout, 0)}
               onComplete={handleEndWorkout}
               onCancel={() => {
                 Alert.alert(

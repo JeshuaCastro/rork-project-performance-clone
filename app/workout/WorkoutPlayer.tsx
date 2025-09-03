@@ -6,6 +6,7 @@ import { colors } from '@/constants/colors';
 import type { Exercise } from '@/src/schemas/program';
 import { resolveExercise } from '@/src/services/workoutNormalizer';
 import { useWhoopStore } from '@/store/whoopStore';
+import type { CanonicalWorkout } from '@/types/workout';
 
 interface WorkoutExercise {
   name: string;
@@ -22,6 +23,7 @@ interface WorkoutExercise {
 interface WorkoutPlayerProps {
   programId?: string;
   workoutTitle?: string;
+  canonicalWorkout?: CanonicalWorkout;
   onComplete?: () => void;
   onCancel?: () => void;
 }
@@ -86,7 +88,7 @@ function getDisplayExercise(ex: Exercise, useBeginner: boolean): Exercise {
   return normalizedEx;
 }
 
-export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onCancel }: WorkoutPlayerProps) {
+export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkout, onComplete, onCancel }: WorkoutPlayerProps) {
   const [index, setIndex] = useState<number>(0);
   const [showBeginner, setShowBeginner] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -98,6 +100,22 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
   const whoop = useWhoopStore();
 
   const workoutData = useMemo(() => {
+    if (canonicalWorkout && canonicalWorkout.exercises) {
+      try {
+        const mapped: WorkoutExercise[] = canonicalWorkout.exercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          rest: `${ex.rest ?? 90} sec`,
+          type: 'strength',
+        }));
+        console.log('[WorkoutPlayer] Using provided CanonicalWorkout', { title: canonicalWorkout.title, count: mapped.length });
+        return { title: canonicalWorkout.title, exercises: mapped };
+      } catch (e) {
+        console.warn('[WorkoutPlayer] Failed to use CanonicalWorkout, falling back', e);
+      }
+    }
+
     if (!programId || !whoop?.activePrograms?.length) {
       console.warn('[WorkoutPlayer] Missing programId or no active programs');
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
@@ -191,7 +209,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, onComplete, onC
       console.log('[WorkoutPlayer] Failed to derive from program schedule', e);
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
-  }, [programId, workoutTitle, whoop.activePrograms]);
+  }, [programId, workoutTitle, canonicalWorkout, whoop.activePrograms]);
 
   const exercises: Exercise[] = useMemo(() => {
     try {
