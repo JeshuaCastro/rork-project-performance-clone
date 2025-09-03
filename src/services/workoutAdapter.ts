@@ -1,4 +1,7 @@
 import { Exercise } from "@/src/schemas/program";
+import { ExerciseDefinition } from '@/types/exercises';
+import { exerciseMappingService, EnhancedMappingResult } from '@/services/exerciseMappingService';
+import { getExerciseById } from '@/constants/exerciseDatabase';
 
 export const AI_EXERCISE_ALIAS_MAP = {
   sets: ["sets", "setCount", "numSets"],
@@ -173,4 +176,158 @@ export function coerceAiExercise(raw: unknown): Partial<Exercise> {
   }
 
   return out;
+}
+
+/**
+ * Enhanced canonical mapping function that uses the exercise mapping service
+ * to resolve AI-generated exercise names to database exercises
+ */
+export async function mapProgramWorkoutToCanonical(
+  aiWorkout: unknown,
+  workoutContext?: string
+): Promise<{
+  exercise: Exercise;
+  mappingResult: EnhancedMappingResult;
+  needsUserReview: boolean;
+}> {
+  console.log('Mapping AI workout to canonical format:', { aiWorkout, workoutContext });
+  
+  // First, coerce the AI exercise data into our format
+  const coercedExercise = coerceAiExercise(aiWorkout);
+  
+  // Extract the exercise name for mapping
+  const aiExerciseName = coercedExercise.name || 'Unknown Exercise';
+  
+  // Use the enhanced mapping service to resolve the exercise
+  const mappingResult = await exerciseMappingService.mapExerciseName(
+    aiExerciseName,
+    workoutContext
+  );
+  
+  console.log('Exercise mapping result:', {
+    originalName: aiExerciseName,
+    mappedTo: mappingResult.exerciseId,
+    confidence: mappingResult.confidence,
+    matchType: mappingResult.matchType,
+    needsReview: mappingResult.needsUserReview
+  });
+  
+  // Get the canonical exercise definition
+  const canonicalExercise = mappingResult.exercise;
+  
+  // Create the final exercise object by merging canonical data with AI data
+  const finalExercise: Exercise = {
+    // Start with canonical exercise data
+    id: canonicalExercise.id,
+    name: canonicalExercise.name,
+    category: canonicalExercise.category,
+    primaryMuscles: canonicalExercise.primaryMuscles || coercedExercise.primaryMuscles || [],
+    equipment: canonicalExercise.equipment || coercedExercise.equipment || [],
+    instructions: canonicalExercise.instructions || [],
+    mediaUrl: canonicalExercise.mediaUrl || coercedExercise.mediaUrl,
+    
+    // Override with AI-provided workout parameters
+    sets: coercedExercise.sets,
+    reps: coercedExercise.reps,
+    targetIntensity: coercedExercise.targetIntensity,
+    restSec: coercedExercise.restSec,
+    durationMin: coercedExercise.durationMin,
+    distanceKm: coercedExercise.distanceKm,
+    
+    // Preserve original AI name as notes if different from canonical
+    notes: aiExerciseName !== canonicalExercise.name 
+      ? `Original: ${aiExerciseName}` 
+      : undefined
+  };
+  
+  // Log the final result
+  console.log('Final canonical exercise:', {
+    id: finalExercise.id,
+    name: finalExercise.name,
+    originalAiName: aiExerciseName,
+    confidence: mappingResult.confidence,
+    hasAlternatives: mappingResult.alternatives.length > 0
+  });
+  
+  return {
+    exercise: finalExercise,
+    mappingResult,
+    needsUserReview: mappingResult.needsUserReview || mappingResult.confidence < 0.8
+  };
+}
+
+/**
+ * Batch process multiple AI exercises with enhanced mapping
+ */
+export async function mapMultipleProgramWorkoutsToCanonical(
+  aiWorkouts: unknown[],
+  workoutContext?: string
+): Promise<{
+  exercises: Exercise[];
+  mappingResults: EnhancedMappingResult[];
+  needsUserReview: boolean;
+  unmappedCount: number;
+}> {
+  console.log(`Mapping ${aiWorkouts.length} AI workouts to canonical format`);
+  
+  const results = await Promise.all(
+    aiWorkouts.map(workout => mapProgramWorkoutToCanonical(workout, workoutContext))
+  );
+  
+  const exercises = results.map(r => r.exercise);
+  const mappingResults = results.map(r => r.mappingResult);
+  const needsUserReview = results.some(r => r.needsUserReview);
+  const unmappedCount = mappingResults.filter(r => r.matchType === 'generic').length;
+  
+  console.log('Batch mapping complete:', {
+    totalExercises: exercises.length,
+    needsUserReview,
+    unmappedCount,
+    averageConfidence: mappingResults.reduce((sum, r) => sum + r.confidence, 0) / mappingResults.length
+  });
+  
+  return {
+    exercises,
+    mappingResults,
+    needsUserReview,
+    unmappedCount
+  };
+}
+
+/**
+ * Helper function to get exercise alternatives for user review
+ */
+export function getExerciseAlternatives(mappingResult: EnhancedMappingResult): ExerciseDefinition[] {
+  return mappingResult.alternatives
+    .map(alt => getExerciseById(alt.exerciseId))
+    .filter((ex): ex is ExerciseDefinition => ex !== undefined)
+    .slice(0, 5); // Limit to top 5 alternatives
+}
+
+/**
+ * Helper function to create a user-friendly mapping summary
+ */
+export function createMappingSummary(mappingResults: EnhancedMappingResult[]): {
+  totalMapped: number;
+  exactMatches: number;
+  fuzzyMatches: number;
+  userMappings: number;
+  genericFallbacks: number;
+  needsReview: number;
+  averageConfidence: number;
+} {
+  const summary = {
+    totalMapped: mappingResults.length,
+    exactMatches: mappingResults.filter(r => r.matchType === 'exact').length,
+    fuzzyMatches: mappingResults.filter(r => r.matchType === 'fuzzy').length,
+    userMappings: mappingResults.filter(r => r.matchType === 'user_mapping').length,
+    genericFallbacks: mappingResults.filter(r => r.matchType === 'generic').length,
+    needsReview: mappingResults.filter(r => r.needsUserReview).length,
+    averageConfidence: mappingResults.length > 0 
+      ? mappingResults.reduce((sum, r) => sum + r.confidence, 0) / mappingResults.length 
+      : 0
+  };
+  
+  console.log('Mapping summary:', summary);
+  return summary;
 }
