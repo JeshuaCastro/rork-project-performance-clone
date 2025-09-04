@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWhoopStore } from '@/store/whoopStore';
 
-
 const DAILY_POPUP_KEY = 'daily_metrics_popup_shown';
 const POPUP_COOLDOWN_HOURS = 8; // Show popup at most every 8 hours
 
@@ -11,8 +10,6 @@ export const useDailyMetricsPopup = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   
   const { isConnectedToWhoop, data: whoopData } = useWhoopStore();
-  // Removed unused program-aware workout analysis
-  const hasAdjustment = false;
 
   const checkShouldShowPopup = useCallback(async (): Promise<boolean> => {
     try {
@@ -47,13 +44,12 @@ export const useDailyMetricsPopup = () => {
       // Show popup if:
       // 1. We have recovery data
       // 2. It's been more than cooldown period since last shown
-      // 3. It's the first time today (hasAdjustment is always false now)
+      // 3. It's the first time today
       const shouldShow = !lastShownStr || 
         new Date(lastShownStr).toDateString() !== now.toDateString();
 
       console.log('Daily popup check:', {
         hasRecoveryData: !!todaysRecovery,
-        hasAdjustment,
         shouldShow,
         lastShown: lastShownStr
       });
@@ -63,7 +59,7 @@ export const useDailyMetricsPopup = () => {
       console.error('Error checking if should show daily popup:', error);
       return false;
     }
-  }, [isConnectedToWhoop, whoopData.recovery, hasAdjustment]);
+  }, [isConnectedToWhoop, whoopData.recovery]);
 
   const showDailyPopup = useCallback(async () => {
     const shouldShow = await checkShouldShowPopup();
@@ -109,14 +105,11 @@ export const useDailyMetricsPopup = () => {
     }
   }, [isConnectedToWhoop, whoopData.recovery.length, isInitialized, showDailyPopup]);
 
-  // Removed: Show popup when there's a new adjustment (functionality disabled)
-
   return {
     showPopup,
     closeDailyPopup,
     triggerPopupManually,
     forceShowPopup,
-    hasAdjustment,
     isConnectedToWhoop
   };
 };
