@@ -596,7 +596,7 @@ export default function ProgramDetailScreen() {
             
             return enhancedWorkout;
           })
-          .sort((a: TodaysWorkout, b: TodaysWorkout) => {
+          .sort((a: Workout, b: Workout) => {
             const dayA = dayOrder.indexOf(a.day);
             const dayB = dayOrder.indexOf(b.day);
             if (dayA === -1 && dayB === -1) return 0;
