@@ -3240,245 +3240,127 @@ Return JSON with implementation and advisory guidance:
         };
       },
       
-      // Extract and log exercises from a program to the database
       extractAndLogExercisesFromProgram: async (program: TrainingProgram) => {
         try {
-          console.log(`🔍 Extracting exercises from program: ${program.name}`);
-          
+          console.log(`🔍 Extracting exercises from program with exact names: ${program.name}`);
           if (!program.aiPlan || !program.aiPlan.phases) {
             console.log('No AI plan or phases found in program');
             return;
           }
-          
+
           const extractedExercises: ExerciseDefinition[] = [];
-          const exerciseNames = new Set<string>();
-          
-          // Extract exercise names from all phases
+          const preciseNames = new Set<string>();
+
+          const normalize = (s: string): string => {
+            let t = s.toLowerCase();
+            t = t.replace(/\bdb\b/g, 'dumbbell');
+            t = t.replace(/\bbb\b/g, 'barbell');
+            t = t.replace(/\bkb\b/g, 'kettlebell');
+            t = t.replace(/\bohp\b/g, 'overhead press');
+            t = t.replace(/\brdl\b/g, 'romanian deadlift');
+            t = t.replace(/\brdl\b/g, 'romanian deadlift');
+            t = t.replace(/\bsl\b/g, 'single-leg');
+            t = t.replace(/\bsgl\b/g, 'single-leg');
+            t = t.replace(/[^a-z0-9+\-\s]/g, ' ');
+            t = t.replace(/\s+/g, ' ').trim();
+            return t;
+          };
+
+          const titleCase = (s: string): string => s.split(' ').map(w => w.length ? w[0].toUpperCase() + w.slice(1) : w).join(' ');
+
+          const capturePrecise = (text: string): string[] => {
+            const results: string[] = [];
+            const base = normalize(text);
+            const segments = base.split(/[,;\n]|\band then\b|\bfollowed by\b|\bthen\b/);
+            const core = '(bench press|overhead press|shoulder press|incline bench press|decline bench press|push press|push up|pull up|chin up|lat pulldown|row|bent over row|seated row|deadlift|romanian deadlift|rdl|sumo deadlift|squat|front squat|back squat|split squat|bulgarian split squat|lunge|hip thrust|glute bridge|leg press|calf raise|hammer curl|bicep curl|tricep extension|skullcrusher|lateral raise|rear delt fly|chest fly|face pull|landmine press|cable row|machine press|pec deck|leg extension|leg curl|good morning|thruster|clean|snatch)';
+            const mods = '(incline|decline|flat|seated|standing|close grip|wide grip|neutral grip|single arm|single leg|alternating|paused|tempo|deficit|sumo|conventional|front|back|smith machine|smith|cable|machine|dumbbell|barbell|kettlebell|trap bar|landmine)';
+            const regex = new RegExp(`((?:${mods} )?(?:${mods} )?(?:${mods} )?(?:${mods} )?${core})`, 'g');
+            segments.forEach(seg => {
+              let m: RegExpExecArray | null;
+              while ((m = regex.exec(seg)) !== null) {
+                const phrase = m[1].replace(/\s+/g, ' ').trim();
+                if (phrase.length > 2) results.push(phrase);
+              }
+              const simpleRun = seg.match(/\b(easy run|recovery run|long run|tempo run|interval run|sprints?|hiit|steady state cycling|cycling intervals)\b/g);
+              if (simpleRun) simpleRun.forEach(p => results.push(p));
+            });
+            return Array.from(new Set(results));
+          };
+
           program.aiPlan.phases.forEach((phase: any) => {
             if (phase.weeklyStructure && Array.isArray(phase.weeklyStructure)) {
               phase.weeklyStructure.forEach((workout: any) => {
-                if (workout.title && workout.description) {
-                  // Extract exercise names from workout titles and descriptions
-                  const workoutText = `${workout.title} ${workout.description}`.toLowerCase();
-                  
-                  // Common exercise patterns to extract
-                  const exercisePatterns = [
-                    // Strength exercises
-                    /\b(squat|squats)\b/g,
-                    /\b(deadlift|deadlifts)\b/g,
-                    /\b(bench press|bench pressing)\b/g,
-                    /\b(overhead press|shoulder press)\b/g,
-                    /\b(pull[- ]?up|pull[- ]?ups)\b/g,
-                    /\b(push[- ]?up|push[- ]?ups)\b/g,
-                    /\b(row|rows|rowing)\b/g,
-                    /\b(lunge|lunges)\b/g,
-                    /\b(plank|planks)\b/g,
-                    /\b(dip|dips)\b/g,
-                    /\b(curl|curls)\b/g,
-                    /\b(extension|extensions)\b/g,
-                    /\b(press|presses)\b/g,
-                    /\b(raise|raises)\b/g,
-                    /\b(fly|flies|flyes)\b/g,
-                    /\b(shrug|shrugs)\b/g,
-                    /\b(calf raise|calf raises)\b/g,
-                    /\b(hip thrust|hip thrusts)\b/g,
-                    /\b(burpee|burpees)\b/g,
-                    /\b(mountain climber|mountain climbers)\b/g,
-                    /\b(jumping jack|jumping jacks)\b/g,
-                    // Cardio exercises
-                    /\b(run|running|jog|jogging)\b/g,
-                    /\b(walk|walking)\b/g,
-                    /\b(cycle|cycling|bike|biking)\b/g,
-                    /\b(swim|swimming)\b/g,
-                    /\b(row|rowing)\b/g,
-                    /\b(elliptical)\b/g,
-                    /\b(treadmill)\b/g,
-                    /\b(stair climber|stairmaster)\b/g,
-                    /\b(tempo|interval|fartlek)\b/g,
-                    /\b(sprint|sprints)\b/g,
-                    /\b(hiit|high[- ]intensity)\b/g,
-                    // Specific workout types
-                    /\b(easy run|recovery run|long run)\b/g,
-                    /\b(tempo run|threshold run)\b/g,
-                    /\b(interval training|speed work)\b/g,
-                    /\b(strength training|weight training|resistance training)\b/g,
-                    /\b(core work|ab work|abdominal)\b/g,
-                    /\b(stretching|flexibility|mobility)\b/g,
-                    /\b(yoga|pilates)\b/g,
-                    /\b(foam rolling|recovery)\b/g
-                  ];
-                  
-                  exercisePatterns.forEach(pattern => {
-                    const matches = workoutText.match(pattern);
-                    if (matches) {
-                      matches.forEach(match => {
-                        const cleanedName = match.trim().toLowerCase();
-                        if (cleanedName.length > 2) {
-                          exerciseNames.add(cleanedName);
-                        }
-                      });
-                    }
-                  });
-                  
-                  // Also add the workout title as a potential exercise
-                  if (workout.title && workout.title.length > 3) {
-                    exerciseNames.add(workout.title.toLowerCase().trim());
-                  }
-                }
+                const text = `${workout.title || ''} ${workout.description || ''}`;
+                capturePrecise(text).forEach(n => preciseNames.add(n));
               });
             }
           });
-          
-          console.log(`📝 Found ${exerciseNames.size} unique exercise names:`, Array.from(exerciseNames));
-          
-          // Try to match extracted names with existing exercises in the database
-          const matchedExercises = new Set<string>();
-          
-          exerciseNames.forEach(exerciseName => {
-            // Search for matching exercises in the database
-            const keywords = exerciseName.split(/\s+|[-_]/);
-            const foundExercises = searchExercisesByKeywords(keywords);
-            
-            foundExercises.forEach(exercise => {
-              if (!matchedExercises.has(exercise.id)) {
-                extractedExercises.push(exercise);
-                matchedExercises.add(exercise.id);
-                console.log(`✅ Matched "${exerciseName}" to database exercise: ${exercise.name}`);
-              }
-            });
-            
-            // If no match found, try cardio fallback
-            if (foundExercises.length === 0) {
-              const cardioExercise = getCardioFallbackExercise(exerciseName);
-              if (cardioExercise && !matchedExercises.has(cardioExercise.id)) {
-                extractedExercises.push(cardioExercise);
-                matchedExercises.add(cardioExercise.id);
-                console.log(`🏃 Matched "${exerciseName}" to cardio fallback: ${cardioExercise.name}`);
-              }
-            }
-          });
-          
-          // Create custom exercise definitions for unmatched exercises
-          const unmatchedExercises: string[] = [];
-          exerciseNames.forEach(exerciseName => {
-            const keywords = exerciseName.split(/\s+|[-_]/);
-            const foundExercises = searchExercisesByKeywords(keywords);
-            const cardioFallback = getCardioFallbackExercise(exerciseName);
-            
-            if (foundExercises.length === 0 && !cardioFallback) {
-              unmatchedExercises.push(exerciseName);
-            }
-          });
-          
-          // Create basic exercise definitions for unmatched exercises
-          unmatchedExercises.forEach(exerciseName => {
-            const exerciseId = exerciseName.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            
-            // Determine exercise type and muscle groups based on name
-            let primaryMuscles: any[] = ['full-body'];
-            let difficulty: any = 'beginner';
-            let equipment: any[] = ['bodyweight'];
-            let description = `${exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1)} exercise extracted from training program.`;
-            
-            // Categorize based on exercise name
-            if (exerciseName.includes('run') || exerciseName.includes('jog') || exerciseName.includes('cardio')) {
-              primaryMuscles = ['cardio', 'legs'];
-              description = `Cardiovascular exercise: ${exerciseName}`;
-            } else if (exerciseName.includes('squat')) {
-              primaryMuscles = ['legs', 'glutes'];
-              description = `Lower body strength exercise: ${exerciseName}`;
-            } else if (exerciseName.includes('press') || exerciseName.includes('push')) {
-              primaryMuscles = ['chest', 'shoulders'];
-              description = `Upper body pressing exercise: ${exerciseName}`;
-            } else if (exerciseName.includes('pull') || exerciseName.includes('row')) {
-              primaryMuscles = ['back'];
-              description = `Upper body pulling exercise: ${exerciseName}`;
-            } else if (exerciseName.includes('core') || exerciseName.includes('plank') || exerciseName.includes('ab')) {
-              primaryMuscles = ['core'];
-              description = `Core strengthening exercise: ${exerciseName}`;
-            } else if (exerciseName.includes('strength') || exerciseName.includes('weight')) {
-              primaryMuscles = ['full-body'];
-              equipment = ['dumbbells'];
-              description = `Strength training exercise: ${exerciseName}`;
-            }
-            
-            const customExercise: ExerciseDefinition = {
-              id: exerciseId,
-              name: exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1),
-              description,
-              primaryMuscles,
-              secondaryMuscles: ['core'],
-              difficulty,
-              equipment,
-              instructions: [
-                {
-                  stepNumber: 1,
-                  instruction: `Perform ${exerciseName} as described in your training program.`,
-                  tip: 'Focus on proper form and controlled movement.',
-                  commonMistake: 'Going too fast or using poor form'
-                }
-              ],
-              formTips: [
-                'Maintain proper posture throughout the exercise',
-                'Control the movement in both directions',
-                'Breathe steadily during the exercise',
-                'Start with lighter intensity and progress gradually'
-              ],
-              commonMistakes: [
-                'Using too much weight or intensity too soon',
-                'Poor form due to fatigue',
-                'Not warming up properly',
-                'Ignoring pain or discomfort'
-              ],
+
+          console.log(`📝 Captured ${preciseNames.size} exact exercise phrases`);
+
+          const guessedMuscles = (name: string): { primary: any[]; equip: any[] } => {
+            const n = name;
+            if (n.includes('run') || n.includes('cycling')) return { primary: ['cardio', 'legs'], equip: ['cardio-equipment'] };
+            if (n.includes('squat') || n.includes('lunge') || n.includes('split squat') || n.includes('leg')) return { primary: ['legs', 'glutes'], equip: n.includes('barbell') ? ['barbell'] : n.includes('dumbbell') ? ['dumbbells'] : ['bodyweight'] };
+            if (n.includes('deadlift')) return { primary: ['back', 'glutes', 'legs'], equip: ['barbell'] };
+            if (n.includes('press') || n.includes('push')) return { primary: ['chest', 'shoulders', 'triceps'], equip: n.includes('barbell') ? ['barbell','bench'] : n.includes('dumbbell') ? ['dumbbells','bench'] : ['machine','bench'] };
+            if (n.includes('row') || n.includes('pull') || n.includes('chin up')) return { primary: ['back','biceps'], equip: n.includes('cable') ? ['machine'] : n.includes('barbell') ? ['barbell'] : n.includes('dumbbell') ? ['dumbbells'] : ['bodyweight'] };
+            if (n.includes('curl')) return { primary: ['biceps'], equip: n.includes('barbell') ? ['barbell'] : ['dumbbells'] };
+            if (n.includes('extension') || n.includes('skullcrusher') || n.includes('pushdown')) return { primary: ['triceps'], equip: ['machine'] };
+            if (n.includes('lateral raise') || n.includes('rear delt') || n.includes('shoulder')) return { primary: ['shoulders'], equip: n.includes('cable') ? ['machine'] : ['dumbbells'] };
+            if (n.includes('hip thrust') || n.includes('glute')) return { primary: ['glutes','legs'], equip: n.includes('barbell') ? ['barbell','bench'] : ['bench'] };
+            return { primary: ['full-body'], equip: [] };
+          };
+
+          const makeId = (name: string): string => name.replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+
+          const toDefinition = (name: string, idx: number): ExerciseDefinition => {
+            const pretty = titleCase(name);
+            const id = makeId(name) || `ex-${Date.now()}-${idx}`;
+            const guess = guessedMuscles(name);
+            return {
+              id,
+              name: pretty,
+              description: `${pretty} extracted from program.`,
+              primaryMuscles: guess.primary as any[],
+              secondaryMuscles: [],
+              difficulty: 'beginner',
+              equipment: guess.equip as any[],
+              instructions: [{ stepNumber: 1, instruction: `Perform ${pretty} with proper form.`, tip: 'Control tempo and range', commonMistake: 'Using momentum' }],
+              formTips: ['Neutral spine', 'Full ROM', 'Controlled tempo'],
+              commonMistakes: ['Too heavy too soon', 'Short ROM'],
               modifications: [
-                {
-                  level: 'easier',
-                  description: 'Beginner Version',
-                  instruction: 'Reduce intensity, duration, or resistance to match your current fitness level.'
-                },
-                {
-                  level: 'harder',
-                  description: 'Advanced Version',
-                  instruction: 'Increase intensity, duration, or add resistance for greater challenge.'
-                }
+                { level: 'easier', description: 'Reduce load/volume', instruction: 'Use lighter weight or fewer reps.' },
+                { level: 'harder', description: 'Increase load/tempo', instruction: 'Add weight or slow eccentric.' }
               ],
-              safetyNotes: [
-                'Start with appropriate intensity for your fitness level',
-                'Stop if you experience pain or unusual discomfort',
-                'Ensure proper warm-up before intense exercises'
-              ],
-              demonstrationImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&crop=center&auto=format&q=80',
-              estimatedDuration: '30-60 seconds',
-              caloriesPerMinute: 8
+              safetyNotes: ['Warm up adequately', 'Stop if pain occurs'],
+              demonstrationImageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&auto=format&q=80',
+              estimatedDuration: '30-90 seconds',
+              caloriesPerMinute: 6
             };
-            
-            extractedExercises.push(customExercise);
-            console.log(`🆕 Created custom exercise definition for: ${exerciseName}`);
-          });
-          
-          // Update the store with extracted exercises
+          };
+
+          const preciseList = Array.from(preciseNames);
+          const defs: ExerciseDefinition[] = preciseList.map((n, i) => toDefinition(n, i));
+
           set((state) => {
             const existingIds = new Set(state.extractedExercises.map(e => e.id));
-            const newExercises = extractedExercises.filter(e => !existingIds.has(e.id));
-            
-            if (newExercises.length > 0) {
-              console.log(`💾 Adding ${newExercises.length} new exercises to extracted database`);
-              return {
-                extractedExercises: [...state.extractedExercises, ...newExercises]
-              };
+            const existingNames = new Set(state.extractedExercises.map(e => e.name.toLowerCase()));
+            const newOnes = defs.filter(d => !existingIds.has(d.id) && !existingNames.has(d.name.toLowerCase()));
+            if (newOnes.length === 0) {
+              console.log('ℹ️ No new exact exercises to add');
+              return state;
             }
-            
-            return state;
+            console.log(`💾 Adding ${newOnes.length} exact exercise variants to database`);
+            return { extractedExercises: [...state.extractedExercises, ...newOnes] };
           });
-          
-          console.log(`✅ Successfully extracted and logged ${extractedExercises.length} exercises from program: ${program.name}`);
-          
+
+          console.log(`✅ Logged ${defs.length} precise exercises from program`);
         } catch (error) {
           console.error('Error extracting exercises from program:', error);
         }
       },
       
-      // Canonical workout upsert and retrieval
       upsertCanonicalWorkout: (workout: CanonicalWorkout) => {
         set((state) => {
           const existingIndex = state.canonicalWorkouts.findIndex(w => w.id === workout.id);
@@ -3557,13 +3439,11 @@ Return JSON with implementation and advisory guidance:
         }
       },
       
-      // Get all extracted exercises
       getExtractedExercises: () => {
         const { extractedExercises } = get();
         return extractedExercises;
       },
       
-      // Search extracted exercises by query
       searchExtractedExercises: (query: string) => {
         const { extractedExercises } = get();
         const keywords = query.toLowerCase().split(/\s+/);
@@ -3576,7 +3456,6 @@ Return JSON with implementation and advisory guidance:
         });
       },
       
-      // Clear all extracted exercises (for debugging/reset)
       clearExtractedExercises: () => {
         set({ extractedExercises: [] });
         console.log('🗑️ Cleared all extracted exercises from database');
