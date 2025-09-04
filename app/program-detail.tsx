@@ -1007,8 +1007,49 @@ export default function ProgramDetailScreen() {
   // Normalize exercises coming from program schedule/AI plan into the modal's shape
   const normalizeScheduleExercises = (raw: any[] | undefined, fallbackWorkout?: any): NonNullable<Workout['exercises']> => {
     try {
+      const parseExercisesFromText = (text: string): NonNullable<Workout['exercises']> => {
+        if (!text || typeof text !== 'string') return [];
+        const lines = text
+          .split(/\n|;|\.|\u2022|\-|\•/)
+          .map(l => l.trim())
+          .filter(l => l.length > 0 && /[a-zA-Z]/.test(l));
+        const items: NonNullable<Workout['exercises']> = [];
+        const exRegex = /(\d+)?\s*x\s*(\d+(-\d+)?)(?:\s*reps?)?|(?:(\d+)-(\d+)|\d+)\s*reps?/i;
+        const nameCleanup = (s: string) => s.replace(/\s{2,}/g, ' ').replace(/\s*:\s*/g, ': ').trim();
+        lines.forEach((line) => {
+          const m = exRegex.exec(line);
+          let sets: string | undefined;
+          let reps: string | undefined;
+          if (m) {
+            if (m[1]) sets = String(m[1]);
+            if (m[2]) reps = String(m[2]);
+          }
+          // Extract name by removing set/rep tokens and common words
+          let name = line
+            .replace(/\b(sets?|reps?|for|of|at|tempo|rest|seconds?|minutes?)\b/gi, '')
+            .replace(exRegex, '')
+            .replace(/[,:()]/g, ' ')
+            .trim();
+          name = nameCleanup(name);
+          if (!name) return;
+          // Avoid generic words
+          const generic = ['warm up', 'cool down', 'rest', 'mobility', 'stretch', 'core circuit'];
+          if (generic.some(g => name.toLowerCase().includes(g))) return;
+          // Capitalize words nicely
+          const pretty = name.split(' ').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ');
+          items.push({ name: pretty, sets, reps });
+        });
+        // Deduplicate by name
+        const seen = new Set<string>();
+        return items.filter((ex) => {
+          const key = ex.name.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+
       if (!raw) {
-        // Try to infer from common nested structures on the workout object
         const nested = fallbackWorkout ?? {};
         const candidates: any[] = [];
         if (Array.isArray((nested as any).exercises)) candidates.push(...(nested as any).exercises);
@@ -1025,6 +1066,12 @@ export default function ProgramDetailScreen() {
           });
         }
         raw = candidates.length > 0 ? candidates : [];
+        // If still empty, try parsing from text fields
+        if (raw.length === 0) {
+          const textBlob = `${String((fallbackWorkout?.title ?? '') || '')} \n ${String((fallbackWorkout?.description ?? '') || '')}`;
+          const parsed = parseExercisesFromText(textBlob);
+          if (parsed.length > 0) return parsed;
+        }
       }
 
       if (!Array.isArray(raw)) return [];
@@ -1518,6 +1565,13 @@ export default function ProgramDetailScreen() {
       try {
         const canonical = mapProgramWorkoutToCanonical(workout, dIdx);
         setActiveCanonicalWorkout(canonical);
+        try {
+          const whoop = useWhoopStore.getState();
+          whoop.upsertCanonicalWorkout(canonical);
+          whoop.extractAndLogExercisesFromCanonicalWorkout(canonical);
+        } catch (persistErr) {
+          console.warn('Failed to persist canonical workout / extract exercises', persistErr);
+        }
       } catch (e) {
         console.warn('Failed to build CanonicalWorkout', e);
         setActiveCanonicalWorkout(null);
