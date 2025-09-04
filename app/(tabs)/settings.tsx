@@ -31,7 +31,8 @@ import {
   Clock,
   AlertCircle,
   UserCircle,
-  BarChart3
+  BarChart3,
+  Database
 } from 'lucide-react-native';
 import { disconnectFromWhoop } from '@/services/whoopApi';
 
@@ -350,6 +351,14 @@ export default function SettingsScreen() {
             "View your metrics and training adjustments",
             undefined,
             handleShowDailyPopup
+          )}
+          
+          {renderSettingItem(
+            <Database size={20} color={colors.textSecondary} />,
+            "Exercise Database",
+            "View exercises extracted from your programs",
+            undefined,
+            () => router.push('/exercise-database')
           )}
           
           {renderSettingItem(
