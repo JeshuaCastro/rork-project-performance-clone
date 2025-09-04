@@ -515,6 +515,48 @@ export default function ProgramDetailScreen() {
     };
   };
 
+  // Split grouped workouts into distinct entries when AI returns combined sessions
+  const splitGroupedWorkout = (workout: any): any[] => {
+    try {
+      const title: string = String(workout?.title ?? workout?.name ?? '').trim();
+      const day: string = String(workout?.day ?? '').trim();
+      const type: string = String(workout?.type ?? '').trim();
+      const description: string = String(workout?.description ?? '').trim();
+      const exercises: any[] = Array.isArray(workout?.exercises) ? workout.exercises : [];
+
+      const separators = [' + ', ' / ', ' & ', ' and '];
+      const hasSeparator = separators.some((s) => title.includes(s));
+      if (!hasSeparator) return [workout];
+
+      let parts: string[] = [title];
+      for (const s of separators) {
+        if (parts.length === 1 && title.includes(s)) {
+          parts = title.split(s).map((p) => p.trim()).filter((p) => p.length > 0);
+        }
+      }
+      if (parts.length <= 1) return [workout];
+
+      const chunkSize = Math.ceil((exercises.length || parts.length) / parts.length);
+      const result: any[] = parts.map((p, idx) => {
+        const chunkStart = idx * chunkSize;
+        const chunk = exercises.length > 0 ? exercises.slice(chunkStart, chunkStart + chunkSize) : [];
+        return {
+          ...workout,
+          title: p,
+          day,
+          type,
+          description,
+          exercises: chunk,
+        };
+      });
+
+      return result.length > 0 ? result : [workout];
+    } catch (e) {
+      console.warn('splitGroupedWorkout error:', e);
+      return [workout];
+    }
+  };
+
   // Generate weekly workout plan based on program type and recovery status
   const generateWorkoutPlan = (): Workout[] => {
     // If we have an AI-generated plan, use that
@@ -537,18 +579,19 @@ export default function ProgramDetailScreen() {
         // Define day order for sorting
         const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         
-        // Sort workouts by day of the week and apply recovery adjustments
-        const sortedWorkouts = currentPhase.weeklyStructure
+        // Expand grouped workouts, enhance, and apply recovery adjustments
+        const expanded = (currentPhase.weeklyStructure as any[]).flatMap((w) => splitGroupedWorkout(w));
+
+        const sortedWorkouts = expanded
           .map((workout: any) => {
             const enhancedWorkout = enhanceWorkoutWithDetails(workout);
             
-            // Apply recovery-based adjustments
-            if (recoveryStatus === 'low' && workout.intensity === 'High') {
-              enhancedWorkout.adjustedForRecovery = "Reduce intensity by 20-30% due to low recovery. Focus on technique and listen to your body.";
-            } else if (recoveryStatus === 'low' && workout.type === 'cardio' && workout.intensity === 'Medium') {
-              enhancedWorkout.adjustedForRecovery = "Consider reducing duration by 15-20% or lowering intensity due to low recovery.";
-            } else if (recoveryStatus === 'high' && workout.intensity === 'Medium') {
-              enhancedWorkout.adjustedForRecovery = "You can push slightly harder today if you feel good - your recovery is excellent.";
+            if (recoveryStatus === 'low' && (workout?.intensity === 'High' || String(workout?.intensity).toLowerCase() === 'high')) {
+              enhancedWorkout.adjustedForRecovery = 'Reduce intensity by 20-30% due to low recovery. Focus on technique and listen to your body.';
+            } else if (recoveryStatus === 'low' && workout?.type === 'cardio' && (workout?.intensity === 'Medium' || String(workout?.intensity).toLowerCase() === 'medium')) {
+              enhancedWorkout.adjustedForRecovery = 'Consider reducing duration by 15-20% or lowering intensity due to low recovery.';
+            } else if (recoveryStatus === 'high' && (workout?.intensity === 'Medium' || String(workout?.intensity).toLowerCase() === 'medium')) {
+              enhancedWorkout.adjustedForRecovery = 'You can push slightly harder today if you feel good - your recovery is excellent.';
             }
             
             return enhancedWorkout;
@@ -556,12 +599,9 @@ export default function ProgramDetailScreen() {
           .sort((a: TodaysWorkout, b: TodaysWorkout) => {
             const dayA = dayOrder.indexOf(a.day);
             const dayB = dayOrder.indexOf(b.day);
-            
-            // If day is not found in dayOrder, put it at the end
             if (dayA === -1 && dayB === -1) return 0;
             if (dayA === -1) return 1;
             if (dayB === -1) return -1;
-            
             return dayA - dayB;
           });
         
@@ -1132,8 +1172,23 @@ export default function ProgramDetailScreen() {
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
     const providedExercises = normalizeScheduleExercises(workout?.exercises, workout);
 
+    const normalizedType = (() => {
+      const t = String(workout?.type ?? '').toLowerCase();
+      if (t === 'strength' || t === 'cardio' || t === 'recovery' || t === 'other') return t as Workout['type'];
+      const title = String(workout?.title ?? '').toLowerCase();
+      if (/(squat|bench|deadlift|press|row|pull|push|curl|extension|raise|lunge|db|barbell|dumbbell|machine)/.test(title)) return 'strength';
+      if (/(run|ride|bike|cycle|row|swim|cardio|interval|tempo|zone)/.test(title)) return 'cardio';
+      if (/(recovery|mobility|stretch|rest|yoga|breath|meditation)/.test(title)) return 'recovery';
+      return 'other';
+    })();
+
     const enhanced: Workout = {
-      ...workout,
+      day: String(workout?.day ?? ''),
+      title: String(workout?.title ?? workout?.name ?? 'Workout'),
+      description: String(workout?.description ?? ''),
+      intensity: String(workout?.intensity ?? 'Medium'),
+      adjustedForRecovery: null,
+      type: normalizedType as Workout['type'],
       duration: typeof workout?.duration === 'string' ? workout.duration : undefined,
       equipment: Array.isArray(workout?.equipment) ? workout.equipment : undefined,
       exercises: providedExercises,
