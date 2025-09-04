@@ -99,6 +99,53 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
 
   const whoop = useWhoopStore();
 
+  const GENERIC_MAP: Record<string, string[]> = {
+    'compound movement': ['squat', 'deadlift', 'bench press', 'row', 'overhead press'],
+    'horizontal press': ['bench press', 'incline bench press', 'dumbbell bench press', 'machine chest press'],
+    'vertical press': ['overhead press', 'shoulder press', 'push press', 'dumbbell shoulder press'],
+    'vertical pull': ['pull up', 'chin up', 'lat pulldown'],
+    'horizontal pull': ['row', 'bent over row', 'seated row', 'cable row'],
+    'hip hinge': ['deadlift', 'romanian deadlift', 'rdl', 'good morning'],
+    'squat pattern': ['back squat', 'front squat', 'squat'],
+    'quad dominant': ['squat', 'leg press', 'lunge'],
+    'hamstring dominant': ['romanian deadlift', 'deadlift', 'leg curl'],
+    'glute focus': ['hip thrust', 'glute bridge', 'bulgarian split squat'],
+    'push': ['bench press', 'overhead press', 'push up'],
+    'pull': ['row', 'pull up', 'lat pulldown'],
+  } as const;
+
+  const findSpecificFromDatabase = useCallback((generic: string): string | null => {
+    const db = whoop?.extractedExercises ?? [];
+    const lowerGeneric = generic.toLowerCase();
+    const candidates = GENERIC_MAP[lowerGeneric] ?? [];
+    if (!db.length) return null;
+
+    // Prefer exact matches from database first
+    for (const c of candidates) {
+      const exact = db.find((e) => e.name.toLowerCase() === c);
+      if (exact) return exact.name;
+    }
+
+    // Then fuzzy contains
+    for (const c of candidates) {
+      const fuzzy = db.find((e) => e.name.toLowerCase().includes(c));
+      if (fuzzy) return fuzzy.name;
+    }
+
+    // If generic is itself a specific exercise captured already, return as-is capitalized
+    const self = db.find((e) => e.name.toLowerCase() === lowerGeneric);
+    return self ? self.name : null;
+  }, [whoop?.extractedExercises]);
+
+  const substituteGenericName = useCallback((name: string): string => {
+    const key = name.toLowerCase().trim();
+    if (GENERIC_MAP[key]) {
+      const specific = findSpecificFromDatabase(key);
+      if (specific) return specific;
+    }
+    return name;
+  }, [findSpecificFromDatabase]);
+
   const workoutData = useMemo(() => {
     if (canonicalWorkout && canonicalWorkout.exercises) {
       try {
@@ -192,16 +239,20 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
       }
 
       const exs = Array.isArray(primary.exercises) ? primary.exercises : [];
-      const mapped: WorkoutExercise[] = exs.map((ex: any) => ({
-        name: String(ex?.name ?? ex?.title ?? 'Exercise'),
-        sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
-        reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
-        rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
-        type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
-        notes: String(ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join('. ') : '')),
-        equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
-        primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
-      }));
+      const mapped: WorkoutExercise[] = exs.map((ex: any) => {
+        const rawName = String(ex?.name ?? ex?.title ?? 'Exercise');
+        const finalName = substituteGenericName(rawName);
+        return {
+          name: finalName,
+          sets: Number.parseInt(String(ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? '3'), 10) || 3,
+          reps: String(ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? (ex?.durationMin ? `${ex.durationMin} min` : ex?.duration ? `${ex.duration}` : '8-12')),
+          rest: String(ex?.rest ?? ex?.restTime ?? '90 sec'),
+          type: (primary?.type === 'cardio' ? 'cardio' : primary?.type === 'recovery' ? 'mobility' : 'strength'),
+          notes: String(ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join('. ') : '')),
+          equipment: Array.isArray(ex?.equipment) ? ex.equipment : [],
+          primaryMuscles: Array.isArray(ex?.primaryMuscles) ? ex.primaryMuscles : []
+        } as WorkoutExercise;
+      });
 
       console.log('[WorkoutPlayer] Loaded schedule workout', { title: primary?.title ?? primary?.name, count: mapped.length, day: primary?.day });
       return { title: String(primary?.title ?? primary?.name ?? workoutTitle ?? 'Workout'), exercises: mapped };
@@ -209,7 +260,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
       console.log('[WorkoutPlayer] Failed to derive from program schedule', e);
       return { title: workoutTitle || 'Workout', exercises: [] as WorkoutExercise[] };
     }
-  }, [programId, workoutTitle, canonicalWorkout, whoop.activePrograms]);
+  }, [programId, workoutTitle, canonicalWorkout, whoop.activePrograms, substituteGenericName]);
 
   const exercises: Exercise[] = useMemo(() => {
     try {
