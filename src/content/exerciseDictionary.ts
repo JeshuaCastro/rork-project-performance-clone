@@ -18,6 +18,41 @@ export interface ExerciseDictEntry {
 }
 
 export const EXERCISE_DICTIONARY: Record<string, ExerciseDictEntry> = {
+  "meditation-breathing": {
+    slug: "meditation-breathing",
+    name: "Meditation / Breathing",
+    primaryMuscles: ["recovery"],
+    equipment: ["yoga-mat"],
+    mediaUrl: "assets/exercises/placeholder.mp4",
+    mediaType: "mp4",
+    synonyms: ["meditation", "breathing", "meditation breathing", "breathwork"],
+    beginnerAlternative: {
+      name: "Guided Box Breathing",
+      mediaUrl: "assets/exercises/placeholder.mp4",
+    },
+  },
+  "recovery-mobility": {
+    slug: "recovery-mobility",
+    name: "Recovery Mobility",
+    primaryMuscles: ["mobility", "recovery"],
+    equipment: ["yoga-mat"],
+    mediaUrl: "assets/exercises/placeholder.mp4",
+    mediaType: "mp4",
+    synonyms: ["active recovery mobility", "mobility", "mobility flow", "mobility routine"],
+    beginnerAlternative: {
+      name: "Beginner Mobility Flow",
+      mediaUrl: "assets/exercises/placeholder.mp4",
+    },
+  },
+  "stretching": {
+    slug: "stretching",
+    name: "Full-Body Stretching",
+    primaryMuscles: ["mobility", "recovery"],
+    equipment: ["yoga-mat"],
+    mediaUrl: "assets/exercises/placeholder.mp4",
+    mediaType: "mp4",
+    synonyms: ["stretch", "flexibility", "cool down", "yoga"],
+  },
   "barbell-squat": {
     slug: "barbell-squat",
     name: "Barbell Squat",
@@ -272,6 +307,7 @@ function normalize(input: string): string {
   return input
     .toLowerCase()
     .trim()
+    .replace(/[\/_|]/g, " ")
     .replace(/[_-]/g, " ")
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ");
