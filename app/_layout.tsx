@@ -73,16 +73,7 @@ export default function RootLayout() {
           })
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="modal" 
-          options={{ 
-            presentation: 'modal',
-            ...(Platform.OS === 'ios' && {
-              gestureEnabled: true,
-              gestureDirection: 'vertical',
-            })
-          }} 
-        />
+
         <Stack.Screen name="connect-whoop" options={{ headerShown: false }} />
         <Stack.Screen name="oauth/callback" options={{ headerShown: false }} />
         <Stack.Screen 

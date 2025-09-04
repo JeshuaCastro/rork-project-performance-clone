@@ -14,18 +14,14 @@ import {
   Heart,
   Moon,
   Zap,
-  TrendingUp,
-  TrendingDown,
   CheckCircle,
   X,
-  AlertTriangle,
-
   Calendar
 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useWhoopStore } from '@/store/whoopStore';
 import { useProgramStore } from '@/store/programStore';
-import { useProgramAwareWorkoutAnalysis } from '@/hooks/useProgramAwareWorkoutAnalysis';
+
 import { colors } from '@/constants/colors';
 import { iosTypography, iosBorderRadius, iosSpacing, iosMargins } from '@/utils/ios-helpers';
 
@@ -48,12 +44,7 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
     const targetDate = new Date(goal.targetDate);
     return targetDate >= today;
   });
-  const {
-    currentAdjustment,
-    acceptAdjustment,
-    dismissAdjustment,
-    hasAdjustment
-  } = useProgramAwareWorkoutAnalysis();
+
 
   // Get today's metrics
   const today = new Date().toISOString().split('T')[0];
@@ -108,15 +99,7 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
     }
   };
 
-  const handleAcceptAdjustment = () => {
-    acceptAdjustment();
-    onClose();
-  };
 
-  const handleDismissAdjustment = () => {
-    dismissAdjustment();
-    onClose();
-  };
 
   if (!isConnectedToWhoop || !todaysRecovery) {
     return null;
@@ -224,113 +207,39 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                   </View>
                 </View>
 
-                {/* Training Adjustment */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Training Analysis</Text>
-                  {hasAdjustment && currentAdjustment ? (
-                    <View style={styles.adjustmentCard}>
-                      <View style={styles.adjustmentHeader}>
-                        <View style={styles.adjustmentIcon}>
-                          {currentAdjustment.adjustmentType === 'intensity' ? (
-                            currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity ? (
-                              <TrendingDown size={20} color={colors.danger} />
-                            ) : (
-                              <TrendingUp size={20} color={colors.success} />
-                            )
-                          ) : currentAdjustment.adjustmentType === 'skip' ? (
-                            <X size={20} color={colors.danger} />
-                          ) : (
-                            <AlertTriangle size={20} color={colors.warning} />
-                          )}
-                        </View>
-                        <View style={styles.adjustmentHeaderText}>
-                          <Text style={styles.adjustmentTitle}>Training Adjusted</Text>
-                          <Text style={styles.adjustmentSubtitle}>
-                            Based on your recovery metrics
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.adjustmentReason}>
-                        <Text style={styles.reasonText}>{currentAdjustment.adjustmentReason}</Text>
-                      </View>
-
-                      <View style={styles.workoutComparison}>
-                        <View style={styles.workoutBefore}>
-                          <Text style={styles.workoutLabel}>Original</Text>
-                          <Text style={styles.workoutTitle}>{currentAdjustment.originalWorkout.title}</Text>
-                          <Text style={styles.workoutDetails}>
-                            {currentAdjustment.originalWorkout.intensity} • {currentAdjustment.originalWorkout.duration}
-                          </Text>
-                        </View>
-                        
-                        <View style={styles.arrow}>
-                          <Text style={styles.arrowText}>→</Text>
-                        </View>
-                        
-                        <View style={styles.workoutAfter}>
-                          <Text style={styles.workoutLabel}>Adjusted</Text>
-                          <Text style={styles.workoutTitle}>{currentAdjustment.adjustedWorkout.title}</Text>
-                          <Text style={[styles.workoutDetails, { 
-                            color: currentAdjustment.adjustmentType === 'intensity' && 
-                                   currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity 
-                                   ? colors.danger : colors.success 
-                          }]}>
-                            {currentAdjustment.adjustedWorkout.intensity} • {currentAdjustment.adjustedWorkout.duration}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.adjustmentActions}>
-                        <TouchableOpacity
-                          style={[styles.adjustmentButton, styles.secondaryButton]}
-                          onPress={handleDismissAdjustment}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.secondaryButtonText}>Keep Original</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.adjustmentButton, styles.primaryButton]}
-                          onPress={handleAcceptAdjustment}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.primaryButtonText}>Accept Adjustment</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
+                {/* Today&apos;s Workout */}
+                {todaysWorkout && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Today&apos;s Workout</Text>
                     <View style={styles.noAdjustmentCard}>
                       <View style={styles.noAdjustmentHeader}>
                         <View style={styles.noAdjustmentIcon}>
                           <CheckCircle size={20} color={colors.success} />
                         </View>
                         <View style={styles.adjustmentHeaderText}>
-                          <Text style={styles.adjustmentTitle}>Training Optimized</Text>
+                          <Text style={styles.adjustmentTitle}>Training Plan</Text>
                           <Text style={styles.adjustmentSubtitle}>
-                            Your workout is well-matched to your recovery
+                            Based on your recovery metrics
                           </Text>
                         </View>
                       </View>
 
                       <View style={styles.analysisDetails}>
                         <Text style={styles.analysisText}>
-                          Based on your recovery score of {todaysRecovery.score}% and HRV of {todaysRecovery.hrvMs}ms, 
-                          your planned workout intensity is appropriate for today.
+                          Recovery: {todaysRecovery.score}% • HRV: {todaysRecovery.hrvMs}ms
                         </Text>
                       </View>
 
-                      {todaysWorkout && (
-                        <View style={styles.plannedWorkout}>
-                          <Text style={styles.workoutLabel}>Today&apos;s Workout</Text>
-                          <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
-                          <Text style={styles.workoutDetails}>
-                            {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
-                          </Text>
-                        </View>
-                      )}
+                      <View style={styles.plannedWorkout}>
+                        <Text style={styles.workoutLabel}>Planned Workout</Text>
+                        <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
+                        <Text style={styles.workoutDetails}>
+                          {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                        </Text>
+                      </View>
                     </View>
-                  )}
-                </View>
+                  </View>
+                )}
 
 
 
@@ -462,111 +371,39 @@ export const DailyMetricsPopup: React.FC<DailyMetricsPopupProps> = ({
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Training Analysis</Text>
-                {hasAdjustment && currentAdjustment ? (
-                  <View style={styles.adjustmentCard}>
-                    <View style={styles.adjustmentHeader}>
-                      <View style={styles.adjustmentIcon}>
-                        {currentAdjustment.adjustmentType === 'intensity' ? (
-                          currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity ? (
-                            <TrendingDown size={20} color={colors.danger} />
-                          ) : (
-                            <TrendingUp size={20} color={colors.success} />
-                          )
-                        ) : currentAdjustment.adjustmentType === 'skip' ? (
-                          <X size={20} color={colors.danger} />
-                        ) : (
-                          <AlertTriangle size={20} color={colors.warning} />
-                        )}
-                      </View>
-                      <View style={styles.adjustmentHeaderText}>
-                        <Text style={styles.adjustmentTitle}>Training Adjusted</Text>
-                        <Text style={styles.adjustmentSubtitle}>
-                          Based on your recovery metrics
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.adjustmentReason}>
-                      <Text style={styles.reasonText}>{currentAdjustment.adjustmentReason}</Text>
-                    </View>
-
-                    <View style={styles.workoutComparison}>
-                      <View style={styles.workoutBefore}>
-                        <Text style={styles.workoutLabel}>Original</Text>
-                        <Text style={styles.workoutTitle}>{currentAdjustment.originalWorkout.title}</Text>
-                        <Text style={styles.workoutDetails}>
-                          {currentAdjustment.originalWorkout.intensity} • {currentAdjustment.originalWorkout.duration}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.arrow}>
-                        <Text style={styles.arrowText}>→</Text>
-                      </View>
-                      
-                      <View style={styles.workoutAfter}>
-                        <Text style={styles.workoutLabel}>Adjusted</Text>
-                        <Text style={styles.workoutTitle}>{currentAdjustment.adjustedWorkout.title}</Text>
-                        <Text style={[styles.workoutDetails, { 
-                          color: currentAdjustment.adjustmentType === 'intensity' && 
-                                 currentAdjustment.adjustedWorkout.intensity < currentAdjustment.originalWorkout.intensity 
-                                 ? colors.danger : colors.success 
-                        }]}>
-                          {currentAdjustment.adjustedWorkout.intensity} • {currentAdjustment.adjustedWorkout.duration}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.adjustmentActions}>
-                      <TouchableOpacity
-                        style={[styles.adjustmentButton, styles.secondaryButton]}
-                        onPress={handleDismissAdjustment}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.secondaryButtonText}>Keep Original</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.adjustmentButton, styles.primaryButton]}
-                        onPress={handleAcceptAdjustment}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.primaryButtonText}>Accept Adjustment</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
+              {/* Today&apos;s Workout */}
+              {todaysWorkout && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Today&apos;s Workout</Text>
                   <View style={styles.noAdjustmentCard}>
                     <View style={styles.noAdjustmentHeader}>
                       <View style={styles.noAdjustmentIcon}>
                         <CheckCircle size={20} color={colors.success} />
                       </View>
                       <View style={styles.adjustmentHeaderText}>
-                        <Text style={styles.adjustmentTitle}>Training Optimized</Text>
+                        <Text style={styles.adjustmentTitle}>Training Plan</Text>
                         <Text style={styles.adjustmentSubtitle}>
-                          Your workout is well-matched to your recovery
+                          Based on your recovery metrics
                         </Text>
                       </View>
                     </View>
 
                     <View style={styles.analysisDetails}>
                       <Text style={styles.analysisText}>
-                        Based on your recovery score of {todaysRecovery.score}% and HRV of {todaysRecovery.hrvMs}ms, your planned workout intensity is appropriate for today.
+                        Recovery: {todaysRecovery.score}% • HRV: {todaysRecovery.hrvMs}ms
                       </Text>
                     </View>
 
-                    {todaysWorkout && (
-                      <View style={styles.plannedWorkout}>
-                        <Text style={styles.workoutLabel}>Today&apos;s Workout</Text>
-                        <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
-                        <Text style={styles.workoutDetails}>
-                          {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
-                        </Text>
-                      </View>
-                    )}
+                    <View style={styles.plannedWorkout}>
+                      <Text style={styles.workoutLabel}>Planned Workout</Text>
+                      <Text style={styles.workoutTitle}>{todaysWorkout.title}</Text>
+                      <Text style={styles.workoutDetails}>
+                        {todaysWorkout.intensity} intensity • {todaysWorkout.duration}
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </View>
+                </View>
+              )}
 
 
 

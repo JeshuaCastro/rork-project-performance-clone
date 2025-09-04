@@ -30,7 +30,7 @@ import { useWhoopStore } from '@/store/whoopStore';
 import { useProgramStore } from '@/store/programStore';
 import ProgressRing from '@/components/ProgressRing';
 import IOSSegmentedControl from '@/components/IOSSegmentedControl';
-import { DailyMetricsPopup } from '@/components/DailyMetricsPopup';
+
 import { useDailyMetricsPopup } from '@/hooks/useDailyMetricsPopup';
 
 type TimeRange = 'week' | 'month' | 'quarter';
@@ -399,10 +399,7 @@ export default function ProgressScreen() {
         </View>
       </ScrollView>
       
-      <DailyMetricsPopup
-        visible={showPopup}
-        onClose={closeDailyPopup}
-      />
+
     </View>
   );
 }
