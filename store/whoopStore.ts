@@ -25,6 +25,7 @@ import {
   ProgramProgress
 } from '@/types/whoop';
 import { ExerciseDefinition } from '@/types/exercises';
+import type { CanonicalWorkout } from '@/types/workout';
 import { exerciseDatabase, searchExercisesByKeywords, getCardioFallbackExercise } from '@/constants/exerciseDatabase';
 import {
   isConnectedToWhoop,
@@ -492,6 +493,7 @@ interface WhoopStore {
   weightHistory: WeightEntry[];
   programIntroductionsShown: string[]; // Array of program IDs that have shown introduction
   extractedExercises: ExerciseDefinition[]; // Exercises extracted from programs and logged to database
+  canonicalWorkouts: CanonicalWorkout[]; // Saved canonical workouts (processed workouts)
   
   setSelectedDate: (date: string) => void;
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -559,6 +561,12 @@ interface WhoopStore {
   getExtractedExercises: () => ExerciseDefinition[];
   searchExtractedExercises: (query: string) => ExerciseDefinition[];
   clearExtractedExercises: () => void;
+
+  // Canonical workout persistence and processing
+  upsertCanonicalWorkout: (workout: CanonicalWorkout) => void;
+  getCanonicalWorkoutById: (id: string) => CanonicalWorkout | undefined;
+  listCanonicalWorkouts: () => CanonicalWorkout[];
+  extractAndLogExercisesFromCanonicalWorkout: (workout: CanonicalWorkout) => void;
 }
 
 export const useWhoopStore = create<WhoopStore>()(
@@ -583,6 +591,7 @@ export const useWhoopStore = create<WhoopStore>()(
       weightHistory: [],
       programIntroductionsShown: [],
       extractedExercises: [],
+      canonicalWorkouts: [],
       
       setIsLoadingWhoopData: (isLoading) => set({ isLoadingWhoopData: isLoading }),
       
@@ -3469,6 +3478,85 @@ Return JSON with implementation and advisory guidance:
         }
       },
       
+      // Canonical workout upsert and retrieval
+      upsertCanonicalWorkout: (workout: CanonicalWorkout) => {
+        set((state) => {
+          const existingIndex = state.canonicalWorkouts.findIndex(w => w.id === workout.id);
+          if (existingIndex >= 0) {
+            const updated = [...state.canonicalWorkouts];
+            updated[existingIndex] = workout;
+            console.log('🔄 Updated canonical workout in memory:', workout.id);
+            return { canonicalWorkouts: updated };
+          }
+          console.log('💾 Saved new canonical workout to memory:', workout.id);
+          return { canonicalWorkouts: [...state.canonicalWorkouts, workout] };
+        });
+      },
+      getCanonicalWorkoutById: (id: string) => {
+        const { canonicalWorkouts } = get();
+        return canonicalWorkouts.find(w => w.id === id);
+      },
+      listCanonicalWorkouts: () => {
+        const { canonicalWorkouts } = get();
+        return canonicalWorkouts;
+      },
+      extractAndLogExercisesFromCanonicalWorkout: (workout: CanonicalWorkout) => {
+        try {
+          console.log(`📥 Processing canonical workout into exercise database: ${workout.title} (${workout.id})`);
+          const preciseDefs: ExerciseDefinition[] = [];
+          const seen = new Set<string>();
+
+          workout.exercises.forEach((ex, idx) => {
+            const key = ex.name.toLowerCase().trim();
+            if (seen.has(key)) return;
+            seen.add(key);
+
+            const cleanId = key.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            const def: ExerciseDefinition = {
+              id: cleanId || `ex-${workout.id}-${idx}`,
+              name: ex.name,
+              description: `${ex.name} - ${ex.sets} sets x ${ex.reps} reps. Rest ${ex.rest}s.`,
+              primaryMuscles: ['full-body'],
+              secondaryMuscles: [],
+              difficulty: 'beginner',
+              equipment: [],
+              instructions: [
+                {
+                  stepNumber: 1,
+                  instruction: `Perform ${ex.name} for ${ex.sets} sets of ${ex.reps}.` ,
+                  tip: 'Maintain form; control tempo.',
+                  commonMistake: 'Rushing reps or incomplete range of motion'
+                }
+              ],
+              formTips: ['Neutral spine', 'Full ROM', 'Controlled eccentric'],
+              commonMistakes: ['Too heavy too soon', 'Poor bracing'],
+              modifications: [
+                { level: 'easier', description: 'Reduce load/volume', instruction: 'Use lighter weight or fewer reps.' },
+                { level: 'harder', description: 'Increase load/tempo', instruction: 'Add weight or slow tempo.' }
+              ],
+              safetyNotes: ['Warm up adequately', 'Stop if pain occurs'],
+              demonstrationImageUrl: ex.mediaUrl ?? 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&auto=format&q=80',
+              estimatedDuration: `${Math.max(30, ex.rest)}-90 seconds`,
+              caloriesPerMinute: 6
+            };
+            preciseDefs.push(def);
+          });
+
+          set((state) => {
+            const existingIds = new Set(state.extractedExercises.map(e => e.id));
+            const newOnes = preciseDefs.filter(d => !existingIds.has(d.id));
+            if (newOnes.length) {
+              console.log(`✅ Logged ${newOnes.length} new precise exercise variants from canonical workout.`);
+              return { extractedExercises: [...state.extractedExercises, ...newOnes] };
+            }
+            console.log('ℹ️ No new exercise variants to add from canonical workout.');
+            return state;
+          });
+        } catch (e) {
+          console.error('Failed to process canonical workout into exercise DB:', e);
+        }
+      },
+      
       // Get all extracted exercises
       getExtractedExercises: () => {
         const { extractedExercises } = get();
@@ -3510,6 +3598,7 @@ Return JSON with implementation and advisory guidance:
         weightHistory: state.weightHistory,
         programIntroductionsShown: state.programIntroductionsShown,
         extractedExercises: state.extractedExercises,
+        canonicalWorkouts: state.canonicalWorkouts,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
