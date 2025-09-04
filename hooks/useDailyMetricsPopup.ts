@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWhoopStore } from '@/store/whoopStore';
-import { useProgramAwareWorkoutAnalysis } from './useProgramAwareWorkoutAnalysis';
+
 
 const DAILY_POPUP_KEY = 'daily_metrics_popup_shown';
 const POPUP_COOLDOWN_HOURS = 8; // Show popup at most every 8 hours
@@ -11,9 +11,10 @@ export const useDailyMetricsPopup = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   
   const { isConnectedToWhoop, data: whoopData } = useWhoopStore();
-  const { hasAdjustment, currentAdjustment } = useProgramAwareWorkoutAnalysis();
+  // Removed unused program-aware workout analysis
+  const hasAdjustment = false;
 
-  const checkShouldShowPopup = async (): Promise<boolean> => {
+  const checkShouldShowPopup = useCallback(async (): Promise<boolean> => {
     try {
       if (!isConnectedToWhoop) {
         console.log('Not connected to Whoop, skipping daily popup');
@@ -46,8 +47,8 @@ export const useDailyMetricsPopup = () => {
       // Show popup if:
       // 1. We have recovery data
       // 2. It's been more than cooldown period since last shown
-      // 3. Either there's an adjustment OR it's the first time today
-      const shouldShow = hasAdjustment || !lastShownStr || 
+      // 3. It's the first time today (hasAdjustment is always false now)
+      const shouldShow = !lastShownStr || 
         new Date(lastShownStr).toDateString() !== now.toDateString();
 
       console.log('Daily popup check:', {
@@ -62,15 +63,15 @@ export const useDailyMetricsPopup = () => {
       console.error('Error checking if should show daily popup:', error);
       return false;
     }
-  };
+  }, [isConnectedToWhoop, whoopData.recovery, hasAdjustment]);
 
-  const showDailyPopup = async () => {
+  const showDailyPopup = useCallback(async () => {
     const shouldShow = await checkShouldShowPopup();
     if (shouldShow) {
       console.log('Showing daily metrics popup');
       setShowPopup(true);
     }
-  };
+  }, [checkShouldShowPopup]);
 
   const closeDailyPopup = async () => {
     try {
@@ -106,15 +107,9 @@ export const useDailyMetricsPopup = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [isConnectedToWhoop, whoopData.recovery.length, isInitialized]);
+  }, [isConnectedToWhoop, whoopData.recovery.length, isInitialized, showDailyPopup]);
 
-  // Show popup when there's a new adjustment
-  useEffect(() => {
-    if (isInitialized && hasAdjustment && currentAdjustment) {
-      console.log('New workout adjustment detected, showing popup');
-      setShowPopup(true);
-    }
-  }, [hasAdjustment, currentAdjustment, isInitialized]);
+  // Removed: Show popup when there's a new adjustment (functionality disabled)
 
   return {
     showPopup,
