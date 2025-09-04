@@ -413,7 +413,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
     const type = decideMediaType(current);
     const isUnverified = current.description?.includes('Unverified exercise');
 
-    if (!current.mediaUrl || type === 'none') {
+    if (!current.mediaUrl || current.mediaUrl.trim() === '' || type === 'none') {
       return (
         <View style={styles.placeholder} testID="media-missing">
           {isUnverified && (
@@ -502,7 +502,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
     const { height: screenHeight } = Dimensions.get('window');
     const mediaHeight = Math.min(screenHeight * 0.4, 400);
 
-    if (!current.mediaUrl || type === 'none') {
+    if (!current.mediaUrl || current.mediaUrl.trim() === '' || type === 'none') {
       return (
         <View style={[styles.modalMediaPlaceholder, { height: mediaHeight }]}>
           <Text style={styles.placeholderText}>Visual coming soon</Text>

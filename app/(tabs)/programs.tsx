@@ -897,7 +897,7 @@ export default function ProgramsScreen() {
               style={styles.activeProgram}
               onPress={() => router.push(`/program-detail?id=${program.id}`)}
             >
-              {template?.image && (
+              {template?.image && template.image.trim() !== '' && (
                 <Image 
                   source={{ uri: template.image }} 
                   style={styles.activeProgramImage} 
@@ -956,11 +956,17 @@ export default function ProgramsScreen() {
       style={styles.programCard}
       onPress={() => handleViewProgramDetails(program)}
     >
-      <Image 
-        source={{ uri: program.image }} 
-        style={styles.programImage} 
-        resizeMode="cover"
-      />
+      {program.image && program.image.trim() !== '' ? (
+        <Image 
+          source={{ uri: program.image }} 
+          style={styles.programImage} 
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.programImage, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
+          <Text style={{ color: '#999', fontSize: 14 }}>No Image</Text>
+        </View>
+      )}
       <View style={styles.programOverlay} />
       <View style={styles.programContent}>
         <View style={styles.iconContainer}>
@@ -1706,7 +1712,7 @@ export default function ProgramsScreen() {
               style={styles.modalScroll}
               contentContainerStyle={Platform.OS === 'ios' ? { paddingBottom: 40 } : undefined}
             >
-              {programDetails?.image && (
+              {programDetails?.image && programDetails.image.trim() !== '' && (
                 <Image 
                   source={{ uri: programDetails.image }} 
                   style={styles.detailsImage} 
