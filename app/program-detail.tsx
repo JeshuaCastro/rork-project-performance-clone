@@ -1005,28 +1005,64 @@ export default function ProgramDetailScreen() {
   };
   
   // Normalize exercises coming from program schedule/AI plan into the modal's shape
-  const normalizeScheduleExercises = (raw: any[] | undefined): NonNullable<Workout['exercises']> => {
-    if (!raw || !Array.isArray(raw)) return [];
-    return raw.map((ex: any) => {
-      const name = String(ex?.name ?? ex?.title ?? 'Exercise');
-      const sets = ex?.sets ?? ex?.targetSets ?? ex?.totalSets;
-      const reps = ex?.reps ?? ex?.repRange ?? ex?.targetReps;
-      const duration = ex?.duration ?? (ex?.durationMin ? `${ex.durationMin} minutes` : ex?.time ?? undefined);
-      const notes = ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join(' • ') : ex?.description ?? undefined);
-      return {
-        name,
-        sets: sets !== undefined && sets !== null ? String(sets) : undefined,
-        reps: reps !== undefined && reps !== null ? String(reps) : undefined,
-        duration: duration !== undefined && duration !== null ? String(duration) : undefined,
-        notes: notes !== undefined && notes !== null ? String(notes) : undefined,
-      };
-    });
+  const normalizeScheduleExercises = (raw: any[] | undefined, fallbackWorkout?: any): NonNullable<Workout['exercises']> => {
+    try {
+      if (!raw) {
+        // Try to infer from common nested structures on the workout object
+        const nested = fallbackWorkout ?? {};
+        const candidates: any[] = [];
+        if (Array.isArray((nested as any).exercises)) candidates.push(...(nested as any).exercises);
+        if (Array.isArray((nested as any).blocks)) {
+          (nested as any).blocks.forEach((b: any) => {
+            if (Array.isArray(b?.exercises)) candidates.push(...b.exercises);
+            if (Array.isArray(b?.movements)) candidates.push(...b.movements);
+          });
+        }
+        if (Array.isArray((nested as any).segments)) {
+          (nested as any).segments.forEach((s: any) => {
+            if (Array.isArray(s?.exercises)) candidates.push(...s.exercises);
+            if (Array.isArray(s?.movements)) candidates.push(...s.movements);
+          });
+        }
+        raw = candidates.length > 0 ? candidates : [];
+      }
+
+      if (!Array.isArray(raw)) return [];
+
+      const normalized = raw
+        .map((ex: any) => {
+          const name = String(ex?.name ?? ex?.title ?? ex?.movement ?? ex?.exercise ?? '').trim();
+          if (!name) return null;
+          const sets = ex?.sets ?? ex?.targetSets ?? ex?.totalSets ?? ex?.setCount;
+          const reps = ex?.reps ?? ex?.repRange ?? ex?.targetReps ?? ex?.repetitions;
+          const duration = ex?.duration ?? (ex?.durationMin ? `${ex.durationMin} minutes` : ex?.time ?? ex?.durationSec ?? undefined);
+          const notes = ex?.notes ?? (Array.isArray(ex?.cues) ? ex.cues.join(' • ') : ex?.description ?? undefined);
+          const result = {
+            name,
+            sets: sets !== undefined && sets !== null ? String(sets) : undefined,
+            reps: reps !== undefined && reps !== null ? String(reps) : undefined,
+            duration: duration !== undefined && duration !== null ? String(duration) : undefined,
+            notes: notes !== undefined && notes !== null ? String(notes) : undefined,
+          };
+          return result;
+        })
+        .filter(Boolean) as NonNullable<Workout['exercises']>;
+
+      return normalized;
+    } catch (err) {
+      console.warn('normalizeScheduleExercises error:', err);
+      return [];
+    }
   };
 
   // Map a scheduled workout to CanonicalWorkout used by WorkoutPlayer
   const mapProgramWorkoutToCanonical = (workout: Workout, dayIndex: number): CanonicalWorkout => {
     const provided = Array.isArray(workout.exercises) ? workout.exercises : [];
-    const baseList = provided.length > 0 ? provided : generateExercises(String(workout.title || ''), String(workout.type || 'other'), String(workout.description || ''));
+    if (provided.length === 0) {
+      console.warn('mapProgramWorkoutToCanonical: No exercises on workout, refusing to generate generic fallback. Title:', workout.title);
+    }
+
+    const baseList = provided;
 
     const mapped = baseList.map((ex: any, idx: number) => ({
       id: `${workout.title || 'workout'}-ex-${idx}`,
@@ -1047,7 +1083,7 @@ export default function ProgramDetailScreen() {
 
   // Enhance workout strictly from schedule; no generated fallbacks
   const enhanceWorkoutWithDetails = (workout: any): Workout => {
-    const providedExercises = normalizeScheduleExercises(workout?.exercises);
+    const providedExercises = normalizeScheduleExercises(workout?.exercises, workout);
 
     const enhanced: Workout = {
       ...workout,
