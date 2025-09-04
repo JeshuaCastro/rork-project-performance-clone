@@ -1619,13 +1619,18 @@ export default function ProgramDetailScreen() {
       const dIdx = (dayToIndex[(workout.day || '').toLowerCase()] ?? todayIdx);
       try {
         const canonical = mapProgramWorkoutToCanonical(workout, dIdx);
-        setActiveCanonicalWorkout(canonical);
-        try {
-          const whoop = useWhoopStore.getState();
-          whoop.upsertCanonicalWorkout(canonical);
-          whoop.extractAndLogExercisesFromCanonicalWorkout(canonical);
-        } catch (persistErr) {
-          console.warn('Failed to persist canonical workout / extract exercises', persistErr);
+        const hasExercises = Array.isArray(canonical.exercises) && canonical.exercises.length > 0;
+        setActiveCanonicalWorkout(hasExercises ? canonical : null);
+        if (hasExercises) {
+          try {
+            const whoop = useWhoopStore.getState();
+            whoop.upsertCanonicalWorkout(canonical);
+            whoop.extractAndLogExercisesFromCanonicalWorkout(canonical);
+          } catch (persistErr) {
+            console.warn('Failed to persist canonical workout / extract exercises', persistErr);
+          }
+        } else {
+          console.warn('[ProgramDetail] Canonical workout has no exercises; delegating to WorkoutPlayer schedule resolver');
         }
       } catch (e) {
         console.warn('Failed to build CanonicalWorkout', e);
