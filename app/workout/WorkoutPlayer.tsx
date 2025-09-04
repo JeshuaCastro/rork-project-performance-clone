@@ -7,6 +7,9 @@ import type { Exercise } from '@/src/schemas/program';
 import { resolveExercise } from '@/src/services/workoutNormalizer';
 import { useWhoopStore } from '@/store/whoopStore';
 import type { CanonicalWorkout } from '@/types/workout';
+import ActiveWorkout from '@/components/ActiveWorkout';
+import { useWorkoutSession } from '@/store/workoutSessionStore';
+import { createTrackedExercisesFromCanonical } from '@/src/services/workoutAdapter';
 
 interface WorkoutExercise {
   name: string;
@@ -98,6 +101,7 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
   const modalVideoRef = useRef<Video>(null);
 
   const whoop = useWhoopStore();
+  const { currentSession, startWorkoutSession } = useWorkoutSession();
 
   const workoutData = useMemo(() => {
     if (canonicalWorkout && canonicalWorkout.exercises) {
@@ -240,6 +244,22 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
   }, [workoutData]);
 
   const total = exercises.length;
+
+  const isTrackingThisWorkout = useMemo(() => {
+    return currentSession?.workoutId === canonicalWorkout.id && currentSession?.workoutType === 'strength';
+  }, [currentSession?.workoutId, currentSession?.workoutType, canonicalWorkout.id]);
+
+  const handleStartTracking = useCallback(() => {
+    try {
+      const tracked = createTrackedExercisesFromCanonical(canonicalWorkout, whoop.getExtractedExercises());
+      if (!tracked || tracked.length === 0) {
+        console.warn('[WorkoutPlayer] No tracked exercises built from canonical workout');
+      }
+      startWorkoutSession(canonicalWorkout.id, tracked, 'strength', programId);
+    } catch (e) {
+      console.warn('[WorkoutPlayer] Failed to start tracking session', e);
+    }
+  }, [canonicalWorkout, programId, startWorkoutSession, whoop]);
 
   useEffect(() => {
     if (workoutData?.title) {
@@ -499,6 +519,16 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
   const muscles = current?.primaryMuscles ?? [];
   const equipment = current?.equipment ?? [];
 
+  if (isTrackingThisWorkout) {
+    return (
+      <ActiveWorkout
+        workoutTitle={workoutData.title}
+        onComplete={onComplete}
+        onCancel={onCancel}
+      />
+    );
+  }
+
   if (!canonicalWorkout?.exercises || canonicalWorkout.exercises.length === 0) {
     return (
       <SafeAreaView style={styles.container} testID="workout-player-empty">
@@ -631,6 +661,15 @@ export default function WorkoutPlayer({ programId, workoutTitle, canonicalWorkou
         >
           <ChevronLeft size={20} color={index === 0 ? colors.textSecondary : colors.text} />
           <Text style={[styles.navText, index === 0 && styles.navTextDisabled]}>Previous Exercise</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          testID="start-tracking-button"
+          style={[styles.navButton, styles.navButtonSecondary]}
+          onPress={handleStartTracking}
+        >
+          <Text style={styles.navText}>Start Tracking</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

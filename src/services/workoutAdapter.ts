@@ -1,4 +1,6 @@
 import { Exercise } from "@/src/schemas/program";
+import type { CanonicalWorkout } from "@/types/workout";
+import type { ExerciseDefinition, TrackedWorkoutExercise, WorkoutSet } from "@/types/exercises";
 
 export const AI_EXERCISE_ALIAS_MAP = {
   sets: ["sets", "setCount", "numSets"],
@@ -172,5 +174,70 @@ export function coerceAiExercise(raw: unknown): Partial<Exercise> {
     }
   }
 
+  return out;
+}
+
+export function createTrackedExercisesFromCanonical(
+  canonical: CanonicalWorkout,
+  extracted: ExerciseDefinition[]
+): TrackedWorkoutExercise[] {
+  console.log('[workoutAdapter] createTrackedExercisesFromCanonical start', { id: canonical.id, title: canonical.title, count: canonical.exercises.length });
+  const nameToDef = new Map<string, ExerciseDefinition>();
+  extracted.forEach((d) => nameToDef.set(d.name.toLowerCase(), d));
+
+  const parseReps = (reps: number | string | undefined): number | string => {
+    if (typeof reps === 'number') return reps;
+    if (typeof reps === 'string') {
+      const n = Number(reps.replace(/[^0-9.\-]/g, ''));
+      if (Number.isFinite(n)) return Math.round(n);
+      return reps;
+    }
+    return '8-12';
+  };
+
+  const parseRest = (rest: number | string | undefined): number | undefined => {
+    if (typeof rest === 'number') return rest;
+    if (typeof rest === 'string') {
+      const m = rest.match(/(\d+)\s*(s|sec|seconds|m|min|minutes)?/i);
+      if (m) {
+        const val = Number(m[1]);
+        if (Number.isFinite(val)) {
+          const unit = (m[2] || 's').toLowerCase();
+          return unit.startsWith('m') ? val * 60 : val;
+        }
+      }
+    }
+    return undefined;
+  };
+
+  const out: TrackedWorkoutExercise[] = canonical.exercises.map((ex, idx) => {
+    const key = ex.name.toLowerCase().trim();
+    const match = nameToDef.get(key);
+    const exerciseId = match ? match.id : key.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || `exercise-${idx}`;
+
+    const totalSets = typeof ex.sets === 'number' && ex.sets > 0 ? ex.sets : 3;
+    const targetReps = parseReps(ex.reps);
+    const rest = parseRest((ex as any).rest ?? (ex as any).restSec ?? undefined) ?? 90;
+
+    const sets: WorkoutSet[] = Array.from({ length: totalSets }).map((_, i) => ({
+      setNumber: i + 1,
+      targetReps,
+      targetWeight: undefined,
+      targetRPE: undefined,
+      restTime: rest,
+      completed: false,
+    }));
+
+    const tracked: TrackedWorkoutExercise = {
+      exerciseId,
+      sets,
+      totalSets,
+      completedSets: 0,
+      isCompleted: false,
+    };
+    return tracked;
+  });
+
+  console.log('[workoutAdapter] createTrackedExercisesFromCanonical built', { count: out.length });
   return out;
 }
